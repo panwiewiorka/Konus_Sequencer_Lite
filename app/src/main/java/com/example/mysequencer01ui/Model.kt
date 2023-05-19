@@ -6,7 +6,6 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import dev.atsushieno.ktmidi.ci.CIFactory
 import dev.atsushieno.ktmidi.ci.MidiCIProtocolTypeInfo
 import dev.atsushieno.ktmidi.*
-import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.Runnable
 
 class KmmkComponentContext {
@@ -48,7 +47,6 @@ class KmmkComponentContext {
 //    private val targetChannel: Int
 //        get() = if (useDrumChannel.value) 9 else 0
 
-    @OptIn(ExperimentalTime::class)
     private fun calculateLength(msec: Double): String {
         if (!shouldOutputNoteLength.value)
             return ""
@@ -59,8 +57,7 @@ class KmmkComponentContext {
         return longPart + remaining[n8th % 8]
     }
 
-    @OptIn(ExperimentalTime::class)
-    fun noteOn(key: Int, channel: Int) {
+    fun noteOn(channel: Int, key: Int, velocity: Int = 100) {
         if (key < 0 || key >= 128) // invalid operation
             return
 
@@ -71,13 +68,12 @@ class KmmkComponentContext {
         val nOn = byteArrayOf(
                 (MidiChannelStatus.NOTE_ON + channel).toByte(),
                 key.toByte(),
-                defaultVelocity
+                velocity.toByte()
             )
         sendToAll(nOn, 0)
     }
 
 
-    @OptIn(ExperimentalTime::class)
     fun noteOff(key: Int, channel: Int) {
         if (key < 0 || key >= 128 || noteOnStates[key] == 0) // invalid operation
             return
@@ -90,6 +86,18 @@ class KmmkComponentContext {
                 0
             )
         sendToAll(nOff, 0)
+    }
+
+    fun allNotesOff(
+//        channel: Int
+    ) {
+        val allOff = byteArrayOf(
+            (MidiChannelStatus.CC + 0).toByte(),
+            MidiCC.ALL_NOTES_OFF.toByte(),
+            0
+        )
+        sendToAll(allOff, 0)
+//        noteOn(0, 4,0)
     }
 
     fun sendProgramChange(programToChange: Int, channel: Int = 0) {
