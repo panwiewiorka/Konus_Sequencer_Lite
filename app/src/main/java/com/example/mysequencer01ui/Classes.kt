@@ -1,8 +1,8 @@
 package com.example.mysequencer01ui
 
 data class Note (
-    var time: Long,
-    var channel: Int = 0,
-    var pitch: Int = 60,
-    var velocity: Int = 100,
+    val time: Long,
+    val channel: Int = 0,
+    val pitch: Int = 60,
+    val velocity: Int = 100,
         )

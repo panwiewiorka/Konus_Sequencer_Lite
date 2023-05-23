@@ -49,39 +49,32 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
         .background(Color(0xFF161616))
     ) {
 
-        MidiDeviceSelector(kmmk)
-        val midiOutputError by remember { kmmk.midiDeviceManager.midiOutputError }
-        if (midiOutputError != null) {
-            var showErrorDetails by remember { mutableStateOf(false) }
-            if (showErrorDetails) {
-                val closeDeviceErrorDialog = { showErrorDetails = false }
-                AlertDialog(onDismissRequest = closeDeviceErrorDialog,
-                    confirmButton = { Button(onClick = closeDeviceErrorDialog) { Text("OK") } },
-                    title = { Text("MIDI device error") },
-                    text = {
-                        Column {
-                            Row {
-                                Text("MIDI output is disabled until new device is selected.")
-                            }
-                            Row {
-                                Text(midiOutputError?.message ?: "(error details lost...)")
-                            }
-                        }
-                    }
-                )
-            }
-            Button(onClick = { showErrorDetails = true }) {
-                Text(text = "!!", color = Color.Red)
-            }
-        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ){
+            MidiSelector(kmmk)
 
+            Text("${seqUiState.bpm} BPM", color = Color.Gray)
+
+            Canvas(modifier = Modifier.size(40.dp)){
+                drawCircle(Color.White, style = Stroke(
+                width = 3f,
+                    pathEffect = PathEffect.dashPathEffect(FloatArray(2){((1 - it) + 0.44f) * 20f}, 0f)
+                )
+                )
+                //drawOval(Color.White, Offset(0f, 0f), Offset(30f, 20f), )
+            }
+                Spacer(modifier = Modifier.width(1.dp))
+        }
 
         //KeyboardRow(kmmk, 1)
 
         Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally){
 
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()){
-                EraseButton(seqViewModel, seqUiState.clearMode)
+                EraseButton(seqViewModel, seqUiState.eraseMode)
 
                     Spacer(modifier = Modifier.width(30.dp))
 
@@ -89,7 +82,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
 
                     Spacer(modifier = Modifier.width(30.dp))
 
-                DelButton(seqViewModel, seqUiState.delMode)
+                ClearButton(seqViewModel, seqUiState.clearMode)
             }
 
                     Spacer(modifier = Modifier.height(30.dp))
@@ -109,12 +102,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     Spacer(modifier = Modifier.height(40.dp))
 
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()){
-                Column {
-                    Text("BPM = ${seqUiState.bpm}", color = Color.Gray)
-                    Text("seqStartTime = ${seqUiState.seqStartTime}", color = Color.Gray)
-                    Text("deltaTime = ${seqUiState.deltaTime}", color = Color.Gray)
-                    Text("seqTotalTime = ${seqUiState.seqTotalTime}", color = Color.Gray)
-                }
+                VisualArray(seqUiState)
 
                 AllButton(seqViewModel)
             }
@@ -167,12 +155,12 @@ fun PadButton(
 
 
 @Composable
-fun PadsGrid(seqViewModel: SeqViewModel, channelIsPlaying: List<Boolean>, seqIsRecording: Boolean){
+fun PadsGrid(seqViewModel: SeqViewModel, channelIsPlaying: Array<Boolean>, seqIsRecording: Boolean){
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
     ){
-        Column() {
+        Column {
             Row(
                 //modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -193,7 +181,7 @@ fun PadsGrid(seqViewModel: SeqViewModel, channelIsPlaying: List<Boolean>, seqIsR
 
 
 @Composable
-fun AllButton(seqViewModel: SeqViewModel, ){
+fun AllButton(seqViewModel: SeqViewModel){
     val interactionSource = remember { MutableInteractionSource() }
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
@@ -232,7 +220,9 @@ fun RecButton(seqViewModel: SeqViewModel, seqIsRecording: Boolean){
             .size(80.dp),
     ) {
         Box{
-            Canvas(modifier = Modifier.fillMaxSize() .blur(6.dp)){
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(if (seqIsRecording) 0.dp else 6.dp)){
                 drawCircle(
                     color = if(seqIsRecording) BackGray else Color.Red,
                     radius = 14.dp.toPx(),
@@ -261,13 +251,16 @@ fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean){
         shape = RoundedCornerShape(0.dp),
         contentPadding = PaddingValues(0.dp),
         colors = buttonColors(
-            backgroundColor = if(seqIsPlaying) Color(0xFF008800) else BackGray
+            backgroundColor = if(seqIsPlaying) Color(0xFF00AA00) else BackGray
         ),
         modifier = Modifier
             .size(80.dp),
     ) {
         Box{
-            Canvas(modifier = Modifier.fillMaxSize() .blur(5.dp) .alpha(0.6f)){
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(if (seqIsPlaying) 0.dp else 5.dp)
+                .alpha(0.6f)){
                 val path = Path()
                 path.moveTo(30.dp.toPx(), 26.dp.toPx())
                 path.lineTo(30.dp.toPx(), 54.dp.toPx())
@@ -337,7 +330,10 @@ fun StopButton(seqViewModel: SeqViewModel, kmmk: KmmkComponentContext){
             .size(80.dp),
     ) {
         Box{
-            Canvas(modifier = Modifier.fillMaxSize() .blur(4.dp) .alpha(0.6f)){
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(if (stopIsPressed) 0.dp else 4.dp)
+                .alpha(0.6f)){
                 drawRect(
                     topLeft = Offset(26.dp.toPx(), 26.dp.toPx()),
                     size = Size(28.dp.toPx(), 28.dp.toPx()),
@@ -367,7 +363,7 @@ fun StopButton(seqViewModel: SeqViewModel, kmmk: KmmkComponentContext){
 @Composable
 fun EraseButton(seqViewModel: SeqViewModel, eraseMode: Boolean){
     Button(
-        interactionSource = buttonInteraction(seqViewModel.modeTime, { seqViewModel.clearNotes() }),
+        interactionSource = buttonInteraction(seqViewModel.modeTime, { seqViewModel.eraseNotes() }),
         onClick = {  },
         shape = RoundedCornerShape(0.dp),
         contentPadding = PaddingValues(0.dp),
@@ -378,7 +374,9 @@ fun EraseButton(seqViewModel: SeqViewModel, eraseMode: Boolean){
             .size(80.dp),
     ) {
         Box{
-            Canvas(modifier = Modifier.fillMaxSize() .blur(5.dp)){
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(if (eraseMode) 0.dp else 5.dp)){
                 val path = Path()
                 path.moveTo(28.dp.toPx(), 36.dp.toPx())
                 path.lineTo(36.dp.toPx(), 44.dp.toPx())
@@ -435,7 +433,9 @@ fun MuteButton(seqViewModel: SeqViewModel, muteMode: Boolean){
             .size(80.dp),
     ) {
         Box{
-            Text("MUTE", fontSize = 20.nonScaledSp, color = if(muteMode) BackGray else Color.Green, modifier = Modifier.blur(4.dp, BlurredEdgeTreatment.Unbounded) .alpha(0.6f))
+            Text("MUTE", fontSize = 20.nonScaledSp, color = if(muteMode) BackGray else Color.Green, modifier = Modifier
+                .blur(if (muteMode) 0.dp else 4.dp, BlurredEdgeTreatment.Unbounded)
+                .alpha(0.6f))
             Text("MUTE", fontSize = 20.nonScaledSp, color = if(muteMode) BackGray else Color.Green)
         }
     }
@@ -443,20 +443,23 @@ fun MuteButton(seqViewModel: SeqViewModel, muteMode: Boolean){
 
 
 @Composable
-fun DelButton(seqViewModel: SeqViewModel, delMode: Boolean){
+fun ClearButton(seqViewModel: SeqViewModel, clearMode: Boolean){
     Button(
-        interactionSource = buttonInteraction(0L, {seqViewModel.delSeq()}),
+        interactionSource = buttonInteraction(0L, {seqViewModel.clearSeq()}),
         onClick = {  },
         shape = RoundedCornerShape(0.dp),
         contentPadding = PaddingValues(0.dp),
         colors = buttonColors(
-            backgroundColor = if(delMode) Color.LightGray else BackGray
+            backgroundColor = if(clearMode) Color.LightGray else BackGray
         ),
         modifier = Modifier
             .size(80.dp),
     ) {
         Box{
-            Canvas(modifier = Modifier.fillMaxSize() .blur(6.dp) .alpha(0.6f)){
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(if (clearMode) 0.dp else 6.dp)
+                .alpha(0.6f)){
                 val path = Path()
                 path.moveTo(28.dp.toPx(), 28.dp.toPx())
                 path.lineTo(52.dp.toPx(), 52.dp.toPx())
@@ -465,7 +468,7 @@ fun DelButton(seqViewModel: SeqViewModel, delMode: Boolean){
 
                 drawPath(
                     path = path,
-                    color = if(delMode) BackGray else Color.LightGray,
+                    color = if(clearMode) BackGray else Color.LightGray,
                     style = Stroke(
                         width = 3.dp.toPx(),
                         cap = StrokeCap.Round
@@ -481,7 +484,7 @@ fun DelButton(seqViewModel: SeqViewModel, delMode: Boolean){
 
                 drawPath(
                     path = path,
-                    color = if(delMode) BackGray else Color.LightGray,
+                    color = if(clearMode) BackGray else Color.LightGray,
                     style = Stroke(
                         width = 3.dp.toPx(),
                         cap = StrokeCap.Round
@@ -509,6 +512,67 @@ fun buttonInteraction(modeTime: Long, function1: () -> Unit, function2: () -> Un
     return interactionSource
 }
 
+
+@Composable
+private fun VisualArray(seqUiState: SeqUiState) {
+    Box(
+        modifier = Modifier
+            .width(200.dp)
+            .height(80.dp)
+            .background(BackGray),
+        contentAlignment = Alignment.TopStart
+    ) {
+        val gg = (seqUiState.deltaTime.toFloat() / seqUiState.seqTotalTime * 200).dp
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawLine(
+                if (seqUiState.seqIsRecording || seqUiState.eraseMode) Color.Red else Color.Green,
+                Offset(gg.toPx(), 0.dp.toPx()),
+                Offset(gg.toPx(), 80.dp.toPx())
+            )
+        }
+        for (i in seqUiState.stepSequencer.indices) {
+            Text(
+                text = if (seqUiState.stepSequencer[i].velocity > 0) "[" else "]",
+                color = if(seqUiState.stepSequencer[i].velocity > 0) Color(0xFFFFFFFF) else Color(0xFF999999),
+                modifier = Modifier.offset(
+                    (seqUiState.stepSequencer[i].time.toFloat() / seqUiState.seqTotalTime * 200).toInt().dp,
+                    ((3 - seqUiState.stepSequencer[i].channel) * 20).dp
+                )
+            )
+        }
+    }
+}
+
+
+
+@Composable
+private fun MidiSelector(kmmk: KmmkComponentContext) {
+    MidiDeviceSelector(kmmk)
+    val midiOutputError by remember { kmmk.midiDeviceManager.midiOutputError }
+    if (midiOutputError != null) {
+        var showErrorDetails by remember { mutableStateOf(false) }
+        if (showErrorDetails) {
+            val closeDeviceErrorDialog = { showErrorDetails = false }
+            AlertDialog(onDismissRequest = closeDeviceErrorDialog,
+                confirmButton = { Button(onClick = closeDeviceErrorDialog) { Text("OK") } },
+                title = { Text("MIDI device error") },
+                text = {
+                    Column {
+                        Row {
+                            Text("MIDI output is disabled until new device is selected.")
+                        }
+                        Row {
+                            Text(midiOutputError?.message ?: "(error details lost...)")
+                        }
+                    }
+                }
+            )
+        }
+        Button(onClick = { showErrorDetails = true }) {
+            Text(text = "!!", color = Color.Red)
+        }
+    }
+}
 
 @Composable
 fun MidiDeviceSelector(kmmk: KmmkComponentContext) {
