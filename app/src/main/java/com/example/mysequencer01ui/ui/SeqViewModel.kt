@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import com.example.mysequencer01ui.SeqModes.*
 
 
 class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
@@ -17,57 +18,71 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
     val uiState: StateFlow<SeqUiState> = _uiState.asStateFlow()
     // The asStateFlow() makes this mutable state flow a read-only state flow
 
-    private var coroutineScope = CoroutineScope(Dispatchers.Main)
-
-    private var notes = Array(0){Note(0, 0, 0)}
-
     var modeTime = 150L
 
-    private var indexToPlayFrom = 0
+    private var coroutineScope = CoroutineScope(Dispatchers.Main)
+
+    private var notes = MutableList(16){ emptyArray<Note>() }
+
+    private var indexToPlayOnChannel = Array(16){ 0 }
+
+    private var currentMode = mutableListOf<SeqModes>()
+
+
+    private fun editCurrentMode(buttonState: Boolean, mode: SeqModes){
+        if(buttonState) currentMode.remove(mode) else currentMode.add(mode)
+        _uiState.update { a -> a.copy(
+            seqMode = if(currentMode.isNotEmpty()) currentMode.last() else DEFAULT
+        ) }
+    }
 
 
     fun startSeq() {
         _uiState.update { a ->
             a.copy(
-                seqStartTime = System.currentTimeMillis(),
-                deltaTime = 0L,
+                seqStartTime = Array(16){ System.currentTimeMillis() },
+                deltaTime = Array(16){ 0L }
             )
         }
         if (uiState.value.seqIsPlaying) return
 
+        indexToPlayOnChannel = Array(16){ 0 }
+        //editCurrentMode(uiState.value.seqIsPlaying, PLAYING)
         _uiState.update { a -> a.copy(seqIsPlaying = true) }
 
         coroutineScope.launch {
             while (uiState.value.seqIsPlaying) {
+                for(c in 0..15) {
 
-                _uiState.update { a ->
-                    a.copy( deltaTime = System.currentTimeMillis() - uiState.value.seqStartTime )
-                }
+                    _uiState.value.deltaTime[c] = System.currentTimeMillis() - uiState.value.seqStartTime[c]
 
-                if(notes.size > indexToPlayFrom) {
-                    for(i in indexToPlayFrom .. notes.lastIndex) {
-                        if(notes[i].time <= uiState.value.deltaTime) {
-                            // play note
-                            // update UI
-                            // if (next_note.time > deltaTime) OR no other notes exist  = remember index, exit from For()
+                    if (notes[c].size > indexToPlayOnChannel[c]) {
+                        for (i in indexToPlayOnChannel[c]..notes[c].lastIndex) {
+                            if (notes[c][i].time <= uiState.value.deltaTime[c]) {
+                                // play note
+                                // update UI
+                                // if (next_note.time > deltaTime) OR no other notes exist  = remember index, exit from For()
 
-                            kmmk.noteOn(notes[i].channel, notes[i].pitch, notes[i].velocity)
-                            updatePadStatus(notes[i].channel, notes[i].velocity)
-                            if(((notes.size > i + 1) && (notes[i + 1].time > uiState.value.deltaTime)) || (notes.size <= i + 1)) {
-                                indexToPlayFrom = i + 1
-                                break
+                                kmmk.noteOn( notes[c][i].channel, notes[c][i].pitch, notes[c][i].velocity )
+                                updatePadState(c, notes[c][i].velocity)
+                                if (((notes[c].size > i + 1) && (notes[c][i + 1].time > uiState.value.deltaTime[c])) || (notes[c].size <= i + 1)) {
+                                    indexToPlayOnChannel[c] = i + 1
+                                    break
+                                }
                             }
                         }
                     }
-                }
 
-                if (uiState.value.deltaTime >= uiState.value.seqTotalTime) {
-                    _uiState.update { a ->
-                        a.copy( seqStartTime = System.currentTimeMillis() )
+                    if (uiState.value.deltaTime[c] >= uiState.value.seqTotalTime[c]) {
+                        _uiState.value.seqStartTime[c] = System.currentTimeMillis()
+                        indexToPlayOnChannel[c] = 0
                     }
-                    indexToPlayFrom = 0
-                }
 
+                }
+                _uiState.update { a -> a.copy(
+                    deltaTime = uiState.value.deltaTime,
+                    visualArrayRefresh = !uiState.value.visualArrayRefresh
+                ) }
                 delay(1L)
             }
         }
@@ -75,73 +90,101 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
 
 
     fun stopSeq(){
-        _uiState.update { a -> a.copy (seqIsPlaying = false) }
+        //editCurrentMode(!uiState.value.seqIsPlaying, STOPPED)
+        _uiState.update { a ->
+            a.copy(
+                deltaTime = Array(16){ 0L },
+                seqIsPlaying = false
+            )
+        }
     }
 
 
     fun recSeq(){
+        //editCurrentMode(uiState.value.seqIsRecording, RECORDING)
         _uiState.update { a -> a.copy (seqIsRecording = !uiState.value.seqIsRecording) }
     }
 
 
     fun muteChannel(){
-        _uiState.update { a -> a.copy( muteMode = !uiState.value.muteMode ) }
+        editCurrentMode(uiState.value.muteButtonState, MUTING)
+        _uiState.update { a -> a.copy( muteButtonState = !uiState.value.muteButtonState ) }
     }
 
 
     fun eraseNotes(){
-        _uiState.update { a -> a.copy( eraseMode = !uiState.value.eraseMode ) }
+        editCurrentMode(uiState.value.eraseButtonState, ERASING)
+        _uiState.update { a -> a.copy( eraseButtonState = !uiState.value.eraseButtonState ) }
     }
 
 
     fun clearSeq(){
-        _uiState.update { a -> a.copy( clearMode = !uiState.value.clearMode ) }
-        indexToPlayFrom = 0
-        notes = emptyArray()
-        _uiState.update { a -> a.copy(
-            stepSequencer = notes
-        ) }
+        editCurrentMode(uiState.value.clearButtonState, CLEARING)
+        _uiState.update { a -> a.copy( clearButtonState = !uiState.value.clearButtonState ) }
     }
 
 
     private fun recordNote(channel: Int, pitch: Int, velocity: Int = 100) {
 
-        val deltaTime = System.currentTimeMillis() - uiState.value.seqStartTime
-        val ind = indexToPlayFrom
-
-        when {
-            // end of array
-            ind == notes.size -> {
-                notes += Note(deltaTime, channel, pitch, velocity)
+        if(uiState.value.seqIsPlaying){
+            val deltaTime = System.currentTimeMillis() - uiState.value.seqStartTime[channel]
+            when {
+                // end of array
+                indexToPlayOnChannel[channel] == notes[channel].size -> {
+                    notes[channel] = notes[channel] + Note(deltaTime, channel, pitch, velocity)
+                }
+                // beginning of array
+                notes[channel].isNotEmpty() && indexToPlayOnChannel[channel] == 0 -> {
+                    val tempNotes = notes[channel]
+                    notes[channel] = Array(1){Note(deltaTime, channel, pitch, velocity)} + tempNotes
+                }
+                // middle of array
+                else -> {
+                    val tempNotes1 = notes[channel].copyOfRange(0, indexToPlayOnChannel[channel])
+                    val tempNotes2 = notes[channel].copyOfRange(indexToPlayOnChannel[channel], notes[channel].size)
+                    notes[channel] = tempNotes1 + Note(deltaTime, channel, pitch, velocity) + tempNotes2
+                }
             }
-            // beginning of array
-            notes.isNotEmpty() && ind == 0 -> {
-                val tempNotes = notes
-                notes = Array(1){Note(deltaTime, channel, pitch, velocity)} + tempNotes
+        } else {
+            if(velocity > 0) {
+                val tempNotes = notes[channel]
+                notes[channel] = Array(1){Note(0L, channel, pitch, velocity)} + tempNotes
             }
-            // middle of array
-            else -> {
-                val tempNotes1 = notes.copyOfRange(0, ind)
-                val tempNotes2 = notes.copyOfRange(ind, notes.size)
-                notes = tempNotes1 + Note(deltaTime, channel, pitch, velocity) + tempNotes2
-            }
+            else notes[channel] = notes[channel] + Note(1L, channel, pitch, velocity)
         }
 
+
+
         _uiState.update { a -> a.copy(
-            stepSequencer = notes
+            visualArray = notes
         ) }
     }
 
 
     fun pressPad(channel: Int, pitch: Int, velocity: Int = 100){
-        kmmk.noteOn(channel, pitch, velocity)
-        if(uiState.value.seqIsPlaying && uiState.value.seqIsRecording) recordNote(channel, pitch, velocity)
-        updatePadStatus(channel, velocity)
+        when(uiState.value.seqMode){
+            //STOPPED -> kmmk.noteOn(channel, pitch, velocity)
+            //PLAYING -> kmmk.noteOn(channel, pitch, velocity)
+            //RECORDING -> recordNote(channel, pitch, velocity)
+            MUTING -> TODO()
+            ERASING -> TODO()
+            CLEARING -> {
+                indexToPlayOnChannel[channel] = 0
+                notes[channel] = emptyArray()
+            }
+            else -> if(uiState.value.seqIsRecording) recordNote(channel, pitch, velocity) else kmmk.noteOn(channel, pitch, velocity)
+        }.also {
+            updatePadState(channel, velocity)
+            _uiState.update { a -> a.copy(
+                visualArray = notes,
+                visualArrayRefresh = !uiState.value.visualArrayRefresh
+            ) }
+        }
     }
 
 
-    private fun updatePadStatus(channel: Int, velocity: Int){
-        _uiState.value.channelIsPlaying[channel] = velocity > 0
+    private fun updatePadState(channel: Int, velocity: Int){
+        _uiState.value.channelIsActive[channel] = velocity > 0
     }
 
 }

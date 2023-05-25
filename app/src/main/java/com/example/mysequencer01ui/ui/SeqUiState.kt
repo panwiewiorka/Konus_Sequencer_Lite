@@ -1,18 +1,21 @@
 package com.example.mysequencer01ui.ui
 
 import com.example.mysequencer01ui.Note
+import com.example.mysequencer01ui.SeqModes
 
 data class SeqUiState (
     val bpm: Int = 120,
-    val seqLength: Int = 4,
+    val seqLength: Int = 4, // TODO per channel
     val seqIsPlaying: Boolean = false,
     val seqIsRecording: Boolean = false,
-    val muteMode: Boolean = false,
-    val eraseMode: Boolean = false,
-    val clearMode: Boolean = false,
-    val seqStartTime: Long = 0L,
-    val seqTotalTime: Long = (60f / bpm * seqLength * 1000).toLong(),
-    val deltaTime: Long = 0L,
-    val channelIsPlaying: Array<Boolean> = Array(16) { false },
-    val stepSequencer: Array<Note> = emptyArray(),
+    val seqMode: SeqModes = SeqModes.DEFAULT,
+    val muteButtonState: Boolean = false,
+    val eraseButtonState: Boolean = false,
+    val clearButtonState: Boolean = false,
+    val visualArrayRefresh: Boolean = false,
+    val seqStartTime: Array<Long> = Array(16){0L},
+    val seqTotalTime: Array<Long> = Array(16){(60f / bpm * seqLength * 1000).toLong()},
+    val deltaTime: Array<Long> = Array(16){0L},
+    val channelIsActive: Array<Boolean> = Array(16) { false },
+    val visualArray: MutableList<Array<Note>> = MutableList(16){ emptyArray() },
     )
