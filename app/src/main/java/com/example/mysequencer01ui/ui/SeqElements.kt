@@ -82,7 +82,7 @@ fun PadButton(
                     } else Color(0x00000000)
                 )
         ) {
-            if(seqViewModel.sequence[channel].isMuted) Text("MUTED")
+            if(seqViewModel.sequences[channel].isMuted) Text("MUTED")
         }
     }
 }
