@@ -47,12 +47,13 @@ fun PadButton(
     seqIsRecording: Boolean
 ){
     val interactionSource = remember { MutableInteractionSource() }
+    var elapsedTime = 0L
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
-                is PressInteraction.Press -> { seqViewModel.pressPad(channel, pitch, 100) }
-                is PressInteraction.Release -> { seqViewModel.pressPad(channel, pitch, 0) }
-                is PressInteraction.Cancel -> { seqViewModel.pressPad(channel, pitch, 0) }
+                is PressInteraction.Press -> { seqViewModel.pressPad(channel, pitch, 100); elapsedTime = System.currentTimeMillis() }
+                is PressInteraction.Release -> { seqViewModel.pressPad(channel, pitch, 0, elapsedTime) }
+                is PressInteraction.Cancel -> { seqViewModel.pressPad(channel, pitch, 0, elapsedTime) }
             }
         }
     }
@@ -69,9 +70,6 @@ fun PadButton(
                 .border(
                     width = 4.dp, color = if (channelIsPlaying) {
                         when (seqMode) {
-                            //STOPPED -> Color(0x00000000)
-                            //PLAYING -> Color(0xFF008800)
-                            //RECORDING -> Color(0xFFFF0000)
                             MUTING -> Color(0xFF00FF00)
                             ERASING -> Color(0xFFFF0000)
                             CLEARING -> Color(0xFFFFFFFF)
@@ -83,7 +81,9 @@ fun PadButton(
                         }
                     } else Color(0x00000000)
                 )
-        ) {}
+        ) {
+            if(seqViewModel.sequence[channel].isMuted) Text("MUTED")
+        }
     }
 }
 
@@ -123,22 +123,24 @@ fun PadsGrid(
 @Composable
 fun AllButton(seqViewModel: SeqViewModel){
     val interactionSource = remember { MutableInteractionSource() }
+    var elapsedTime = 0L
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 100)
+                        seqViewModel.pressPad(i, 26, 100, allButton = true)
                     }
+                    elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 0)
+                        seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
                     }
                 }
                 is PressInteraction.Cancel -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 0)
+                        seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
                     }
                 }
             }
@@ -161,7 +163,7 @@ fun AllButton(seqViewModel: SeqViewModel){
 @Composable
 fun RecButton(seqViewModel: SeqViewModel, seqIsRecording: Boolean){
     Button(
-        interactionSource = buttonInteraction(seqViewModel.modeTime, {seqViewModel.recSeq()}),
+        interactionSource = buttonInteraction(seqViewModel.toggleTime, {seqViewModel.recMode()}),
         onClick = {  },
         shape = RoundedCornerShape(0.dp),
         contentPadding = PaddingValues(0.dp),
@@ -198,7 +200,7 @@ fun RecButton(seqViewModel: SeqViewModel, seqIsRecording: Boolean){
 @Composable
 fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean){
     Button(
-        interactionSource = buttonInteraction(seqViewModel.modeTime, {seqViewModel.startSeq()}, {seqViewModel.stopSeq()}),
+        interactionSource = buttonInteraction(seqViewModel.toggleTime, {seqViewModel.startSeq()}, {seqViewModel.stopSeq()}),
         onClick = {  },
         shape = RoundedCornerShape(0.dp),
         contentPadding = PaddingValues(0.dp),
@@ -316,7 +318,7 @@ fun StopButton(seqViewModel: SeqViewModel, kmmk: KmmkComponentContext){
 @Composable
 fun EraseButton(seqViewModel: SeqViewModel, eraseButtonState: Boolean){
     Button(
-        interactionSource = buttonInteraction(seqViewModel.modeTime, { seqViewModel.eraseNotes() }),
+        interactionSource = buttonInteraction(seqViewModel.toggleTime, { seqViewModel.eraseMode() }),
         onClick = {  },
         shape = RoundedCornerShape(0.dp),
         contentPadding = PaddingValues(0.dp),
@@ -375,7 +377,7 @@ fun EraseButton(seqViewModel: SeqViewModel, eraseButtonState: Boolean){
 @Composable
 fun MuteButton(seqViewModel: SeqViewModel, muteButtonState: Boolean){
     Button(
-        interactionSource = buttonInteraction( seqViewModel.modeTime, { seqViewModel.muteChannel() } ),
+        interactionSource = buttonInteraction( seqViewModel.toggleTime, { seqViewModel.muteMode() } ),
         onClick = {  },
         shape = RoundedCornerShape(0.dp),
         contentPadding = PaddingValues(0.dp),
@@ -398,7 +400,7 @@ fun MuteButton(seqViewModel: SeqViewModel, muteButtonState: Boolean){
 @Composable
 fun ClearButton(seqViewModel: SeqViewModel, clearButtonState: Boolean){
     Button(
-        interactionSource = buttonInteraction(0L, { seqViewModel.clearSeq() }
+        interactionSource = buttonInteraction(0L, { seqViewModel.clearMode() }
         ),
         onClick = {  },
         shape = RoundedCornerShape(0.dp),
@@ -486,12 +488,12 @@ fun VisualArray(seqUiState: SeqUiState) {
             if(seqUiState.visualArrayRefresh) drawPoints(List(1){ Offset(0f,0f) }, PointMode.Points, Color.Black)
         }
         for(c in 0..3){
-            for (i in seqUiState.visualArray[c].indices) {
+            for (i in seqUiState.visualArray[c].notes.indices) {
                 Text(
-                    text = if (seqUiState.visualArray[c][i].velocity > 0) "[" else "]",
-                    color = if(seqUiState.visualArray[c][i].velocity > 0) Color(0xFFFFFFFF) else Color(0xFF999999),
+                    text = if (seqUiState.visualArray[c].notes[i].velocity > 0) "[" else "]",
+                    color = if(seqUiState.visualArray[c].notes[i].velocity > 0) Color(0xFFFFFFFF) else Color(0xFF999999),
                     modifier = Modifier.offset(
-                        (seqUiState.visualArray[c][i].time.toFloat() / seqUiState.seqTotalTime[0] * 200).toInt().dp,  // TODO replace hardcoded channel
+                        (seqUiState.visualArray[c].notes[i].time.toFloat() / seqUiState.seqTotalTime[0] * 200).toInt().dp,  // TODO replace hardcoded channel
                         ((3 - c) * 20).dp
                     )
                 )

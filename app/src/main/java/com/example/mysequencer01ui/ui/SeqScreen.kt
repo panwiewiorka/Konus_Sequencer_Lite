@@ -1,7 +1,6 @@
 package com.example.mysequencer01ui.ui
 
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
@@ -11,8 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,6 +37,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
 
             Text("${seqUiState.bpm} BPM", color = Color.Gray)
 
+            /*
             Canvas(modifier = Modifier.size(40.dp)){
                 drawCircle(Color.White, style = Stroke(
                 width = 3f,
@@ -48,6 +46,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 )
                 //drawOval(Color.White, Offset(0f, 0f), Offset(30f, 20f), )
             }
+             */
                 Spacer(modifier = Modifier.width(1.dp))
         }
 
