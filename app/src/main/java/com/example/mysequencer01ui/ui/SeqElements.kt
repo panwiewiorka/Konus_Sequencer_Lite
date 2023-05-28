@@ -19,6 +19,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -44,15 +46,24 @@ fun PadButton(
     channelIsPlaying: Boolean,
     seqMode: SeqMode,
     seqIsPlaying: Boolean,
+    seqIsRecording: Boolean,
 ){
     val interactionSource = remember { MutableInteractionSource() }
-    var elapsedTime = 0L
+    var elapsedTime = remember { 0L }
+//    var seqModeOnPress by remember { mutableStateOf(seqMode) }
+    var seqModeOnPress = remember { DEFAULT }
+//    var seqModeOnPress = DEFAULT
     LaunchedEffect(interactionSource) {
+
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
-                is PressInteraction.Press -> { seqViewModel.pressPad(channel, pitch, 100); elapsedTime = System.currentTimeMillis() }
-                is PressInteraction.Release -> { seqViewModel.pressPad(channel, pitch, 0, elapsedTime) }
-                is PressInteraction.Cancel -> { seqViewModel.pressPad(channel, pitch, 0, elapsedTime) }
+                is PressInteraction.Press -> {
+                    seqViewModel.pressPad(channel, pitch, 100)
+                    elapsedTime = System.currentTimeMillis()
+                    seqModeOnPress = seqMode
+                }
+                is PressInteraction.Release -> { seqViewModel.pressPad(channel, pitch, 0, seqModeOnPress, elapsedTime) }
+                is PressInteraction.Cancel -> { seqViewModel.pressPad(channel, pitch, 0, seqModeOnPress, elapsedTime) }
             }
         }
     }
@@ -69,12 +80,12 @@ fun PadButton(
                 .border(
                     width = 4.dp, color = if (channelIsPlaying) {
                         when (seqMode) {
-                            MUTING -> Color(0xFF00FF00)
-                            ERASING -> Color(0xFFFF0000)
-                            CLEARING -> Color(0xFFFFFFFF)
-                            RECORDING -> Color(0xFFFF0000)
+                            MUTING -> Color.Green
+                            ERASING -> Color.Red
+                            CLEARING -> Color.White
                             else -> {
-                                if(seqIsPlaying) Color(0xFF008800)
+                                if(seqIsRecording) Color.Red
+                                else if(seqIsPlaying) Color(0xFF008800)
                                 else Color(0x00000000)
                             }
                         }
@@ -93,6 +104,7 @@ fun PadsGrid(
     channelIsActive: Array<Boolean>,
     seqMode: SeqMode,
     seqIsPlaying: Boolean,
+    seqIsRecording: Boolean,
 ){
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -103,15 +115,15 @@ fun PadsGrid(
                 //modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                PadButton(2, 26, seqViewModel, channelIsActive[2], seqMode, seqIsPlaying)
-                PadButton(3, 39, seqViewModel, channelIsActive[3], seqMode, seqIsPlaying)
+                PadButton(2, 26, seqViewModel, channelIsActive[2], seqMode, seqIsPlaying, seqIsRecording)
+                PadButton(3, 39, seqViewModel, channelIsActive[3], seqMode, seqIsPlaying, seqIsRecording)
             }
             Row(
                 //modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                PadButton(0, 4, seqViewModel, channelIsActive[0], seqMode, seqIsPlaying)
-                PadButton(1, 14, seqViewModel, channelIsActive[1], seqMode, seqIsPlaying)
+                PadButton(0, 4, seqViewModel, channelIsActive[0], seqMode, seqIsPlaying, seqIsRecording)
+                PadButton(1, 14, seqViewModel, channelIsActive[1], seqMode, seqIsPlaying, seqIsRecording)
             }
         }
     }
@@ -119,26 +131,28 @@ fun PadsGrid(
 
 
 @Composable
-fun AllButton(seqViewModel: SeqViewModel){
+fun AllButton(seqViewModel: SeqViewModel, seqMode: SeqMode,){
     val interactionSource = remember { MutableInteractionSource() }
-    var elapsedTime = 0L
+    var elapsedTime = remember { 0L }
+    var seqModeOnPress = remember { DEFAULT }
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 100, allButton = true)
+                        seqViewModel.pressPad(i, 26, 100, seqMode, allButton = true)
                     }
                     elapsedTime = System.currentTimeMillis()
+                    seqModeOnPress = seqMode
                 }
                 is PressInteraction.Release -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
+                        seqViewModel.pressPad(i, 26, 0, seqModeOnPress, elapsedTime, allButton = true)
                     }
                 }
                 is PressInteraction.Cancel -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
+                        seqViewModel.pressPad(i, 26, 0, seqModeOnPress, elapsedTime, allButton = true)
                     }
                 }
             }
@@ -159,43 +173,43 @@ fun AllButton(seqViewModel: SeqViewModel){
 
 
 @Composable
-fun RecButton(seqViewModel: SeqViewModel, seqMode: SeqMode){
+fun RecButton(seqViewModel: SeqViewModel, seqMode: SeqMode, seqIsRecording: Boolean){
     Button(
         interactionSource = buttonInteraction(
             seqViewModel.toggleTime,
-            { seqViewModel.editCurrentMode(RECORDING) },
-            { seqViewModel.editCurrentMode(RECORDING, true) }
+            { seqViewModel.changeRecState() }
         ),
         onClick = {  },
         shape = RoundedCornerShape(0.dp),
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(seqMode == RECORDING) Color.Red else BackGray
+            backgroundColor = if(seqMode == DEFAULT && seqIsRecording) Color.Red else BackGray
         ),
         modifier = Modifier
-            .size(80.dp),
+            .size(80.dp)
+            .border(width = 4.dp, color = if(seqIsRecording) Color.Red else Color.Transparent),
     ) {
         Box{
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (seqMode == RECORDING) 0.dp else 6.dp)){
-                drawCircle(
-                    color = if(seqMode == RECORDING) BackGray else Color.Red,
-                    radius = 14.dp.toPx(),
-                    center = center,
-                    style = Stroke(width = 3.dp.toPx()),
-                )
+            if (!(seqIsRecording && seqMode == DEFAULT)) {
+                Canvas(modifier = Modifier.fillMaxSize().blur(6.dp)){
+                    recSymbol(seqMode, seqIsRecording)
+                }
             }
             Canvas(modifier = Modifier.fillMaxSize()){
-                drawCircle(
-                    color = if(seqMode == RECORDING) BackGray else Color.Red,
-                    radius = 14.dp.toPx(),
-                    center = center,
-                    style = Stroke(width = 3.dp.toPx()),
-                )
+                recSymbol(seqMode, seqIsRecording)
             }
         }
     }
+}
+
+
+private fun DrawScope.recSymbol(seqMode: SeqMode, seqIsRecording: Boolean) {
+    drawCircle(
+        color = if (seqIsRecording && seqMode == DEFAULT) BackGray else Color.Red,
+        radius = 14.dp.toPx(),
+        center = center,
+        style = if(seqMode != DEFAULT && seqIsRecording) Fill else Stroke(width = 3.dp.toPx()),
+    )
 }
 
 
@@ -470,7 +484,11 @@ fun ClearButton(seqViewModel: SeqViewModel, seqMode: SeqMode){
 
 
 @Composable
-fun buttonInteraction(toggleTime: Long, function1: () -> Unit, function2: () -> Unit = {function1()}): MutableInteractionSource {
+fun buttonInteraction(
+    toggleTime: Long,
+    function1: () -> Unit,
+    function2: () -> Unit = { function1() }
+): MutableInteractionSource {
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = 0L
     LaunchedEffect(interactionSource) {
@@ -480,7 +498,10 @@ fun buttonInteraction(toggleTime: Long, function1: () -> Unit, function2: () -> 
                     function1(); elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
-                    if ((System.currentTimeMillis() - elapsedTime) > toggleTime) function2()
+                    if ((System.currentTimeMillis() - elapsedTime) > toggleTime) {
+                        function2()
+
+                    }
                 }
                 is PressInteraction.Cancel -> {
                     if ((System.currentTimeMillis() - elapsedTime) > toggleTime) function2()
@@ -504,7 +525,7 @@ fun VisualArray(seqUiState: SeqUiState) {
         val gg = (seqUiState.deltaTime[0].toFloat() / seqUiState.seqTotalTime[0] * 200).dp  // TODO replace hardcoded channel
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawLine(
-                if (seqUiState.seqMode == RECORDING || seqUiState.seqMode == ERASING) Color.Red else Color.Green,
+                if (seqUiState.seqIsRecording || seqUiState.seqMode == ERASING) Color.Red else if(seqUiState.seqMode == CLEARING) Color.White else Color.Green,
                 Offset(gg.toPx(), 0.dp.toPx()),
                 Offset(gg.toPx(), 80.dp.toPx())
             )

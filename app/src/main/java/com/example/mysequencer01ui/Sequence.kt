@@ -12,6 +12,7 @@ class Sequence (
     var isMuted: Boolean = false,
     var isErasing: Boolean = false,
     var noteOnStates: Array<Boolean> = Array(128){false},
+    var pressedNotes: Array<Boolean> = Array(128){false},
 ){
     fun recordNote(channel: Int, pitch: Int, velocity: Int, staticNoteOffTime: Long, seqIsPlaying: Boolean) {
 
@@ -48,20 +49,16 @@ class Sequence (
                 notes = tempNotes1 + Note(recordTime, channel, pitch, velocity) + tempNotes2
             }
         }
-
-//        _uiState.update { a -> a.copy(
-//            visualArray = sequences
-//        ) }
     }
 
 
     fun playing(kmmk: KmmkComponentContext) {
-        // play note (if channel isn't muted)
+        // play note (if it's not being manually played, or if channel isn't muted)
         // remember which notes are playing
         // update UI
         // if (next_note.time > deltaTime) OR no other notes exist -> increase index, exit from while()
 
-        if (!isMuted || notes[indexToPlay].velocity == 0) {
+        if (!pressedNotes[notes[indexToPlay].pitch] && (!isMuted || notes[indexToPlay].velocity == 0)) {
             kmmk.noteOn(
                 notes[indexToPlay].channel,
                 notes[indexToPlay].pitch,

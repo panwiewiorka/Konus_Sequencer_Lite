@@ -8,5 +8,5 @@ data class Note (
         )
 
 enum class SeqMode{
-    DEFAULT, RECORDING, MUTING, ERASING, CLEARING
+    DEFAULT, MUTING, ERASING, CLEARING
 }

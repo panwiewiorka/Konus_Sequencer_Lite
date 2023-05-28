@@ -7,7 +7,7 @@ data class SeqUiState (
     val bpm: Int = 120,
     val seqLength: Int = 4, // TODO per channel
     val seqIsPlaying: Boolean = false,
-    //val seqIsRecording: Boolean = false,
+    val seqIsRecording: Boolean = false,
     val seqMode: SeqMode = SeqMode.DEFAULT,
     val visualArrayRefresh: Boolean = false,
     val seqStartTime: Array<Long> = Array(16){0L},

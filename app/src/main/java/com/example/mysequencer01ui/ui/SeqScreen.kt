@@ -69,7 +69,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     Spacer(modifier = Modifier.height(30.dp))
 
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()){
-                RecButton(seqViewModel, seqUiState.seqMode)
+                RecButton(seqViewModel, seqUiState.seqMode, seqUiState.seqIsRecording)
 
                     Spacer(modifier = Modifier.width(30.dp))
 
@@ -85,12 +85,12 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()){
                 VisualArray(seqUiState)
 
-                AllButton(seqViewModel)
+                AllButton(seqViewModel, seqUiState.seqMode)
             }
 
                     Spacer(modifier = Modifier.height(40.dp))
 
-            PadsGrid(seqViewModel, seqUiState.channelIsActive, seqUiState.seqMode, seqUiState.seqIsPlaying)
+            PadsGrid(seqViewModel, seqUiState.channelIsActive, seqUiState.seqMode, seqUiState.seqIsPlaying, seqUiState.seqIsRecording)
         }
     }
 }

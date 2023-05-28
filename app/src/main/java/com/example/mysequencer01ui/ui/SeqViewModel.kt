@@ -27,8 +27,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
         _uiState.update { a ->
             a.copy(
                 seqStartTime = Array(16){ System.currentTimeMillis() },
-                deltaTime = Array(16){ 0L },
-                seqIsPlaying = true
+                deltaTime = Array(16){ 0L }
             )
         }
         for(c in sequences.indices) {
@@ -36,6 +35,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
         }
 
         if (uiState.value.seqIsPlaying) return
+
+        _uiState.update { a -> a.copy(seqIsPlaying = true) }
 
         coroutineScope.launch {
             while (uiState.value.seqIsPlaying) {
@@ -71,7 +72,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
     }
 
 
-    fun stopSeq(){
+    fun stopSeq() {
         for(c in 0..15){
             for(p in 0..127){
                 if(sequences[c].noteOnStates[p]) {
@@ -91,20 +92,19 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
     }
 
 
+    fun changeRecState() {
+        _uiState.update { a -> a.copy(seqIsRecording = !uiState.value.seqIsRecording) }
+    }
+
+
     fun editCurrentMode(mode: SeqMode, momentary: Boolean = false){
         if(mode != uiState.value.seqMode) {
             previousSeqMode = uiState.value.seqMode
-            _uiState.update { a -> a.copy(
-                seqMode = mode
-            ) }
+            _uiState.update { a -> a.copy(seqMode = mode) }
         } else if(momentary) {
-            _uiState.update { a -> a.copy(
-                seqMode = previousSeqMode
-            ) }
+            _uiState.update { a -> a.copy(seqMode = previousSeqMode) }
         } else {
-            _uiState.update { a -> a.copy(
-                seqMode = DEFAULT
-            ) }
+            _uiState.update { a -> a.copy(seqMode = DEFAULT) }
         }
     }
 
@@ -140,19 +140,24 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
     }
 
 
-    fun pressPad(channel: Int, pitch: Int, velocity: Int, elapsedTime: Long = 0, allButton: Boolean = false) {
-        when(uiState.value.seqMode) {
+    fun pressPad(channel: Int, pitch: Int, velocity: Int, seqModeOnPress: SeqMode = uiState.value.seqMode, elapsedTime: Long = 0, allButton: Boolean = false) {
+        when(seqModeOnPress) {
             MUTING -> muteChannel(channel, velocity, elapsedTime, allButton)
             ERASING -> enableEraseOnChannel(channel, velocity)
             CLEARING -> {
                 if(velocity > 0) sequences[channel].clearChannel(channel, kmmk)
                 else _uiState.value.channelIsActive[channel] = false // TODO implement UNDO CLEAR
             }
-            RECORDING -> {
+            else -> if(uiState.value.seqIsRecording) {
                 sequences[channel].recordNote(channel, pitch, velocity, staticNoteOffTime, uiState.value.seqIsPlaying)
                 _uiState.value.channelIsActive[channel] = velocity > 0
+            } else {
+                if(sequences[channel].noteOnStates[pitch]) {
+                    kmmk.noteOn(channel, pitch, 0)  // retrigger already playing notes
+                }
+                kmmk.noteOn(channel, pitch, velocity)
+                sequences[channel].pressedNotes[pitch] = velocity > 0
             }
-            else -> kmmk.noteOn(channel, pitch, velocity)
         }.also {
             _uiState.update { a -> a.copy(
                 visualArray = sequences,
