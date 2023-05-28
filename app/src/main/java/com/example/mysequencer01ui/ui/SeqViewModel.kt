@@ -7,40 +7,35 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import com.example.mysequencer01ui.SeqModes.*
+import com.example.mysequencer01ui.SeqMode.*
 
 
 class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
 
-    /** UI state exposed to the UI **/
     private val _uiState = MutableStateFlow(SeqUiState())
-    // Backing property to avoid state updates from other classes
     val uiState: StateFlow<SeqUiState> = _uiState.asStateFlow()
-    // The asStateFlow() makes this mutable state flow a read-only state flow
 
     var toggleTime = 150L
     var staticNoteOffTime = 1L
     private var allChannelsMuted = false
     private var coroutineScope = CoroutineScope(Dispatchers.Main)
     var sequences = MutableList(16){ Sequence(uiState.value.bpm) }
-    private var currentMode = mutableListOf<SeqModes>()
+    var previousSeqMode: SeqMode = DEFAULT
 
 
     fun startSeq() {
         _uiState.update { a ->
             a.copy(
                 seqStartTime = Array(16){ System.currentTimeMillis() },
-                deltaTime = Array(16){ 0L }
+                deltaTime = Array(16){ 0L },
+                seqIsPlaying = true
             )
         }
-
         for(c in sequences.indices) {
             sequences[c].apply { startTimeStamp = System.currentTimeMillis(); deltaTime = 0L; indexToPlay = 0 }
         }
 
         if (uiState.value.seqIsPlaying) return
-
-        _uiState.update { a -> a.copy(seqIsPlaying = true) }
 
         coroutineScope.launch {
             while (uiState.value.seqIsPlaying) {
@@ -95,31 +90,22 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
         }
     }
 
-    fun recMode(){
-        //editCurrentMode(uiState.value.seqIsRecording, RECORDING)
-        _uiState.update { a -> a.copy (seqIsRecording = !uiState.value.seqIsRecording) }
-    }
 
-    fun muteMode(){
-        editCurrentMode(uiState.value.muteButtonState, MUTING)
-        _uiState.update { a -> a.copy( muteButtonState = !uiState.value.muteButtonState ) }
-    }
-
-    fun eraseMode(){
-        editCurrentMode(uiState.value.eraseButtonState, ERASING)
-        _uiState.update { a -> a.copy( eraseButtonState = !uiState.value.eraseButtonState ) }
-    }
-
-    fun clearMode(){
-        editCurrentMode(uiState.value.clearButtonState, CLEARING)
-        _uiState.update { a -> a.copy( clearButtonState = !uiState.value.clearButtonState ) }
-    }
-
-    private fun editCurrentMode(buttonState: Boolean, mode: SeqModes){
-        if(buttonState) currentMode.remove(mode) else currentMode.add(mode)
-        _uiState.update { a -> a.copy(
-            seqMode = if(currentMode.isNotEmpty()) currentMode.last() else DEFAULT
-        ) }
+    fun editCurrentMode(mode: SeqMode, momentary: Boolean = false){
+        if(mode != uiState.value.seqMode) {
+            previousSeqMode = uiState.value.seqMode
+            _uiState.update { a -> a.copy(
+                seqMode = mode
+            ) }
+        } else if(momentary) {
+            _uiState.update { a -> a.copy(
+                seqMode = previousSeqMode
+            ) }
+        } else {
+            _uiState.update { a -> a.copy(
+                seqMode = DEFAULT
+            ) }
+        }
     }
 
 
@@ -162,10 +148,11 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
                 if(velocity > 0) sequences[channel].clearChannel(channel, kmmk)
                 else _uiState.value.channelIsActive[channel] = false // TODO implement UNDO CLEAR
             }
-            else -> if(uiState.value.seqIsRecording) {
+            RECORDING -> {
                 sequences[channel].recordNote(channel, pitch, velocity, staticNoteOffTime, uiState.value.seqIsPlaying)
                 _uiState.value.channelIsActive[channel] = velocity > 0
-            } else kmmk.noteOn(channel, pitch, velocity)
+            }
+            else -> kmmk.noteOn(channel, pitch, velocity)
         }.also {
             _uiState.update { a -> a.copy(
                 visualArray = sequences,

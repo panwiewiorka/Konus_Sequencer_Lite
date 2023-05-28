@@ -55,21 +55,21 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
         Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally){
 
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()){
-                EraseButton(seqViewModel, seqUiState.eraseButtonState)
+                EraseButton(seqViewModel, seqUiState.seqMode)
 
                     Spacer(modifier = Modifier.width(30.dp))
 
-                MuteButton(seqViewModel, seqUiState.muteButtonState)
+                MuteButton(seqViewModel, seqUiState.seqMode)
 
                     Spacer(modifier = Modifier.width(30.dp))
 
-                ClearButton(seqViewModel, seqUiState.clearButtonState)
+                ClearButton(seqViewModel, seqUiState.seqMode)
             }
 
                     Spacer(modifier = Modifier.height(30.dp))
 
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()){
-                RecButton(seqViewModel, seqUiState.seqIsRecording)
+                RecButton(seqViewModel, seqUiState.seqMode)
 
                     Spacer(modifier = Modifier.width(30.dp))
 
@@ -90,7 +90,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
 
                     Spacer(modifier = Modifier.height(40.dp))
 
-            PadsGrid(seqViewModel, seqUiState.channelIsActive, seqUiState.seqMode, seqUiState.seqIsPlaying, seqUiState.seqIsRecording)
+            PadsGrid(seqViewModel, seqUiState.channelIsActive, seqUiState.seqMode, seqUiState.seqIsPlaying)
         }
     }
 }

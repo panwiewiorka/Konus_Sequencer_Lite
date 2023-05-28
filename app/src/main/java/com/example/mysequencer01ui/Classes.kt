@@ -7,6 +7,6 @@ data class Note (
     val velocity: Int = 100,
         )
 
-enum class SeqModes{
-    DEFAULT, MUTING, ERASING, CLEARING
+enum class SeqMode{
+    DEFAULT, RECORDING, MUTING, ERASING, CLEARING
 }
