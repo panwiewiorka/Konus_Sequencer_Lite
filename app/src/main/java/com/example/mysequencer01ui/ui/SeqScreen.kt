@@ -85,7 +85,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()){
                 VisualArray(seqUiState)
 
-                AllButton(seqViewModel, seqUiState.seqMode)
+                AllButton(seqViewModel)
             }
 
                     Spacer(modifier = Modifier.height(40.dp))

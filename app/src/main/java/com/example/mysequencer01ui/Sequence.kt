@@ -13,6 +13,7 @@ class Sequence (
     var isErasing: Boolean = false,
     var noteOnStates: Array<Boolean> = Array(128){false},
     var pressedNotes: Array<Boolean> = Array(128){false},
+    var onPressedMode: SeqMode = SeqMode.DEFAULT,
 ){
     fun recordNote(channel: Int, pitch: Int, velocity: Int, staticNoteOffTime: Long, seqIsPlaying: Boolean) {
 

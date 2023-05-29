@@ -140,7 +140,12 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
     }
 
 
-    fun pressPad(channel: Int, pitch: Int, velocity: Int, seqModeOnPress: SeqMode = uiState.value.seqMode, elapsedTime: Long = 0, allButton: Boolean = false) {
+    fun pressPad(channel: Int, pitch: Int, velocity: Int, elapsedTime: Long = 0, allButton: Boolean = false) {
+        val seqModeOnPress: SeqMode
+        if(velocity > 0) {
+            seqModeOnPress = uiState.value.seqMode
+            sequences[channel].onPressedMode = uiState.value.seqMode
+        } else seqModeOnPress = sequences[channel].onPressedMode
         when(seqModeOnPress) {
             MUTING -> muteChannel(channel, velocity, elapsedTime, allButton)
             ERASING -> enableEraseOnChannel(channel, velocity)
@@ -153,17 +158,19 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
                 _uiState.value.channelIsActive[channel] = velocity > 0
             } else {
                 if(sequences[channel].noteOnStates[pitch]) {
-                    kmmk.noteOn(channel, pitch, 0)  // retrigger already playing notes
+                    kmmk.noteOn(channel, pitch, 0)  // allows to retrigger already playing notes
                 }
                 kmmk.noteOn(channel, pitch, velocity)
                 sequences[channel].pressedNotes[pitch] = velocity > 0
             }
-        }.also {
-            _uiState.update { a -> a.copy(
-                visualArray = sequences,
-                visualArrayRefresh = !uiState.value.visualArrayRefresh
-            ) }
-        }
+        }.also { if(!allButton) recomposeVisualArray() }
+    }
+
+    fun recomposeVisualArray() {
+        _uiState.update { a -> a.copy(
+            visualArray = sequences,
+            visualArrayRefresh = !uiState.value.visualArrayRefresh
+        ) }
     }
 
 }
