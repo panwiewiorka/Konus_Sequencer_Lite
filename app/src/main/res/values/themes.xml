@@ -3,5 +3,6 @@
 
     <style name="Theme.MySequencer01Ui" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">#FF202020</item>
+        <item name="android:windowBackground">#FF161616</item>
     </style>
 </resources>

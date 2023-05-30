@@ -1,9 +1,14 @@
 package com.example.mysequencer01ui
 
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModel
 import com.example.mysequencer01ui.ui.theme.MySequencer01UiTheme
 import com.example.mysequencer01ui.ui.SeqScreen
@@ -38,6 +43,24 @@ class MainActivity : ComponentActivity() {
             kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
             MySequencer01UiTheme(darkTheme = true) {
                 SeqScreen(kmmk, SeqViewModel(kmmk))
+            }
+        }
+        hideSystemUI()
+    }
+
+    private fun hideSystemUI() {
+        //Hides the ugly action bar at the top
+        actionBar?.hide()
+
+        //Hide the status bars
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        } else {
+            window.insetsController?.apply {
+                hide(WindowInsets.Type.systemBars())
+                systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }
     }

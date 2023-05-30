@@ -4,15 +4,13 @@ import com.example.mysequencer01ui.SeqMode
 import com.example.mysequencer01ui.Sequence
 
 data class SeqUiState (
-    val bpm: Int = 120,
-    val seqLength: Int = 4, // TODO per channel
+    val showSettings: Boolean = false,
+    val bpm: Float = 120f,
+    val factorBpm: Double = 1.0,
     val seqIsPlaying: Boolean = false,
     val seqIsRecording: Boolean = false,
     val seqMode: SeqMode = SeqMode.DEFAULT,
     val visualArrayRefresh: Boolean = false,
-    val seqStartTime: Array<Long> = Array(16){0L},
-    val seqTotalTime: Array<Long> = Array(16){(60f / bpm * seqLength * 1000).toLong()},
-    val deltaTime: Array<Long> = Array(16){0L},
-    val channelIsActive: Array<Boolean> = Array(16) { false },
-    val visualArray: MutableList<Sequence> = MutableList(16){Sequence(bpm)},
+    val selectedChannel: Int = 0,
+    val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it)},
     )

@@ -1,30 +1,31 @@
 package com.example.mysequencer01ui
 
 class Sequence (
-    bpm: Int,
-    // channel: Int, ?
+    private val channel: Int,
     var notes: Array<Note> = emptyArray(),
     var indexToPlay: Int = 0,
     var startTimeStamp: Long = 0,
     var seqLength: Int = 4,
-    var totalTime: Long = (60f / bpm * seqLength * 1000).toLong(),
-    var deltaTime: Long = 0L,
+    var totalTime: Int = 2000,
+    var deltaTime: Int = 0,
+    var factoredDeltaTime: Double = 0.0,
     var isMuted: Boolean = false,
     var isErasing: Boolean = false,
+    var channelIsPlayingNotes: Boolean = false,
     var noteOnStates: Array<Boolean> = Array(128){false},
-    var pressedNotes: Array<Boolean> = Array(128){false},
+    var pressedNotes: Array<Boolean> = Array(128){false}, // manually pressed notes that are muting same ones played by sequencer
     var onPressedMode: SeqMode = SeqMode.DEFAULT,
 ){
-    fun recordNote(channel: Int, pitch: Int, velocity: Int, staticNoteOffTime: Long, seqIsPlaying: Boolean) {
+    fun recordNote(pitch: Int, velocity: Int, staticNoteOffTime: Int, seqIsPlaying: Boolean, factorBpm: Double) {
 
-        val recordTime: Long
+        val recordTime: Int
 
         if(seqIsPlaying){
-            recordTime = System.currentTimeMillis() - startTimeStamp
+            recordTime = ((System.currentTimeMillis() - startTimeStamp) * factorBpm).toInt()
         } else {
             if(velocity > 0) {
                 indexToPlay = 0
-                recordTime = 0L
+                recordTime = 0
             }
             else {
                 indexToPlay = notes.indexOfFirst { it.time > 0 }
@@ -36,18 +37,18 @@ class Sequence (
         when {
             // end of array
             indexToPlay == notes.size -> {
-                notes += Note(recordTime, channel, pitch, velocity)
+                notes += Note(recordTime, pitch, velocity)
             }
             // beginning of array
             notes.isNotEmpty() && indexToPlay == 0 -> {
                 val tempNotes = notes
-                notes = Array(1){ Note(recordTime, channel, pitch, velocity) } + tempNotes
+                notes = Array(1){ Note(recordTime, pitch, velocity) } + tempNotes
             }
             // middle of array
             else -> {
                 val tempNotes1 = notes.copyOfRange(0, indexToPlay)
                 val tempNotes2 = notes.copyOfRange(indexToPlay, notes.size)
-                notes = tempNotes1 + Note(recordTime, channel, pitch, velocity) + tempNotes2
+                notes = tempNotes1 + Note(recordTime, pitch, velocity) + tempNotes2
             }
         }
     }
@@ -56,12 +57,10 @@ class Sequence (
     fun playing(kmmk: KmmkComponentContext) {
         // play note (if it's not being manually played, or if channel isn't muted)
         // remember which notes are playing
-        // update UI
-        // if (next_note.time > deltaTime) OR no other notes exist -> increase index, exit from while()
 
         if (!pressedNotes[notes[indexToPlay].pitch] && (!isMuted || notes[indexToPlay].velocity == 0)) {
             kmmk.noteOn(
-                notes[indexToPlay].channel,
+                channel,
                 notes[indexToPlay].pitch,
                 notes[indexToPlay].velocity
             )
