@@ -26,11 +26,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mysequencer01ui.KmmkComponentContext
-import com.example.mysequencer01ui.SeqMode
-import com.example.mysequencer01ui.ui.theme.BackGray
-import com.example.mysequencer01ui.SeqMode.*
+import com.example.mysequencer01ui.PadsMode
+import com.example.mysequencer01ui.PadsMode.*
 
-// vvvv Modifier.recomposeHighlighter()
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +40,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Dp
+import com.example.mysequencer01ui.OnOff.*
+import com.example.mysequencer01ui.ui.theme.*
 import kotlin.math.min
 import kotlinx.coroutines.delay
 
@@ -53,16 +53,16 @@ val Int.nonScaledSp
 val padsSize = 119.dp
 val buttonsPadding = PaddingValues(top = 1.dp, end = 1.dp)
 val buttonsShape = RoundedCornerShape(0.dp)
-
+const val buttonTextSize = 12
 
 
 @Composable
-fun StepSeq(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
+fun StepSeq(seqUiState: SeqUiState, buttonsSize: Dp) {
     Box(
         modifier = Modifier
             .size(padsSize * 2, buttonsSize + 1.dp)
             .padding(1.dp)
-            .background(BackGray)
+            .background(bg2)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
 
@@ -76,14 +76,46 @@ fun StepSeq(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp)
                 )
             }
 
-            // NOTES
             with(seqUiState.sequences[seqUiState.selectedChannel]) {
-                for (i in notes.indices) {
-                    drawRect(Color(0xCCCC00CC), Offset((notes[i].time.toFloat() / totalTime * size.width), 0f), Size(size.width / 16, size.height))
-                }
                 val timeLine = (factoredDeltaTime / totalTime * size.width).toFloat()
+                // NOTES
+                for (i in notes.indices) {
+                    val noteStart = notes[i].time.toFloat() / totalTime * size.width
+                    val noteWidth = if(notes[i].length != 0) {   // TODO null instead of 0?  0 might be a rare case of wrap-around note?
+                        notes[i].length.toFloat() / totalTime * size.width
+                    } else {
+                        timeLine - noteStart
+                    }
+                    if(notes[i].velocity > 0) {
+                        if(notes[i].length >= 0) {   // normal note (not wrap-around)
+                            drawRect(
+                                Color(0x66CC00CC),
+                                Offset(noteStart, 0f),
+                                Size(
+                                    width = noteWidth,
+                                    height = size.height)
+                            )
+                        } else {   // wrap-around note
+                            drawRect(
+                                Color(0x66CC00CC),
+                                Offset(noteStart,0f),
+                                Size(
+                                    width = size.width - noteStart,
+                                    height = size.height)
+                            )
+                            drawRect(
+                                Color(0x66CC00CC),
+                                Offset(0f,0f),
+                                Size(
+                                    width = noteWidth + noteStart,  // noteWidth is negative here
+                                    height = size.height)
+                            )
+                        }
+                    }
+                }
+                // TIMELINE
                 drawLine(
-                    if (seqUiState.seqIsRecording || seqUiState.seqMode == ERASING) Color.Red else if(seqUiState.seqMode == CLEARING) Color.White else Color.Green,
+                    if (seqUiState.seqIsRecording || seqUiState.padsMode == ERASING) warmRed else if(seqUiState.padsMode == CLEARING) Color.White else violet,
                     Offset(timeLine, 0f),
                     Offset(timeLine, size.height)
                 )
@@ -101,17 +133,17 @@ fun VisualArray(seqUiState: SeqUiState) {
             .width(202.dp)
             .height(82.dp)
             .padding(1.dp)
-            .background(BackGray),
+            .background(bg2),
         contentAlignment = Alignment.TopStart
     ) {
         val timeLine = ((seqUiState.sequences[0].factoredDeltaTime) / seqUiState.sequences[0].totalTime * 200).dp  // TODO replace hardcoded channel
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawLine(
-                if (seqUiState.seqIsRecording || seqUiState.seqMode == ERASING) Color.Red else if(seqUiState.seqMode == CLEARING) Color.White else Color.Green,
+                if (seqUiState.seqIsRecording || seqUiState.padsMode == ERASING) warmRed else if(seqUiState.padsMode == CLEARING) Color.White else violet,
                 Offset(timeLine.toPx(), 0.dp.toPx()),
                 Offset(timeLine.toPx(), 80.dp.toPx())
             )
-            if(seqUiState.visualArrayRefresh) drawPoints(List(1){ Offset(0f,0f) }, PointMode.Points, Color.Green)
+            if(seqUiState.visualArrayRefresh) drawPoints(List(1){ Offset(0f,0f) }, PointMode.Points, violet)
         }
         for(c in 0..3){
             for (i in seqUiState.sequences[c].notes.indices) {
@@ -158,24 +190,41 @@ fun PadButton(
             onClick = {},
             shape = RoundedCornerShape(0.dp),
             colors = ButtonDefaults.buttonColors(
-                backgroundColor = BackGray
+                backgroundColor = bg2
             ),
             modifier = Modifier
                 .size(padsSize)
                 .border(
-                    width = 4.dp, color = if (seqUiState.sequences[channel].channelIsPlayingNotes) {
-                        when (seqUiState.seqMode) {
-                            MUTING -> Color.Green
-                            ERASING -> Color.Red
+                    width = 4.dp,
+                    color = if (seqUiState.sequences[channel].channelIsPlayingNotes) {
+                        when (seqUiState.padsMode) {
+                            MUTING -> violet
+                            ERASING -> warmRed
                             CLEARING -> Color.White
                             else -> {
-                                if(seqUiState.seqIsRecording) Color.Red
-                                else if(seqUiState.seqIsPlaying) Color(0xFF008800)
-                                else Color(0x00000000)
+                                if (seqUiState.seqIsRecording) warmRed
+                                else if (seqUiState.seqIsPlaying) grass
+                                else Color.Transparent
                             }
                         }
-                    } else Color(0x00000000)
+                    } else Color.Transparent
                 )
+//                .border(width = 4.dp, brush = Brush.radialGradient(
+//                    if (seqUiState.sequences[channel].channelIsPlayingNotes) {
+//                        when (seqUiState.seqMode) {
+//                            MUTING -> listOf(violet, violet, Color.Transparent)
+//                            ERASING -> listOf(warmRed, warmRed, Color.Transparent)
+//                            CLEARING -> listOf(Color.White, Color.White, Color.Transparent)
+//                            else -> {
+//                                if (seqUiState.seqIsRecording) listOf(warmRed, warmRed, Color.Transparent)
+//                                else if (seqUiState.seqIsPlaying) listOf(Color(0xFF008800), Color(0xFF008800), Color.Transparent)
+//                                else listOf(Color.Transparent, Color.Transparent)
+//                            }
+//                        }
+//                    } else listOf(Color.Transparent, Color.Transparent), radius = 250f
+//                ),
+//                    shape = RoundedCornerShape(0.dp)
+//                )
         ) {
             if(seqUiState.sequences[channel].isMuted) Text("MUTED")
         }
@@ -242,19 +291,24 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
         onClick = {},
         shape = RoundedCornerShape(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = BackGray
+            backgroundColor = bg2
         ),
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
     ) {
-        Text("ALL")
+        Box{
+            Text("ALL", fontSize = buttonTextSize.nonScaledSp, color = Color.White, modifier = Modifier
+                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
+                .alpha(0.6f))
+            Text("ALL", fontSize = buttonTextSize.nonScaledSp, color = notWhite)
+        }
     }
 }
 
 
 @Composable
-fun RecButton(seqViewModel: SeqViewModel, seqMode: SeqMode, seqIsRecording: Boolean, buttonsSize: Dp){
+fun RecButton(seqViewModel: SeqViewModel, padsMode: PadsMode, seqIsRecording: Boolean, buttonsSize: Dp){
     Button(
         interactionSource = buttonInteraction(
             seqViewModel.toggleTime,
@@ -264,21 +318,20 @@ fun RecButton(seqViewModel: SeqViewModel, seqMode: SeqMode, seqIsRecording: Bool
         shape = buttonsShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(seqMode == DEFAULT && seqIsRecording) Color.Red else BackGray
+            backgroundColor = if(padsMode == DEFAULT && seqIsRecording) warmRed else bg2
         ),
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .border(width = 4.dp, color = if(seqIsRecording) Color.Red else Color.Transparent),
     ) {
         Box{
-            if (!(seqIsRecording && seqMode == DEFAULT)) {
-                Canvas(modifier = Modifier.fillMaxSize().blur(6.dp)){
-                    recSymbol(seqMode, seqIsRecording)
+            if (!(seqIsRecording && padsMode == DEFAULT)) {
+                Canvas(modifier = Modifier.fillMaxSize().alpha(0.6f).blur(4.dp)){
+                    recSymbol(padsMode, seqIsRecording)
                 }
             }
             Canvas(modifier = Modifier.fillMaxSize()){
-                recSymbol(seqMode, seqIsRecording)
+                recSymbol(padsMode, seqIsRecording)
             }
         }
     }
@@ -297,15 +350,19 @@ fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: D
         shape = buttonsShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(seqIsPlaying) Color(0xFF00AA00) else BackGray
+//            backgroundColor = if(seqIsPlaying) Color(0xFF00AA00) else bg2
+            backgroundColor = bg2
         ),
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding),
     ) {
         Box{
+            Canvas(modifier = Modifier.fillMaxSize().blur(6.dp).alpha(0.6f)){
+                playSymbol(seqIsPlaying)
+            }
             Canvas(modifier = Modifier.fillMaxSize()){
-                if(seqIsPlaying) stopSymbol() else playSymbol(false)
+                playSymbol(seqIsPlaying)
             }
         }
     }
@@ -335,7 +392,7 @@ fun StopButton(seqViewModel: SeqViewModel, kmmk: KmmkComponentContext){
         shape = buttonsShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(stopIsPressed) Color(0xFFBFBF00) else BackGray
+            backgroundColor = if(stopIsPressed) Color(0xFFBFBF00) else bg2
         ),
         modifier = Modifier
             .size(buttonsSize)
@@ -357,7 +414,7 @@ fun StopButton(seqViewModel: SeqViewModel, kmmk: KmmkComponentContext){
 */
 
 @Composable
-fun EraseButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
+fun EraseButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
     Button(
         interactionSource = buttonInteraction(
             seqViewModel.toggleTime,
@@ -368,20 +425,25 @@ fun EraseButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
         shape = buttonsShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(seqMode == ERASING) Color.Red else BackGray
+            backgroundColor = if(padsMode == ERASING) warmRed else bg2
         ),
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding),
     ) {
         Box{
-            Canvas(modifier = Modifier
+//            Text("X>>", fontSize = buttonTextSize.nonScaledSp, color = notWhite, modifier = Modifier
+//                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
+//                .alpha(0.6f))
+//            Text("X>>", fontSize = buttonTextSize.nonScaledSp, color = notWhite)
+            val r = Canvas(modifier = Modifier
                 .fillMaxSize()
-                .blur(if (seqMode == ERASING) 0.dp else 5.dp)){
-                eraseSymbol(seqMode)
+                .alpha(0.6f)
+                .blur(if (padsMode == ERASING) 0.dp else 5.dp)){
+                eraseSymbol(padsMode)
             }
             Canvas(modifier = Modifier.fillMaxSize()){
-                eraseSymbol(seqMode)
+                eraseSymbol(padsMode)
             }
         }
     }
@@ -389,7 +451,7 @@ fun EraseButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
 
 
 @Composable
-fun MuteButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
+fun MuteButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
     Button(
         interactionSource = buttonInteraction(
             seqViewModel.toggleTime,
@@ -400,7 +462,7 @@ fun MuteButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
         shape = buttonsShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(seqMode == MUTING) Color.Green else BackGray
+            backgroundColor = if(padsMode == MUTING) violet else bg2
         ),
         modifier = Modifier
             .size(buttonsSize)
@@ -408,18 +470,18 @@ fun MuteButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
     ) {
         Box{
             MuteSymbol(
-                seqMode,
+                padsMode,
                 Modifier
-                    .blur(if (seqMode == MUTING) 0.dp else 4.dp, BlurredEdgeTreatment.Unbounded)
+                    .blur(if (padsMode == MUTING) 0.dp else 4.dp, BlurredEdgeTreatment.Unbounded)
                     .alpha(0.6f))
-            MuteSymbol(seqMode)
+            MuteSymbol(padsMode)
         }
     }
 }
 
 
 @Composable
-fun ClearButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
+fun ClearButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
     Button(
         interactionSource = buttonInteraction(
             0,
@@ -430,7 +492,7 @@ fun ClearButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
         shape = buttonsShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(seqMode == CLEARING) Color.LightGray else BackGray
+            backgroundColor = if(padsMode == CLEARING) notWhite else bg2
         ),
         modifier = Modifier
             .size(buttonsSize)
@@ -439,12 +501,12 @@ fun ClearButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
         Box{
             Canvas(modifier = Modifier
                 .fillMaxSize()
-                .blur(if (seqMode == CLEARING) 0.dp else 6.dp)
+                .blur(if (padsMode == CLEARING) 0.dp else 6.dp)
                 .alpha(0.6f)){
-                clearSymbol(seqMode)
+                clearSymbol(padsMode)
             }
             Canvas(modifier = Modifier.fillMaxSize()){
-                clearSymbol(seqMode)
+                clearSymbol(padsMode)
             }
         }
     }
@@ -452,7 +514,61 @@ fun ClearButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp){
 
 
 @Composable
-fun EmptyButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp, text: String = " "){
+fun RepeatButton(
+    seqViewModel: SeqViewModel,
+    buttonsSize: Dp,
+    text: String = " ",
+    time: Int,
+){
+    val interactionSource = remember { MutableInteractionSource() }
+    var buttonIsPressed by remember { mutableStateOf(false) }
+    var locked by remember { mutableStateOf(false) }
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> {
+                    if(!locked) seqViewModel.repeat(time) else {
+                        locked = false
+
+                    }
+                    buttonIsPressed = true
+                }
+                is PressInteraction.Release -> { buttonIsPressed = false }
+                is PressInteraction.Cancel -> { locked = true }
+            }
+        }
+    }
+    Button(
+        interactionSource = interactionSource,
+        onClick = {  },
+        shape = buttonsShape,
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = if(false) notWhite else bg2
+        ),
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding),
+    ) {
+        Box{
+            Text(text, fontSize = buttonTextSize.nonScaledSp, color = dusk, modifier = Modifier
+                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
+                .alpha(0.6f))
+            Text(text, fontSize = buttonTextSize.nonScaledSp, color = dusk)
+        }
+    }
+}
+
+
+@Composable
+fun EmptyButton(
+    seqViewModel: SeqViewModel,
+    padsMode: PadsMode,
+    buttonsSize: Dp,
+    text: String = " ",
+    textColor: Color = notWhite,
+    fontSize: Int = buttonTextSize,
+){
     Button(
         interactionSource = buttonInteraction(
             seqViewModel.toggleTime,
@@ -463,15 +579,17 @@ fun EmptyButton(seqViewModel: SeqViewModel, seqMode: SeqMode, buttonsSize: Dp, t
         shape = buttonsShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(false) Color.LightGray else BackGray
+            backgroundColor = if(false) notWhite else bg2
         ),
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding),
     ) {
         Box{
-            Text(text, fontSize = 12.nonScaledSp, modifier = Modifier.blur(6.dp, BlurredEdgeTreatment.Unbounded).alpha(0.6f))
-            Text(text, fontSize = 12.nonScaledSp,)
+            Text(text, fontSize = fontSize.nonScaledSp, color = textColor, modifier = Modifier
+                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
+                .alpha(0.6f))
+            Text(text, fontSize = fontSize.nonScaledSp, color = textColor)
         }
     }
 }
@@ -531,7 +649,7 @@ fun MidiSelector(kmmk: KmmkComponentContext) {
             )
         }
         Button(onClick = { showErrorDetails = true }) {
-            Text(text = "!!", color = Color.Red)
+            Text(text = "!!", color = warmRed)
         }
     }
 }
@@ -638,13 +756,13 @@ private val recomposeModifier =
                         // color in blue.
                         1L -> Color.Blue to 1f
                         // 2 compositions is _probably_ okay.
-                        2L -> Color.Green to 2.dp.toPx()
+                        2L -> violet to 2.dp.toPx()
                         // 3 or more compositions before timeout may indicate an issue. lerp the
                         // color from yellow to red, and continually increase the border size.
                         else -> {
                             lerp(
                                 Color.Yellow.copy(alpha = 0.8f),
-                                Color.Red.copy(alpha = 0.5f),
+                                warmRed.copy(alpha = 0.5f),
                                 min(1f, (numCompositionsSinceTimeout - 1).toFloat() / 100f)
                             ) to numCompositionsSinceTimeout.toInt().dp.toPx()
                         }

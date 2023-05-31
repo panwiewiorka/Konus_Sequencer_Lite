@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import com.example.mysequencer01ui.SeqMode.*
+import com.example.mysequencer01ui.PadsMode.*
 
 
 class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
@@ -18,8 +18,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
     var toggleTime = 150
     var staticNoteOffTime = 1
     private var allChannelsMuted = false
-    private var coroutineScope = CoroutineScope(Dispatchers.Main)
-    private var previousSeqMode: SeqMode = DEFAULT
+    private var previousPadsMode: PadsMode = DEFAULT
 
 
     fun startSeq() {
@@ -38,9 +37,10 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
 
         if (uiState.value.seqIsPlaying) return // needed for implementing ReStart()
 
+
         _uiState.update { a -> a.copy( seqIsPlaying = true ) }
 
-        coroutineScope.launch {
+        CoroutineScope(Dispatchers.Main).launch {
             while (uiState.value.seqIsPlaying) {
                 for(c in 0..15) {
                     with(uiState.value.sequences[c]){
@@ -53,7 +53,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
                                 if (!erasing()) break
                             } else {
                                 playing(kmmk)
-                                channelIsPlayingNotes = notes[indexToPlay].velocity > 0
                                 indexToPlay++
                             }
                         }
@@ -78,7 +77,15 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
         for(c in 0..15){
             for(p in 0..127){
                 if(uiState.value.sequences[c].noteOnStates[p]) {
-                    kmmk.noteOn(c, p, 0)
+                    kmmk.noteOn(c, p, 0) // TODO try to remove this line and see whether note still shuts OFF
+                    // TODO Properly record noteOFF for held note, don't record noteOFF onRelease // doesn't work now bc of pressedNotes
+                    if(uiState.value.seqIsRecording && uiState.value.sequences[c].pressedNotes[p]) uiState.value.sequences[c].recordNote(
+                        p,
+                        0,
+                        staticNoteOffTime,
+                        uiState.value.seqIsPlaying,
+                        uiState.value.factorBpm
+                    )
                     uiState.value.sequences[c].noteOnStates[p] = false
                 }
             }
@@ -101,14 +108,14 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
     }
 
 
-    fun editCurrentMode(mode: SeqMode, momentary: Boolean = false){
-        if(mode != uiState.value.seqMode) {
-            previousSeqMode = uiState.value.seqMode
-            _uiState.update { a -> a.copy(seqMode = mode) }
+    fun editCurrentMode(mode: PadsMode, momentary: Boolean = false){
+        if(mode != uiState.value.padsMode) {
+            previousPadsMode = uiState.value.padsMode
+            _uiState.update { a -> a.copy(padsMode = mode) }
         } else if(momentary) {
-            _uiState.update { a -> a.copy(seqMode = previousSeqMode) }
+            _uiState.update { a -> a.copy(padsMode = previousPadsMode) }
         } else {
-            _uiState.update { a -> a.copy(seqMode = DEFAULT) }
+            _uiState.update { a -> a.copy(padsMode = DEFAULT) }
         }
     }
 
@@ -145,15 +152,24 @@ class SeqViewModel(private val kmmk: KmmkComponentContext) : ViewModel() {
     }
 
 
+    fun repeat(time: Int) {
+        // totalTime, factorBpm
+        _uiState.update { a -> a.copy(
+            isRepeating = time > 0,
+            repeatTime = time,
+        ) }
+    }
+
+
     fun pressPad(channel: Int, pitch: Int, velocity: Int, elapsedTime: Long = 0, allButton: Boolean = false) {
         with(uiState.value.sequences[channel]) {
-            val seqModeOnPress: SeqMode
+            val padsModeOnPress: PadsMode
             if(velocity > 0) {
-                seqModeOnPress = uiState.value.seqMode
-                onPressedMode = uiState.value.seqMode
-            } else seqModeOnPress = onPressedMode
+                padsModeOnPress = uiState.value.padsMode
+                onPressedMode = uiState.value.padsMode
+            } else padsModeOnPress = onPressedMode
 
-            when(seqModeOnPress) {
+            when(padsModeOnPress) {
                 MUTING -> muteChannel(channel, velocity, elapsedTime, allButton)
                 ERASING -> enableEraseOnChannel(channel, velocity)
                 CLEARING -> {

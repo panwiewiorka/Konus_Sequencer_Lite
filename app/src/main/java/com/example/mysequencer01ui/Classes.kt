@@ -4,9 +4,11 @@ data class Note (
     var time: Int,
     val pitch: Int = 60,
     val velocity: Int = 100,
-    //val length: Int = 0,
+    var length: Int = 0,
 )
 
-enum class SeqMode{
-    DEFAULT, MUTING, ERASING, CLEARING
+enum class PadsMode{
+    DEFAULT, MUTING, ERASING, CLEARING, SELECTING
 }
+
+enum class OnOff{ ON, OFF }

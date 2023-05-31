@@ -1,6 +1,6 @@
 package com.example.mysequencer01ui.ui
 
-import com.example.mysequencer01ui.SeqMode
+import com.example.mysequencer01ui.PadsMode
 import com.example.mysequencer01ui.Sequence
 
 data class SeqUiState (
@@ -9,8 +9,10 @@ data class SeqUiState (
     val factorBpm: Double = 1.0,
     val seqIsPlaying: Boolean = false,
     val seqIsRecording: Boolean = false,
-    val seqMode: SeqMode = SeqMode.DEFAULT,
+    val padsMode: PadsMode = PadsMode.DEFAULT,
     val visualArrayRefresh: Boolean = false,
     val selectedChannel: Int = 0,
+    val isRepeating: Boolean = false,
+    val repeatTime: Int = 0,
     val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it)},
     )

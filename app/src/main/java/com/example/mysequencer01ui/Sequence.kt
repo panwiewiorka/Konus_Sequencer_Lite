@@ -6,7 +6,7 @@ class Sequence (
     var indexToPlay: Int = 0,
     var startTimeStamp: Long = 0,
     var seqLength: Int = 4,
-    var totalTime: Int = 2000,
+    var totalTime: Int = 2000, // TODO how are totalTime & seqLength correlated? Replace totalTime with relative one?
     var deltaTime: Int = 0,
     var factoredDeltaTime: Double = 0.0,
     var isMuted: Boolean = false,
@@ -14,12 +14,12 @@ class Sequence (
     var channelIsPlayingNotes: Boolean = false,
     var noteOnStates: Array<Boolean> = Array(128){false},
     var pressedNotes: Array<Boolean> = Array(128){false}, // manually pressed notes that are muting same ones played by sequencer
-    var onPressedMode: SeqMode = SeqMode.DEFAULT,
+    var onPressedMode: PadsMode = PadsMode.DEFAULT,
 ){
     fun recordNote(pitch: Int, velocity: Int, staticNoteOffTime: Int, seqIsPlaying: Boolean, factorBpm: Double) {
 
+        // Recording to beginning if Seq is stopped
         val recordTime: Int
-
         if(seqIsPlaying){
             recordTime = ((System.currentTimeMillis() - startTimeStamp) * factorBpm).toInt()
         } else {
@@ -34,6 +34,29 @@ class Sequence (
             }
         }
 
+        // NOTE LENGTH (for StepSeq)
+        if(velocity == 0) {
+            // searching for paired NoteON
+            var pairedNoteOnIndex = -1
+            var searchedIndex: Int
+            // searching backward from indexToPlay
+            if (indexToPlay > 0) {
+                searchedIndex = notes
+                    .copyOfRange(0, indexToPlay)
+                    .indexOfLast { it.pitch == pitch && it.velocity > 0 }
+                pairedNoteOnIndex = if (searchedIndex == -1) -1 else searchedIndex
+            }
+            // searching backward from end of array
+            if (pairedNoteOnIndex == -1) {
+                searchedIndex = notes
+                    .copyOfRange(indexToPlay, notes.size)
+                    .indexOfLast { it.pitch == pitch && it.velocity > 0 }
+                pairedNoteOnIndex = if (searchedIndex == -1) -1 else searchedIndex + indexToPlay
+            }
+            notes[pairedNoteOnIndex].length = recordTime - notes[pairedNoteOnIndex].time
+        }
+
+        // RECORDING
         when {
             // end of array
             indexToPlay == notes.size -> {
@@ -57,6 +80,7 @@ class Sequence (
     fun playing(kmmk: KmmkComponentContext) {
         // play note (if it's not being manually played, or if channel isn't muted)
         // remember which notes are playing
+        // update channelIsPlayingNotes for visual info
 
         if (!pressedNotes[notes[indexToPlay].pitch] && (!isMuted || notes[indexToPlay].velocity == 0)) {
             kmmk.noteOn(
@@ -66,6 +90,7 @@ class Sequence (
             )
             noteOnStates[notes[indexToPlay].pitch] = notes[indexToPlay].velocity > 0
         }
+        channelIsPlayingNotes = notes[indexToPlay].velocity > 0
     }
 
 
@@ -99,12 +124,14 @@ class Sequence (
             // searching for paired noteOFF
             var pairedNoteOffIndex = -1
             var searchedIndex: Int
+            // searching forward from indexToPlay
             if (indexToPlay <= notes.lastIndex) {
                 searchedIndex = notes
                     .copyOfRange(indexToPlay, notes.size)
                     .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
                 pairedNoteOffIndex = if (searchedIndex == -1) -1 else searchedIndex + indexToPlay
             }
+            // searching forward from 0
             if (pairedNoteOffIndex == -1) {
                 searchedIndex = notes
                     .copyOfRange(0, indexToPlay)

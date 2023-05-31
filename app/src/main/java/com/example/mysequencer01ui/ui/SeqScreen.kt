@@ -1,7 +1,6 @@
 package com.example.mysequencer01ui.ui
 
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,7 +16,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mysequencer01ui.KmmkComponentContext
-import com.example.mysequencer01ui.ui.theme.MySequencer01UiTheme
+import com.example.mysequencer01ui.ui.theme.*
 
 
 @Composable
@@ -73,18 +72,18 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF161616))
+                .background(bg)
         ) {
             //KeyboardRow(kmmk, 1)
             Column(
                 verticalArrangement = Arrangement.Bottom,
                 modifier = Modifier.fillMaxHeight()
             ) {
-                EmptyButton(seqViewModel, seqUiState.seqMode, buttonsSize, "SHIFT")
-                EmptyButton(seqViewModel, seqUiState.seqMode, buttonsSize, "SAVE")
-                EmptyButton(seqViewModel, seqUiState.seqMode, buttonsSize, "SOLO")
-                EraseButton(seqViewModel, seqUiState.seqMode, buttonsSize)
-                RecButton(seqViewModel, seqUiState.seqMode, seqUiState.seqIsRecording, buttonsSize)
+                EmptyButton(seqViewModel, seqUiState.padsMode, buttonsSize, "*", dusk, 20) // ë°╪
+                EmptyButton(seqViewModel, seqUiState.padsMode, buttonsSize, "SAVE", dusk)
+                EmptyButton(seqViewModel, seqUiState.padsMode, buttonsSize, "SOLO", violet)
+                EraseButton(seqViewModel, seqUiState.padsMode, buttonsSize)
+                RecButton(seqViewModel, seqUiState.padsMode, seqUiState.seqIsRecording, buttonsSize)
             }
             Column(
                 verticalArrangement = Arrangement.Bottom,
@@ -93,16 +92,16 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     .padding(end = 16.dp)
             ) {
                 AllButton(seqViewModel, buttonsSize)
-                EmptyButton(seqViewModel, seqUiState.seqMode, buttonsSize, "LOAD")
-                MuteButton(seqViewModel, seqUiState.seqMode, buttonsSize)
-                ClearButton(seqViewModel, seqUiState.seqMode, buttonsSize)
+                EmptyButton(seqViewModel, seqUiState.padsMode, buttonsSize, "LOAD", dusk)
+                MuteButton(seqViewModel, seqUiState.padsMode, buttonsSize)
+                ClearButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 PlayButton(seqViewModel, seqUiState.seqIsPlaying, buttonsSize)
             }
             Column(
                 verticalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxHeight()
             ) {
-                StepSeq(seqViewModel, seqUiState, buttonsSize)
+                StepSeq(seqUiState, buttonsSize)
                 PadsGrid(seqViewModel, seqUiState)
             }
             Spacer(modifier = Modifier.weight(1f))
@@ -131,9 +130,9 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                         .clickable { seqViewModel.showSettings() }
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                EmptyButton(seqViewModel, seqUiState.seqMode, buttonsSize, "1/3")
-                EmptyButton(seqViewModel, seqUiState.seqMode, buttonsSize, "1/4")
-                EmptyButton(seqViewModel, seqUiState.seqMode, buttonsSize, "1/8")
+                RepeatButton(seqViewModel, buttonsSize, "1/3", 600) // TODO change
+                RepeatButton(seqViewModel, buttonsSize, "1/4", 600)
+                RepeatButton(seqViewModel, buttonsSize, "1/8", 600)
             }
         }
     }

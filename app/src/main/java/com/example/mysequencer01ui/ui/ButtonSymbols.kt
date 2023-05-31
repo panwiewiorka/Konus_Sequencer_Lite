@@ -12,107 +12,151 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.SeqMode
-import com.example.mysequencer01ui.ui.theme.BackGray
+import com.example.mysequencer01ui.PadsMode
+import com.example.mysequencer01ui.ui.theme.bg2
+import com.example.mysequencer01ui.ui.theme.notWhite
+import com.example.mysequencer01ui.ui.theme.violet
+import com.example.mysequencer01ui.ui.theme.warmRed
 
-fun DrawScope.recSymbol(seqMode: SeqMode, seqIsRecording: Boolean) {
+
+const val thickness = 4f
+
+fun DrawScope.recSymbol(padsMode: PadsMode, seqIsRecording: Boolean) {
     drawCircle(
-        color = if (seqIsRecording && seqMode == SeqMode.DEFAULT) BackGray else Color.Red,
-        radius = size.height / 6,
+        color = if (seqIsRecording && padsMode == PadsMode.DEFAULT) bg2 else warmRed,
+        radius = size.height / 6.67f,
         center = center,
-        style = if(seqMode != SeqMode.DEFAULT && seqIsRecording) Fill else Stroke(width = 3.dp.toPx()),
+        style = if(padsMode != PadsMode.DEFAULT && seqIsRecording) Fill else Stroke(width = thickness),
     )
 }
+
 
 fun DrawScope.playSymbol(seqIsPlaying: Boolean) {
+    val first = size.height / 2.7f
+    val second = first + size.height / 23
+    val third = size.height - first
     val path = Path()
-    val third = size.height / 3
-    val twoThirds = third + third
-    path.moveTo(third, third)
-    path.lineTo(third, twoThirds)
-    path.lineTo(twoThirds, size.height / 2f)
-    path.lineTo(third, third)
-    path.lineTo(third, twoThirds)
+    path.moveTo(second, first)
+    path.lineTo(second, third)
+    path.lineTo(third, center.y)
+    path.lineTo(second, first)
+    path.lineTo(second, third)
 
+    if (seqIsPlaying) {
+        drawPath(
+            path = path,
+            color = notWhite,
+            style = Fill
+        )
+    }
     drawPath(
         path = path,
-        color = if (seqIsPlaying) BackGray else Color(0xFF00AA00),
-        style = Stroke(
-            width = 3.dp.toPx(),
-            join = StrokeJoin.Round
-        )
+        color = notWhite,
+        style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
 }
 
-//fun DrawScope.stopSymbol(stopIsPressed: Boolean) {
-//    drawRect(
-//        topLeft = Offset(26.dp.toPx(), 26.dp.toPx()),
-//        size = Size(28.dp.toPx(), 28.dp.toPx()),
-//        color = if (stopIsPressed) BackGray else Color(0xFFBFBF00),
-//        style = Stroke(
-//            width = 3.dp.toPx(),
-//            join = StrokeJoin.Round
-//        )
-//    )
-//}
+
 fun DrawScope.stopSymbol() {
     val third = size.height / 3
     drawRect(
         topLeft = Offset(third, third),
         size = Size(third, third),
-        color = if (true) BackGray else Color(0xFFBFBF00),
+        color = if (true) bg2 else Color(0xFFBFBF00),
         style = Stroke(
-            width = 3.dp.toPx(),
+            width = thickness,
             join = StrokeJoin.Round
         )
     )
 }
 
-fun DrawScope.eraseSymbol(seqMode: SeqMode) {
-    val path = Path()
-    path.moveTo(28.dp.toPx(), 36.dp.toPx())
-    path.lineTo(36.dp.toPx(), 44.dp.toPx())
-    path.moveTo(36.dp.toPx(), 36.dp.toPx())
-    path.lineTo(28.dp.toPx(), 44.dp.toPx())
-    path.moveTo(42.dp.toPx(), 52.dp.toPx())
-    path.lineTo(54.dp.toPx(), 40.dp.toPx())
-    path.lineTo(42.dp.toPx(), 28.dp.toPx())
+
+fun DrawScope.eraseSymbol(padsMode: PadsMode) {
+
+    val r = size.height / 24
+    val r3 = r * 3
+    val pathX = Path()
+    pathX.moveTo(center.x, center.y)
+    pathX.lineTo(center.x + r, center.y + r)
+    pathX.moveTo(center.x, center.y)
+    pathX.lineTo(center.x - r, center.y + r)
+    pathX.moveTo(center.x, center.y)
+    pathX.lineTo(center.x + r, center.y - r)
+    pathX.moveTo(center.x, center.y)
+    pathX.lineTo(center.x - r, center.y - r)
+    pathX.translate(Offset(- r * 2f, 0f))
 
     drawPath(
-        path = path,
-        color = if (seqMode == SeqMode.ERASING) BackGray else Color.Red,
+        path = pathX,
+        color = if (padsMode == PadsMode.ERASING) notWhite else warmRed,
         style = Stroke(
-            width = 3.dp.toPx(),
+            width = thickness,
+            cap = StrokeCap.Round
+        )
+    )
+
+    val pathV = Path()
+    pathV.moveTo(center.x + r3, center.y)
+    pathV.lineTo(center.x, center.y + r3)
+    pathV.moveTo(center.x + r3, center.y)
+    pathV.lineTo(center.x, center.y - r3)
+
+    drawPath(
+        path = pathV,
+        color = notWhite,
+        style = Stroke(
+            width = thickness,
             cap = StrokeCap.Round
         )
     )
 }
 
+//fun DrawScope.eraseSymbol(seqMode: SeqMode) {
+//    val path = Path()
+//    path.moveTo(28.dp.toPx(), 36.dp.toPx())
+//    path.lineTo(36.dp.toPx(), 44.dp.toPx())
+//    path.moveTo(36.dp.toPx(), 36.dp.toPx())
+//    path.lineTo(28.dp.toPx(), 44.dp.toPx())
+//    path.moveTo(42.dp.toPx(), 52.dp.toPx())
+//    path.lineTo(54.dp.toPx(), 40.dp.toPx())
+//    path.lineTo(42.dp.toPx(), 28.dp.toPx())
+//
+//    drawPath(
+//        path = path,
+//        color = if (seqMode == SeqMode.ERASING) bg2 else warmRed,
+//        style = Stroke(
+//            width = thickness,
+//            cap = StrokeCap.Round
+//        )
+//    )
+//}
+
+
 @Composable
-fun MuteSymbol(seqMode: SeqMode, modifier: Modifier = Modifier) {
+fun MuteSymbol(padsMode: PadsMode, modifier: Modifier = Modifier) {
     Text(
         "MUTE",
-        fontSize = 12.nonScaledSp,
-        color = if (seqMode == SeqMode.MUTING) BackGray else Color.Green,
+        fontSize = buttonTextSize.nonScaledSp,
+        color = if (padsMode == PadsMode.MUTING) bg2 else violet,
         modifier = modifier,
     )
 }
 
-fun DrawScope.clearSymbol(seqMode: SeqMode) {
+
+fun DrawScope.clearSymbol(padsMode: PadsMode) {
+    val first = size.height / 2.6f
+    val second = size.height - first
     val path = Path()
-    val third = size.height / 3
-    val twoThirds = third + third
-    path.moveTo(third, third)
-    path.lineTo(twoThirds, twoThirds)
-    path.moveTo(third, twoThirds)
-    path.lineTo(twoThirds, third)
+    path.moveTo(first, first)
+    path.lineTo(second, second)
+    path.moveTo(first, second)
+    path.lineTo(second, first)
 
     drawPath(
         path = path,
-        color = if (seqMode == SeqMode.CLEARING) BackGray else Color.LightGray,
+        color = if (padsMode == PadsMode.CLEARING) bg2 else notWhite,
         style = Stroke(
-            width = 3.dp.toPx(),
+            width = thickness,
             cap = StrokeCap.Round
         )
     )
