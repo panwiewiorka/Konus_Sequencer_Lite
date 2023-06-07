@@ -7,9 +7,10 @@ import android.view.WindowInsetsController
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.ViewModel
+import androidx.room.Room
+import com.example.mysequencer01ui.data.SeqDao
+import com.example.mysequencer01ui.data.SeqDatabase
 import com.example.mysequencer01ui.ui.theme.MySequencer01UiTheme
 import com.example.mysequencer01ui.ui.SeqScreen
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -17,13 +18,13 @@ import dev.atsushieno.ktmidi.AndroidMidiAccess
 
 class MainActivity : ComponentActivity() {
 
-//    private val db by lazy{
-//        Room.databaseBuilder(
-//            applicationContext,
-//            SettingsDatabase::class.java,
-//            name = "settings.db"
-//        ).build()
-//    }
+    private val db by lazy{
+        Room.databaseBuilder(
+            applicationContext,
+            SeqDatabase::class.java,
+            name = "seq.db"
+        ).build()
+    }
 //    private val viewModel by viewModels<SeqViewModel>(
 //        factoryProducer = {
 //            object: ViewModelProvider.Factory {
@@ -39,10 +40,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val dao: SeqDao
             val kmmk = KmmkComponentContext()
             kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
             MySequencer01UiTheme(darkTheme = true) {
-                SeqScreen(kmmk, SeqViewModel(kmmk))
+                SeqScreen(kmmk, SeqViewModel(kmmk, db.dao))
             }
         }
         hideSystemUI()
