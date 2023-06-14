@@ -8,8 +8,8 @@ class Sequence (
 
     var isMuted: Boolean = false,
     var isErasing: Boolean = false,
-    var channelIsPlayingNotes: Boolean = false,
-    var noteOnStates: Array<Boolean> = Array(128){false},
+    var channelIsPlayingNotes: Boolean = false,  // TODO will not work in polyphony, change
+    var playingNotes: Array<Boolean> = Array(128){false},
     var pressedNotes: Array<Boolean> = Array(128){false}, // manually pressed notes that are muting same ones played by sequencer
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
 
@@ -22,22 +22,27 @@ class Sequence (
 
     var indexToStartRepeating: Int = 0,
     var indexToRepeat: Int = 0,
-    var startTimeStampRepeat: Double = 0.0,
-    //var totalTimeRepeat: Int = 2000,
-    var deltaTimeRepeat: Double = 0.0,
     var factoredDeltaTimeRepeat: Double = 0.0,
-    var timeOfRepeatStart: Double = 0.0,
+    var repeatEndTime: Double = 0.0,
     var repeatsCount: Int = 0,
+    var savedRepeatsCount: Int = 0,
+    var wrapDelta: Int = 0,
     ) {
-    fun recordNote(pitch: Int, velocity: Int, staticNoteOffTime: Int, seqIsPlaying: Boolean, isRepeating: Boolean, repeatTime: Double, factorBpm: Double) {
 
-        // Recording to beginning if Seq is stopped
+    fun recordNote(pitch: Int, velocity: Int, staticNoteOffTime: Int, seqIsPlaying: Boolean, isRepeating: Boolean, repeatLength: Double, customRecTime: Int = -1) {
+
         val recordTime: Int
         if(seqIsPlaying){
-            if(isRepeating) {
-                recordTime = ((System.currentTimeMillis() - startTimeStampRepeat - repeatTime) * factorBpm).toInt()
-            } else recordTime = ((System.currentTimeMillis() - startTimeStamp) * factorBpm).toInt()
-        } else {
+            recordTime = if(customRecTime > -1) {
+                customRecTime
+            } else
+                if(isRepeating) {
+                    if(factoredDeltaTimeRepeat + wrapDelta < 0)   // wrap-around
+                        (factoredDeltaTimeRepeat + wrapDelta + totalTime).toInt()
+                    else
+                        (factoredDeltaTimeRepeat + wrapDelta).toInt()
+                } else factoredDeltaTime.toInt()
+        } else {            // Recording to beginning if Seq is stopped
             if(velocity > 0) {
                 indexToPlay = 0
                 recordTime = 0
@@ -49,50 +54,118 @@ class Sequence (
             }
         }
 
+        var index = if(isRepeating) indexToRepeat else indexToPlay
+
         // NOTE LENGTH (for StepSeq)
         var pairedNoteOnIndex = -1
-        if(velocity == 0) {
+        if(velocity == 0 || (playingNotes[pitch] && velocity > 0)) {
             // searching for paired NoteON
-            var searchedIndex: Int
-            // searching backward from indexToPlay
-            if (indexToPlay > 0) {
-                searchedIndex = notes
-                    .copyOfRange(0, indexToPlay)
+            // searching backwards from index
+            if (index > 0) {
+                pairedNoteOnIndex = notes
+                    .copyOfRange(0, index)
                     .indexOfLast { it.pitch == pitch && it.velocity > 0 }
-                pairedNoteOnIndex = if (searchedIndex == -1) -1 else searchedIndex
             }
-            // searching backward from end of array
+            // searching backwards from end of array
             if (pairedNoteOnIndex == -1) {
-                searchedIndex = notes
-                    .copyOfRange(indexToPlay, notes.size)
+                pairedNoteOnIndex = notes
+                    .copyOfRange(index, notes.size)
                     .indexOfLast { it.pitch == pitch && it.velocity > 0 }
-                pairedNoteOnIndex = if (searchedIndex == -1) -1 else searchedIndex + indexToPlay
+                if (pairedNoteOnIndex != -1) pairedNoteOnIndex += index
             }
         }
+        // updating previous noteON length
+        if((velocity == 0 || (playingNotes[pitch] && velocity > 0)) && pairedNoteOnIndex != -1) {
+            notes[pairedNoteOnIndex].length = recordTime - notes[pairedNoteOnIndex].time
+        }
 
-        // RECORDING
-        if(!(!noteOnStates[pitch] && velocity == 0)) {  // to disable writing second NoteOFF when note is already off
-            if(velocity == 0 && pairedNoteOnIndex != -1) {
-                notes[pairedNoteOnIndex].length = recordTime - notes[pairedNoteOnIndex].time
+        // if same note is already playing -> find and erase it's paired noteOFF, and record noteOFF in current recordTime
+        if (playingNotes[pitch] && velocity > 0) {
+            var pairedNoteOffIndex = -1
+            // searching for paired NoteOFF forward from index
+            if (index < notes.size) {
+                pairedNoteOffIndex = notes
+                    .copyOfRange(index, notes.size)
+                    .indexOfFirst { it.pitch == pitch && it.velocity == 0 }
+                if (pairedNoteOffIndex != -1) pairedNoteOffIndex += index
             }
+            // searching forward from start of array
+            if (pairedNoteOffIndex == -1) {
+                pairedNoteOffIndex = notes
+                    .copyOfRange(0, index)
+                    .indexOfFirst { it.pitch == pitch && it.velocity == 0 }
+            }
+            // erasing paired noteOFF // SAME AS PART 3 of fun erasing()
             when {
+                // no paired noteOFF found
+                pairedNoteOffIndex == -1 -> {  // do nothing
+                }
                 // end of array
-                indexToPlay == notes.size -> {
-                    notes += Note(recordTime, pitch, velocity)
+                pairedNoteOffIndex == notes.lastIndex -> {
+                    if (notes.size > 1) {
+                        notes = notes.copyOfRange(0, pairedNoteOffIndex)
+                    } else {
+                        notes = emptyArray()
+                    }
                 }
                 // beginning of array
-                notes.isNotEmpty() && indexToPlay == 0 -> {
-                    val tempNotes = notes
-                    notes = Array(1){ Note(recordTime, pitch, velocity) } + tempNotes
+                pairedNoteOffIndex == 0 -> {
+                    notes = notes.copyOfRange(1, notes.size)
                 }
                 // middle of array
                 else -> {
-                    val tempNotes1 = notes.copyOfRange(0, indexToPlay)
-                    val tempNotes2 = notes.copyOfRange(indexToPlay, notes.size)
-                    notes = tempNotes1 + Note(recordTime, pitch, velocity) + tempNotes2
+                    val tempNotes = notes.copyOfRange(pairedNoteOffIndex + 1, notes.size)
+                    notes = notes.copyOfRange(0, pairedNoteOffIndex) + tempNotes
                 }
             }
+            // updating index when erasing note before it
+            if (pairedNoteOffIndex < index && pairedNoteOffIndex > -1) {
+//                if(isRepeating) indexToRepeat-- else indexToPlay--
+                if(isRepeating) indexToRepeat--
+                indexToPlay--
+            }
+
+            // then record noteOFF to retrigger afterwards
+            recIntoArray(index, recordTime, pitch, 0)
+            if(isRepeating) indexToRepeat++ else indexToPlay++
+            index++
+        }
+
+        // RECORDING
+//        if(!(!playingNotes[pitch] && velocity == 0)) {  // to disable writing second NoteOFF when note is already off // TODO  redo (uncomment)
+            recIntoArray(index, recordTime, pitch, velocity)
+            if(isRepeating) {
+                indexToRepeat++
+                if(factoredDeltaTime >= repeatEndTime - repeatLength) indexToPlay++
+            } else indexToPlay++
             channelIsPlayingNotes = velocity > 0
+//        }
+
+
+    }
+
+    private fun recIntoArray(
+        index: Int,
+        recordTime: Int,
+        pitch: Int,
+        velocity: Int
+    ) {
+        when {
+            // end of array
+            index == notes.size -> {
+                notes += Note(recordTime, pitch, velocity)
+            }
+            // beginning of array
+            notes.isNotEmpty() && index == 0 -> {
+                val tempNotes = notes
+                notes = Array(1) { Note(recordTime, pitch, velocity) } + tempNotes
+            }
+            // middle of array
+            else -> {
+                val tempNotes1 = notes.copyOfRange(0, index)
+                val tempNotes2 = notes.copyOfRange(index, notes.size)
+                notes = tempNotes1 + Note(recordTime, pitch, velocity) + tempNotes2
+            }
         }
     }
 
@@ -108,7 +181,7 @@ class Sequence (
                 notes[index].pitch,
                 notes[index].velocity
             )
-            noteOnStates[notes[index].pitch] = notes[index].velocity > 0
+            playingNotes[notes[index].pitch] = notes[index].velocity > 0
         }
         channelIsPlayingNotes = notes[index].velocity > 0
     }
@@ -199,9 +272,9 @@ class Sequence (
         indexToPlay = 0
         notes = emptyArray()
         for(p in 0..127){
-            if(noteOnStates[p]) {
+            if(playingNotes[p]) {
                 kmmk.noteOn(channel, p, 0)
-                noteOnStates[p] = false
+                playingNotes[p] = false
             }
         }
         Log.d("emptyTag", " ") // to hold in imports

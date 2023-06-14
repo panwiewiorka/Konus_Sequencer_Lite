@@ -116,7 +116,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     .fillMaxHeight()
                     .weight(1f)
             ) {
-                //VisualArray(seqUiState, buttonsSize)
+                VisualArray(seqUiState, buttonsSize)
                 Spacer(modifier = Modifier.height(1.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
