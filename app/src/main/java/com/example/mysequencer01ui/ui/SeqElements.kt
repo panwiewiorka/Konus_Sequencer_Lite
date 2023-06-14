@@ -78,8 +78,8 @@ fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {
 
             for(c in 0..3) {
                 with(seqUiState.sequences[c]) {
-                    val playhead = (factoredDeltaTime / totalTime * size.width).toFloat()
-                    var playheadRepeat = (factoredDeltaTimeRepeat / totalTime * size.width).toFloat()
+                    val playhead = (deltaTime / totalTime * size.width).toFloat()
+                    var playheadRepeat = (deltaTimeRepeat / totalTime * size.width).toFloat()
                     playheadRepeat = if(playheadRepeat < 0) playheadRepeat + size.width else playheadRepeat
 
                     // NOTES
@@ -161,7 +161,7 @@ fun VisualArray(seqUiState: SeqUiState, height: Dp) {
             .background(screensBg),
         contentAlignment = Alignment.TopStart
     ) {
-        val playhead = ((seqUiState.sequences[0].factoredDeltaTime) / seqUiState.sequences[0].totalTime * maxWidth.value).dp  // TODO replace hardcoded channel
+        val playhead = ((seqUiState.sequences[0].deltaTime) / seqUiState.sequences[0].totalTime * maxWidth.value).dp  // TODO replace hardcoded channel
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawLine(
                 if (seqUiState.seqIsRecording || seqUiState.padsMode == ERASING) warmRed else if(seqUiState.padsMode == CLEARING) Color.White else violet,
@@ -636,13 +636,14 @@ fun SaveButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
                 .fillMaxSize()
                 .blur(if (padsMode == SAVING) 0.dp else 6.dp) // TODO move IF up from blur to Canvas (in all Composables)
                 .alpha(0.6f)){
-                saveSymbol(padsMode)
+                saveLoadSymbol(padsMode)
+                saveArrow(padsMode)
             }
             Canvas(modifier = Modifier
                 .fillMaxSize()){
-                saveSymbol(padsMode)
+                saveLoadSymbol(padsMode)
+                saveArrow(padsMode)
             }
-            SaveCloud()
         }
     }
 }
@@ -671,13 +672,14 @@ fun LoadButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
                 .fillMaxSize()
                 .blur(if (padsMode == LOADING) 0.dp else 6.dp) // TODO move IF up from blur to Canvas (in all Composables)
                 .alpha(0.6f)){
-                loadSymbol(padsMode)
+                saveLoadSymbol(padsMode)
+                loadArrow(padsMode)
             }
             Canvas(modifier = Modifier
                 .fillMaxSize()){
-                loadSymbol(padsMode)
+                saveLoadSymbol(padsMode)
+                loadArrow(padsMode)
             }
-            LoadCloud()
         }
     }
 }
@@ -720,7 +722,6 @@ fun RepeatButton(
 
     val interactionSource = remember { MutableInteractionSource() }
     var buttonIsPressed by remember { mutableStateOf(false) }
-    var locked by remember { mutableStateOf(false) }
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
@@ -732,9 +733,7 @@ fun RepeatButton(
                     seqViewModel.repeat(0)
                     buttonIsPressed = false
                 }
-                is PressInteraction.Cancel -> {
-//                    locked = true
-                }
+                is PressInteraction.Cancel -> { }
             }
         }
     }
@@ -744,7 +743,7 @@ fun RepeatButton(
         shape = if(triplet) hexagonShape else leftToHexShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(divisor == divisorState) night else buttonsColor
+            backgroundColor = if(divisor == divisorState) dusk else buttonsColor
         ),
         modifier = Modifier
             .height(width)
@@ -916,13 +915,24 @@ fun ShiftButton(
             .size(buttonsSize)
             .padding(buttonsPadding),
     ) {
-        BoxWithConstraints{
-            Text(text, fontSize = fontSize.nonScaledSp, color = textColor, modifier = Modifier
-                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
-                .alpha(0.6f)
-                .offset(0.dp, maxHeight / 24))
-            Text(text, fontSize = fontSize.nonScaledSp, color = textColor, modifier = Modifier.offset(0.dp, maxHeight / 24))
+        Box{
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(if (false) 0.dp else 6.dp)
+                .alpha(0.6f)){
+                shiftSymbol(padsMode)
+            }
+            Canvas(modifier = Modifier.fillMaxSize()){
+                shiftSymbol(padsMode)
+            }
         }
+//        BoxWithConstraints{
+//            Text(text, fontSize = fontSize.nonScaledSp, color = textColor, modifier = Modifier
+//                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
+//                .alpha(0.6f)
+//                .offset(0.dp, maxHeight / 24))
+//            Text(text, fontSize = fontSize.nonScaledSp, color = textColor, modifier = Modifier.offset(0.dp, maxHeight / 24))
+//        }
     }
 }
 

@@ -10,13 +10,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.PadsMode
 import com.example.mysequencer01ui.ui.theme.*
@@ -55,20 +50,6 @@ fun DrawScope.playSymbol(seqIsPlaying: Boolean) {
         path = path,
         color = notWhite,
         style = Stroke( width = thickness, cap = StrokeCap.Round, join = StrokeJoin.Round )
-    )
-}
-
-
-fun DrawScope.stopSymbol() {
-    val third = size.height / 3
-    drawRect(
-        topLeft = Offset(third, third),
-        size = Size(third, third),
-        color = if (true) buttonsColor else Color(0xFFBFBF00),
-        style = Stroke(
-            width = thickness,
-            join = StrokeJoin.Round
-        )
     )
 }
 
@@ -162,7 +143,7 @@ fun DrawScope.clearSymbol(padsMode: PadsMode) {
 }
 
 
-fun DrawScope.quantizeSymbol(padsMode: PadsMode) {
+fun DrawScope.quantizeSymbolColor(padsMode: PadsMode) {
     val m = size.height / 8
     val s = size.height / 16
     drawArc(warmRed, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
@@ -191,21 +172,59 @@ fun DrawScope.quantizeSymbol(padsMode: PadsMode) {
     pathWhite.lineTo(center.x - m, center.y - m)
     drawPath(
         path = pathWhite,
-        color = if (false) buttonsColor else notWhite,
+        color = if (false) buttonsColor else dusk,
+        style = Stroke( width = thickness, join = StrokeJoin.Round )
+    )
+}
+
+fun DrawScope.quantizeSymbol(padsMode: PadsMode) {
+    val m = size.height / 8
+    val s = size.height / 16
+    val xs = size.height / 32
+
+    drawArc(dusk, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(dusk, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+
+    val pathRed = Path()
+    pathRed.moveTo(center.x + m, center.y)
+    pathRed.lineTo(center.x + m, center.y - s)
+    drawPath(
+        path = pathRed,
+        color = if (false) buttonsColor else dusk,
+        style = Stroke( width = thickness, join = StrokeJoin.Round )
+    )
+    val pathBlue = Path()
+    pathBlue.moveTo(center.x - m, center.y)
+    pathBlue.lineTo(center.x - m, center.y - s)
+    drawPath(
+        path = pathBlue,
+        color = if (false) buttonsColor else dusk,
+        style = Stroke( width = thickness, join = StrokeJoin.Round )
+    )
+    val pathWhite = Path()
+    pathWhite.moveTo(center.x + m, center.y - s - xs)
+    pathWhite.lineTo(center.x + m, center.y - m)
+    pathWhite.moveTo(center.x - m, center.y - s - xs)
+    pathWhite.lineTo(center.x - m, center.y - m)
+    drawPath(
+        path = pathWhite,
+        color = if (false) buttonsColor else dusk,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
 }
 
 
-fun DrawScope.saveSymbol(padsMode: PadsMode) {
+fun DrawScope.saveArrow(padsMode: PadsMode) {
     val l = size.height / 8
     val m = size.height / 16
+    val s = size.height / 32
     val path = Path()
-    path.moveTo(center.x + l + m, center.y + l + m)
-    path.lineTo(center.x + m, center.y + m)
-    path.lineTo(center.x + m, center.y + l)
-    path.moveTo(center.x + m, center.y + m)
-    path.lineTo(center.x + m + m, center.y + m)
+
+    path.moveTo(center.x + l - s, center.y + l - s)
+    path.lineTo(center.x - s, center.y - s)
+    path.lineTo(center.x - s, center.y + m - s)
+    path.moveTo(center.x - s, center.y - s)
+    path.lineTo(center.x + m - s, center.y - s)
 
     drawPath(
         path = path,
@@ -218,33 +237,17 @@ fun DrawScope.saveSymbol(padsMode: PadsMode) {
     )
 }
 
-
-fun DrawScope.loadSymbol(padsMode: PadsMode) {
-
-    /* Lightning
-    val m = size.height / 16
-    val s = size.height / 64
-    val n = size.height / 20
-    val k = size.height / 12
-
-    val path = Path()
-    path.moveTo(center.x + m, center.y + m)
-    path.lineTo(center.x + m + n, center.y + m + n)
-    path.lineTo(center.x + m + n + s, center.y + m + n - s)
-    path.lineTo(center.x + m + n + s + k, center.y + m + n - s + k)
-    path.lineTo(center.x + m + n + s + k - m, center.y + m + n - s + k)
-    path.moveTo(center.x + m + n + s + k, center.y + m + n - s + k)
-    path.lineTo(center.x + m + n + s + k, center.y + n - s + k)
-     */
-
+fun DrawScope.loadArrow(padsMode: PadsMode) {
     val l = size.height / 8
     val m = size.height / 16
+    val s = size.height / 32
     val path = Path()
-    path.moveTo(center.x + m, center.y + m)
-    path.lineTo(center.x + l + m, center.y + l + m)
-    path.lineTo(center.x + l + m, center.y + l)
-    path.moveTo(center.x + l + m, center.y + l + m)
-    path.lineTo(center.x + m + m, center.y + l + m)
+
+    path.moveTo(center.x - s, center.y - s)
+    path.lineTo(center.x + l - s, center.y + l - s)
+    path.lineTo(center.x + l - s, center.y + m - s)
+    path.moveTo(center.x + l - s, center.y + l - s)
+    path.lineTo(center.x + m - s, center.y + l - s)
 
     drawPath(
         path = path,
@@ -257,100 +260,41 @@ fun DrawScope.loadSymbol(padsMode: PadsMode) {
     )
 }
 
-
-@Composable
-fun LoadCloud() {
-    val blur = 3.dp
-    val alpha = 0.6f
-    Text(
-        "εë­ø", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(6.dp, 0.dp)
-            .rotate(-9f)
-            .alpha(alpha)
-    )
-    Text(
-        "î◘╔", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(0.dp, 10.dp)
-            .rotate(-20f)
-            .alpha(alpha)
-    )
-    Text(
-        "ù⌂'☼↕", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(0.dp, 10.dp)
-            .rotate(10f)
-            .alpha(alpha)
-    )
-    Text(
-        "εë­ø", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset((-9).dp, (-9).dp)
-            .rotate(60f)
-            .alpha(alpha)
-    )
-    Text(
-        "î◘╔", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(6.dp, (-4).dp)
-            .rotate(9f)
-            .alpha(alpha)
-    )
-    Text(
-        "ù⌂'☼↕", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(3.dp, 8.dp)
-            .rotate(30f)
-            .alpha(alpha)
+fun DrawScope.saveLoadSymbol(padsMode: PadsMode) {
+    val m = size.width / 12f
+    val s = size.width / 16f
+    drawLine(
+        color = night,
+        start = Offset(center.x + m - s, center.y - m - s),
+        end = Offset(center.x - m - s, center.y + m - s),
+        strokeWidth = thickness,
+        cap = StrokeCap.Round
     )
 }
 
 
-@Composable
-fun SaveCloud() {
-    val blur = 3.dp
-    val alpha = 0.5f
-    Text(
-        "εë­ø", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset()
-            .rotate(10f)
-            .alpha(alpha)
-    )
-    Text(
-        "î◘╔", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(0.dp, 9.dp)
-            .rotate(17f)
-            .alpha(alpha)
-    )
-    Text(
-        "ù⌂'☼↕", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(0.dp, 7.dp)
-            .rotate(-9f)
-            .alpha(alpha)
-    )
-    Text(
-        "εë­ø", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset((-5).dp, (-3).dp)
-            .rotate(-5f)
-            .alpha(alpha)
-    )
-    Text(
-        "î◘╔", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(12.dp, (-1).dp)
-            .rotate(22f)
-            .alpha(alpha)
-    )
-    Text(
-        "ù⌂'☼↕", color = notWhite, modifier = Modifier
-            .blur(blur, BlurredEdgeTreatment.Unbounded)
-            .offset(0.dp, 6.dp)
-            .rotate(-14f)
-            .alpha(alpha)
+fun DrawScope.shiftSymbol(padsMode: PadsMode) {
+    val l = size.height / 22f
+    val m = size.height / 80f
+    val s = size.height / 220f
+    val path = Path()
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x, center.y - l)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x + l, center.y - m)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x - l, center.y - m)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x + m + m, center.y + l - s)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x - m - m, center.y + l - s)
+
+    drawPath(
+        path = path,
+        color = if (padsMode == PadsMode.CLEARING) buttonsColor else dusk,
+        style = Stroke(
+            width = thickness,
+            cap = StrokeCap.Round
+        )
     )
 }

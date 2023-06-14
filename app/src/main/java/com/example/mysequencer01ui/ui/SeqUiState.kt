@@ -13,7 +13,7 @@ data class SeqUiState (
     val visualArrayRefresh: Boolean = false,
     val selectedChannel: Int = 0,
     val isRepeating: Boolean = false,
-    val divisorState: Int = 0, // TODO use local var inside of RepeatButton instead of this state?
+    val divisorState: Int = 0,
     val repeatLength: Double = 0.0,
     val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it)},
     )

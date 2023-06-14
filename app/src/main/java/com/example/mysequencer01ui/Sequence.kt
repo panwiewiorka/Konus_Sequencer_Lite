@@ -17,12 +17,11 @@ class Sequence (
     var startTimeStamp: Long = 0,
     var seqLength: Int = 4,
     var totalTime: Int = 2000, // TODO how are totalTime & seqLength correlated? Replace totalTime with relative one?
-    var deltaTime: Int = 0,
-    var factoredDeltaTime: Double = 0.0,
+    var deltaTime: Double = 0.0,
 
     var indexToStartRepeating: Int = 0,
     var indexToRepeat: Int = 0,
-    var factoredDeltaTimeRepeat: Double = 0.0,
+    var deltaTimeRepeat: Double = 0.0,
     var repeatEndTime: Double = 0.0,
     var repeatsCount: Int = 0,
     var savedRepeatsCount: Int = 0,
@@ -37,11 +36,11 @@ class Sequence (
                 customRecTime
             } else
                 if(isRepeating) {
-                    if(factoredDeltaTimeRepeat + wrapDelta < 0)   // wrap-around
-                        (factoredDeltaTimeRepeat + wrapDelta + totalTime).toInt()
+                    if(deltaTimeRepeat + wrapDelta < 0)   // wrap-around
+                        (deltaTimeRepeat + wrapDelta + totalTime).toInt()
                     else
-                        (factoredDeltaTimeRepeat + wrapDelta).toInt()
-                } else factoredDeltaTime.toInt()
+                        (deltaTimeRepeat + wrapDelta).toInt()
+                } else deltaTime.toInt()
         } else {            // Recording to beginning if Seq is stopped
             if(velocity > 0) {
                 indexToPlay = 0
@@ -119,11 +118,12 @@ class Sequence (
                 }
             }
             // updating index when erasing note before it
-            if (pairedNoteOffIndex < index && pairedNoteOffIndex > -1) {
-//                if(isRepeating) indexToRepeat-- else indexToPlay--
-                if(isRepeating) indexToRepeat--
-                indexToPlay--
-            }
+            if(isRepeating && pairedNoteOffIndex in 0 until indexToRepeat) indexToRepeat--
+            if(pairedNoteOffIndex in 0 until indexToPlay) indexToPlay--
+//            if (pairedNoteOffIndex < index && pairedNoteOffIndex > -1) {
+//                if(isRepeating) indexToRepeat--
+//                indexToPlay--
+//            }
 
             // then record noteOFF to retrigger afterwards
             recIntoArray(index, recordTime, pitch, 0)
@@ -136,7 +136,7 @@ class Sequence (
             recIntoArray(index, recordTime, pitch, velocity)
             if(isRepeating) {
                 indexToRepeat++
-                if(factoredDeltaTime >= repeatEndTime - repeatLength) indexToPlay++
+                if(deltaTime >= repeatEndTime - repeatLength) indexToPlay++
             } else indexToPlay++
             channelIsPlayingNotes = velocity > 0
 //        }
