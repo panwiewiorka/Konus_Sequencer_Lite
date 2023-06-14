@@ -79,8 +79,8 @@ fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {
             for(c in 0..3) {
                 with(seqUiState.sequences[c]) {
                     val playhead = (factoredDeltaTime / totalTime * size.width).toFloat()
-                    var playheadRepeat = (( factoredDeltaTimeRepeat + timeOfRepeatStart.toFloat() ) / totalTime * size.width).toFloat()
-                    if(playheadRepeat > size.width) playheadRepeat -= size.width
+                    var playheadRepeat = (factoredDeltaTimeRepeat / totalTime * size.width).toFloat()
+                    playheadRepeat = if(playheadRepeat < 0) playheadRepeat + size.width else playheadRepeat
 
                     // NOTES
                     for (i in notes.indices) {
@@ -89,10 +89,10 @@ fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {
                             if(notes[i].length != 0) {   // TODO null instead of 0?  0 might be a rare case of wrap-around note?
                                 notes[i].length.toFloat() / totalTime * size.width   // TODO minimum visible length
                             } else {
-                                playhead - noteStart  // live-writing note (grows in length)
+                                if(seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
                             }
                         if(notes[i].velocity > 0) {
-                            if(notes[i].length >= 0 && noteWidth >= 0) { // normal note (not wrap-around)
+                            if(notes[i].length >= 0 && noteWidth >= 0) { // normal note (not wrap-around)  // TODO {&& noteWidth >= 0} unnecessary?
                                 drawRect(
                                     if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     Offset(noteStart, size.height - ((c + 1) * size.height / 4)),

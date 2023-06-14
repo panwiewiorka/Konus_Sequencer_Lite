@@ -12,7 +12,7 @@ enum class PadsMode{
 }
 
 enum class StopNotesMode{
-    STOPSEQ, RECOFF_OR_MUTE
+    STOPSEQ, MUTE, END_OF_REPEAT
 }
 //
 //class Converters {
