@@ -1,6 +1,7 @@
 package com.example.mysequencer01ui
 
 import android.util.Log
+import kotlinx.coroutines.flow.update
 
 class Sequence (
     val channel: Int,
@@ -12,6 +13,8 @@ class Sequence (
     var playingNotes: Array<Boolean> = Array(128){false},
     var pressedNotes: Array<Boolean> = Array(128){false}, // manually pressed notes that are muting same ones played by sequencer
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
+
+    var pianoRollYScroll: Int = 0,
 
     var indexToPlay: Int = 0,
     var startTimeStamp: Long = 0,
@@ -270,6 +273,8 @@ class Sequence (
 
     fun clearChannel(channel: Int, kmmk: KmmkComponentContext) {
         indexToPlay = 0
+        indexToRepeat = 0
+        indexToStartRepeating = 0
         notes = emptyArray()
         for(p in 0..127){
             if(playingNotes[p]) {
@@ -278,5 +283,18 @@ class Sequence (
             }
         }
         Log.d("emptyTag", " ") // to hold in imports
+    }
+
+
+    fun updatePianoRollYScroll(y: Int) {
+        pianoRollYScroll = y
+    }
+
+    fun changePairedNoteOffPitch(index: Int, pitch: Int) {
+        notes[index].pitch = pitch
+    }
+
+    fun changePairedNoteOffTime(index: Int, time: Int) {
+        notes[index].time += time
     }
 }

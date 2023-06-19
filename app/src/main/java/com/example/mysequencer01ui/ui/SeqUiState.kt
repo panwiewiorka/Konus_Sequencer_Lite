@@ -1,9 +1,14 @@
 package com.example.mysequencer01ui.ui
 
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.PadsMode
+import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.Sequence
 
 data class SeqUiState (
+    val seqView: SeqView = SeqView.STEP,
+    val pianoRollNoteHeight: Dp = 20.dp,
     val showSettings: Boolean = false,
     val bpm: Float = 120f,
     val factorBpm: Double = 1.0,

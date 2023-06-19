@@ -1,6 +1,7 @@
 package com.example.mysequencer01ui.ui
 
 import android.util.Log
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.ViewModel
 import com.example.mysequencer01ui.*
 import kotlinx.coroutines.*
@@ -260,7 +261,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     else channelIsPlayingNotes = false // TODO implement UNDO CLEAR, move {channelIsPlayingNotes = false} into IF?
                 }
                 SAVING -> { if(velocity > 0) savePattern(pattern = channel, sequence = uiState.value.sequences) }
-                LOADING -> { if(velocity > 0) loadPattern(pattern = channel) }
+                LOADING -> { if(!allButton && velocity > 0) loadPattern(pattern = channel) }
+                SELECTING -> { if(!allButton && velocity > 0) _uiState.update { a -> a.copy(selectedChannel = channel) } }
                 else -> {
                     if (playingNotes[pitch] && velocity > 0) {
                         kmmk.noteOn(channel, pitch, 0)  // allows to retrigger already playing notes
@@ -294,10 +296,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         }
     }
 
-    private fun SeqUiState.stopNotesOnChannel(
-        c: Int,
-        mode: StopNotesMode
-    ) {
+    private fun SeqUiState.stopNotesOnChannel(c: Int, mode: StopNotesMode) {
         for (p in 0..127) {
             if (sequences[c].playingNotes[p]) {
                 sequences[c].playingNotes[p] = false
@@ -363,7 +362,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         }
     }
 
-    fun editCurrentMode(mode: PadsMode, momentary: Boolean = false){
+
+    fun editCurrentPadsMode(mode: PadsMode, momentary: Boolean = false){
         if(mode != uiState.value.padsMode) {
             previousPadsMode = uiState.value.padsMode
             _uiState.update { a -> a.copy(padsMode = mode) }
@@ -383,6 +383,22 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     fun showSettings() {
         _uiState.update { a -> a.copy( showSettings = !uiState.value.showSettings ) }
+    }
+
+    fun changeSeqViewState(seqView: SeqView) {
+        _uiState.update { a -> a.copy(
+            seqView = seqView
+        ) }
+    }
+
+    fun updateNotesGridState() {
+        _uiState.update { a -> a.copy(
+            sequences = uiState.value.sequences
+        ) }
+    }
+
+    fun changePianoRollNoteHeight(noteHeight: Dp) {
+        _uiState.update { a -> a.copy( pianoRollNoteHeight = noteHeight ) }
     }
 
     fun changeBPM(bpm: Float) {

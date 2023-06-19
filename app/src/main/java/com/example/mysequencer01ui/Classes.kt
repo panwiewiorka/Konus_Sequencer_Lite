@@ -8,12 +8,18 @@ data class Note (
 )
 
 enum class PadsMode{
-    DEFAULT, MUTING, ERASING, CLEARING, SELECTING, SAVING, LOADING
+    DEFAULT, SELECTING, QUANTIZING, SAVING, LOADING, SOLOING, MUTING, ERASING, CLEARING
 }
 
 enum class StopNotesMode{
     STOPSEQ, MUTE, END_OF_REPEAT
 }
+
+enum class SeqView{
+    LIVE, STEP, AUTOMATION, SONG, SETTINGS
+}
+
+
 //
 //class Converters {
 //    @TypeConverter

@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.ripple.LocalRippleTheme
+import androidx.compose.material.ripple.RippleAlpha
+import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,8 +25,6 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode
 import com.example.mysequencer01ui.PadsMode.*
@@ -38,8 +39,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.debugInspectorInfo
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.*
+import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.ui.theme.*
 import kotlin.math.min
 import kotlinx.coroutines.delay
@@ -173,7 +174,7 @@ fun VisualArray(seqUiState: SeqUiState, height: Dp) {
         for(c in 0..3){
             for (i in seqUiState.sequences[c].notes.indices) {
                 Text(
-                    text = if (seqUiState.sequences[c].notes[i].velocity > 0) "[" else "]",
+                    text = if (seqUiState.sequences[c].notes[i].velocity > 0) "${seqUiState.sequences[c].notes[i].pitch}" else "]",
                     color = if(seqUiState.sequences[c].notes[i].velocity > 0) Color(0xFFFFFFFF) else Color(0xFF999999),
                     modifier = Modifier.offset(
                         (seqUiState.sequences[c].notes[i].time.toFloat() / seqUiState.sequences[c].totalTime * maxWidth.value).dp,
@@ -251,7 +252,7 @@ fun PadButton(
 //                    shape = RoundedCornerShape(0.dp)
 //                )
         ) {
-            if(seqUiState.sequences[channel].isMuted) Text("MUTED")
+            if(seqUiState.sequences[channel].isMuted) Text("MUTED", fontSize = buttonTextSize.nonScaledSp, color = notWhite)
         }
     }
 }
@@ -332,73 +333,6 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
 }
 
 
-@Composable
-fun RecButton(seqViewModel: SeqViewModel, padsMode: PadsMode, seqIsRecording: Boolean, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            { seqViewModel.changeRecState() }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(padsMode == DEFAULT && seqIsRecording) warmRed else buttonsColor
-        ),
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-    ) {
-        Box{
-            if (!(seqIsRecording && padsMode == DEFAULT)) {
-                Canvas(modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(0.6f)
-                    .blur(4.dp)){
-                    recSymbol(padsMode, seqIsRecording)
-                }
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                recSymbol(padsMode, seqIsRecording)
-            }
-        }
-    }
-}
-
-
-@Composable
-fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            { seqViewModel.startSeq() },
-            { seqViewModel.stopSeq() }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-//            backgroundColor = if(seqIsPlaying) Color(0xFF00AA00) else bg2
-            backgroundColor = buttonsColor
-        ),
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box{
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(6.dp)
-                .alpha(0.6f)){
-                playSymbol(seqIsPlaying)
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                playSymbol(seqIsPlaying)
-            }
-        }
-    }
-}
-
 /*
 @Composable
 fun StopButton(seqViewModel: SeqViewModel, kmmk: KmmkComponentContext){
@@ -444,137 +378,64 @@ fun StopButton(seqViewModel: SeqViewModel, kmmk: KmmkComponentContext){
 }
 */
 
+/*
 @Composable
-fun EraseButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            { seqViewModel.editCurrentMode(ERASING) },
-            { seqViewModel.editCurrentMode(ERASING, true) }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(padsMode == ERASING) warmRed else buttonsColor
-        ),
+fun SymbolButton(seqViewModel: SeqViewModel, buttonsSize: Dp, padsMode: PadsMode, buttonType: PadsMode, bgColor: Color){
+    val symbol = when(buttonType) {
+        SELECTING -> DrawScope.shiftSymbol(padsMode)
+    }
+    Box(
         modifier = Modifier
             .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box{
-//            Text("X>>", fontSize = buttonTextSize.nonScaledSp, color = notWhite, modifier = Modifier
-//                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
-//                .alpha(0.6f))
-//            Text("X>>", fontSize = buttonTextSize.nonScaledSp, color = notWhite)
-            val r = Canvas(modifier = Modifier
-                .fillMaxSize()
-                .alpha(0.6f)
-                .blur(if (padsMode == ERASING) 0.dp else 5.dp)){
-                eraseSymbol(padsMode)
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                eraseSymbol(padsMode)
-            }
+            .padding(buttonsPadding)
+            .background(if(padsMode == buttonType) bgColor else buttonsColor)
+            .clickable (
+                interactionSource = buttonInteraction(
+                    0,
+                    { seqViewModel.editCurrentMode(SELECTING) },
+                    { seqViewModel.editCurrentMode(SELECTING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(if (padsMode == buttonType) 0.dp else 6.dp)
+            .alpha(0.6f)){
+            symbol(padsMode, buttonType, bgColor)
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            symbol(padsMode, buttonType, bgColor)
         }
     }
 }
+ */
 
 
 @Composable
-fun MuteButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            { seqViewModel.editCurrentMode(MUTING) },
-            { seqViewModel.editCurrentMode(MUTING, true) }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(padsMode == MUTING) violet else buttonsColor
-        ),
+fun ShiftButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp, ){
+    Box(
         modifier = Modifier
             .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box{
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (padsMode == MUTING) 0.dp else 6.dp)
-                .alpha(0.6f)){
-                muteSymbol(padsMode)
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                muteSymbol(padsMode)
-            }
+            .padding(buttonsPadding)
+            .background(if (padsMode == SELECTING) dusk else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    0,
+                    { seqViewModel.editCurrentPadsMode(SELECTING) },
+                    { seqViewModel.editCurrentPadsMode(SELECTING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(if (padsMode == SELECTING) 0.dp else 6.dp)
+            .alpha(0.6f)){
+            shiftSymbol(padsMode)
         }
-    }
-}
-
-
-@Composable
-fun SoloButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            {  },
-            {  }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(false) notWhite else buttonsColor
-        ),
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box(modifier = Modifier.rotate(24f)){
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (false) 0.dp else 6.dp)
-                .alpha(0.6f)){
-                soloSymbol()
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                soloSymbol()
-            }
-        }
-    }
-}
-
-
-@Composable
-fun ClearButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            0,
-            { seqViewModel.editCurrentMode(CLEARING) },
-            { seqViewModel.editCurrentMode(CLEARING, true) }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(padsMode == CLEARING) notWhite else buttonsColor
-        ),
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box{
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (padsMode == CLEARING) 0.dp else 6.dp)
-                .alpha(0.6f)){
-                clearSymbol(padsMode)
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                clearSymbol(padsMode)
-            }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            shiftSymbol(padsMode)
         }
     }
 }
@@ -582,32 +443,28 @@ fun ClearButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp)
 
 @Composable
 fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            {  },
-            {  }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(false) notWhite else buttonsColor
-        ),
+    Box(
         modifier = Modifier
             .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box{
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (false) 0.dp else 6.dp)
-                .alpha(0.6f)){
-                quantizeSymbol(padsMode)
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                quantizeSymbol(padsMode)
-            }
+            .padding(buttonsPadding)
+            .background(if (padsMode == QUANTIZING) dusk else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    0,
+                    { seqViewModel.editCurrentPadsMode(QUANTIZING) },
+                    { seqViewModel.editCurrentPadsMode(QUANTIZING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(if (padsMode == QUANTIZING) 0.dp else 6.dp)
+            .alpha(0.6f)){
+            quantizeSymbol(padsMode)
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            quantizeSymbol(padsMode)
         }
     }
 }
@@ -615,35 +472,29 @@ fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: 
 
 @Composable
 fun SaveButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){  // similar to ClearButton, same as LoadButton
-    Button(
-        interactionSource = buttonInteraction(
-            0,
-            { seqViewModel.editCurrentMode(SAVING) },
-            { seqViewModel.editCurrentMode(SAVING, true) }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(padsMode == SAVING) dusk else buttonsColor
-        ),
+    Box(
         modifier = Modifier
             .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()){
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (padsMode == SAVING) 0.dp else 6.dp) // TODO move IF up from blur to Canvas (in all Composables)
-                .alpha(0.6f)){
-                saveLoadSymbol(padsMode)
-                saveArrow(padsMode)
-            }
-            Canvas(modifier = Modifier
-                .fillMaxSize()){
-                saveLoadSymbol(padsMode)
-                saveArrow(padsMode)
-            }
+            .padding(buttonsPadding)
+            .background(if (padsMode == SAVING) dusk else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    0,
+                    { seqViewModel.editCurrentPadsMode(SAVING) },
+                    { seqViewModel.editCurrentPadsMode(SAVING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(if (padsMode == SAVING) 0.dp else 6.dp) // TODO move IF up from blur to Canvas (in all Composables)
+            .alpha(0.6f)){
+            saveArrow(padsMode)
+        }
+        Canvas(modifier = Modifier
+            .fillMaxSize()){
+            saveArrow(padsMode)
         }
     }
 }
@@ -651,39 +502,222 @@ fun SaveButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
 
 @Composable
 fun LoadButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            0,
-            { seqViewModel.editCurrentMode(LOADING) },
-            { seqViewModel.editCurrentMode(LOADING, true) }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(padsMode == LOADING) dusk else buttonsColor
-        ),
+    Box(
         modifier = Modifier
             .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()){
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (padsMode == LOADING) 0.dp else 6.dp) // TODO move IF up from blur to Canvas (in all Composables)
-                .alpha(0.6f)){
-                saveLoadSymbol(padsMode)
-                loadArrow(padsMode)
-            }
-            Canvas(modifier = Modifier
-                .fillMaxSize()){
-                saveLoadSymbol(padsMode)
-                loadArrow(padsMode)
-            }
+            .padding(buttonsPadding)
+            .background(if (padsMode == LOADING) dusk else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    0,
+                    { seqViewModel.editCurrentPadsMode(LOADING) },
+                    { seqViewModel.editCurrentPadsMode(LOADING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(if (padsMode == LOADING) 0.dp else 6.dp) // TODO move IF up from blur to Canvas (in all Composables)
+            .alpha(0.6f)){
+            loadArrow(padsMode)
+        }
+        Canvas(modifier = Modifier
+            .fillMaxSize()){
+            loadArrow(padsMode)
         }
     }
 }
 
+
+@Composable
+fun SoloButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding)
+            .background(if (padsMode == SOLOING) violet else buttonsColor)
+            .rotate(24f)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    seqViewModel.toggleTime,
+                    { seqViewModel.editCurrentPadsMode(SOLOING) },
+                    { seqViewModel.editCurrentPadsMode(SOLOING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(if (padsMode == SOLOING) 0.dp else 6.dp)
+            .alpha(0.6f)){
+            soloSymbol(padsMode)
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            soloSymbol(padsMode)  // TODO offset to the left
+        }
+    }
+}
+
+
+@Composable
+fun MuteButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding)
+            .background(if (padsMode == MUTING) violet else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    seqViewModel.toggleTime,
+                    { seqViewModel.editCurrentPadsMode(MUTING) },
+                    { seqViewModel.editCurrentPadsMode(MUTING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(if (padsMode == MUTING) 0.dp else 6.dp)
+            .alpha(0.6f)){
+            muteSymbol(padsMode)
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            muteSymbol(padsMode)
+        }
+    }
+}
+
+
+@Composable
+fun EraseButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding)
+            .background(if (padsMode == ERASING) warmRed else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    seqViewModel.toggleTime,
+                    { seqViewModel.editCurrentPadsMode(ERASING) },
+                    { seqViewModel.editCurrentPadsMode(ERASING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .alpha(0.6f)
+            .blur(if (padsMode == ERASING) 0.dp else 5.dp)){
+            eraseSymbol(padsMode)
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            eraseSymbol(padsMode)
+        }
+    }
+}
+
+
+@Composable
+fun ClearButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding)
+            .background(if (padsMode == CLEARING) notWhite else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    0,
+                    { seqViewModel.editCurrentPadsMode(CLEARING) },
+                    { seqViewModel.editCurrentPadsMode(CLEARING, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(if (padsMode == CLEARING) 0.dp else 6.dp)
+            .alpha(0.6f)){
+            clearSymbol(padsMode)
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            clearSymbol(padsMode)
+        }
+    }
+}
+
+
+@Composable
+fun RecButton(seqViewModel: SeqViewModel, padsMode: PadsMode, seqIsRecording: Boolean, buttonsSize: Dp){
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding)
+            .background(if (padsMode == DEFAULT && seqIsRecording) warmRed else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    seqViewModel.toggleTime,
+                    { seqViewModel.changeRecState() }
+                ),
+                indication = null
+            ) { }
+    ){
+        if (!(seqIsRecording && padsMode == DEFAULT)) {
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .alpha(0.6f)
+                .blur(4.dp)){
+                recSymbol(padsMode, seqIsRecording)
+            }
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            recSymbol(padsMode, seqIsRecording)
+        }
+    }
+}
+
+
+@Composable
+fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: Dp){
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding)
+            .background(buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    seqViewModel.toggleTime,
+                    { seqViewModel.startSeq() },
+                    { seqViewModel.stopSeq() }
+                ),
+                indication = LocalIndication.current
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(6.dp)
+            .alpha(0.6f)){
+            playSymbol(seqIsPlaying)
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            playSymbol(seqIsPlaying)
+        }
+    }
+}
+
+
+private class CustomRippleTheme : RippleTheme {
+    @Composable
+    override fun defaultColor(): Color = Color.Unspecified
+
+    @Composable
+    override fun rippleAlpha(): RippleAlpha = RippleAlpha(
+        draggedAlpha = 0f,
+        focusedAlpha = 0f,
+        hoveredAlpha = 0f,
+        pressedAlpha = 0f,
+    )
+}
 
 @Composable
 fun RepeatButton(
@@ -705,7 +739,7 @@ fun RepeatButton(
         lineTo(0f, 0f)
         close()
     }
-    val offset = if(triplet) 0.dp else width / -16
+    val offset = if(triplet) width / 16 else width / -16
     val hexagonShape = GenericShape { size: Size, layoutDirection: LayoutDirection ->
         val c = size.height / sqrt(3f)
         val y = size.height / 2
@@ -714,6 +748,19 @@ fun RepeatButton(
         lineTo(x + c, 0f)
         lineTo(x + c + x, y)
         lineTo(x + c, y * 2)
+        lineTo(x, y * 2)
+        lineTo(0f, y)
+        lineTo(x, 0f)
+        close()
+    }
+    val rightToHexShape = GenericShape { size: Size, layoutDirection: LayoutDirection ->
+        val c = size.height / sqrt(3f)
+        val y  = size.height / 2
+        val x = sqrt(c * c - y * y)
+        val o = x / 2
+        moveTo(x, 0f)
+        lineTo(x + c + o, 0f)
+        lineTo(x + c + o, y * 2)
         lineTo(x, y * 2)
         lineTo(0f, y)
         lineTo(x, 0f)
@@ -737,120 +784,84 @@ fun RepeatButton(
             }
         }
     }
+
     Button(
         interactionSource = interactionSource,
         onClick = {  },
-        shape = if(triplet) hexagonShape else leftToHexShape,
+        shape = if(triplet) rightToHexShape else leftToHexShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
             backgroundColor = if(divisor == divisorState) dusk else buttonsColor
         ),
         modifier = Modifier
             .height(width)
-            .width(if(triplet) (2 * width.value / sqrt(3f)).dp else width)
+            .width(width)
             .padding(buttonsPadding),
     ) {
-        Box(modifier = Modifier.offset(offset, 0.dp)){
-            if(divisor != divisorState) {
-                Text(divisor.toString(), fontSize = buttonTextSize.nonScaledSp, color = if(triplet) night else dusk, modifier = Modifier
-                    .blur(6.dp, BlurredEdgeTreatment.Unbounded)
-                    .alpha(0.6f)
-                    )
-            }
-            Text(divisor.toString(),
-                fontSize = buttonTextSize.nonScaledSp,
-                color = if(divisor != divisorState) {
-                    if(triplet) night else dusk
-                } else buttonsColor,
+        Box(
+            modifier = Modifier.offset(offset, 0.dp)
+        ) {
+            if (divisor != divisorState) {
+                Text(
+                    divisor.toString(),
+                    fontSize = buttonTextSize.nonScaledSp,
+                    color = if (triplet) night else dusk,
+                    modifier = Modifier
+                        .blur(6.dp, BlurredEdgeTreatment.Unbounded)
+                        .alpha(0.6f)
                 )
-        }
-    }
-}
-
-
-@Composable
-fun SeqView(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp, text: String, textColor: Color = dusk, fontSize: Int = buttonTextSize,){
-    val rightToHexShape = GenericShape { size: Size, layoutDirection: LayoutDirection ->
-        val c = size.height / sqrt(3f)
-        val y  = size.height / 2
-        val x = sqrt(c * c - y * y)
-        val o = x / 2
-        moveTo(x, 0f)
-        lineTo(x + c + o, 0f)
-        lineTo(x + c + o, y * 2)
-        lineTo(x, y * 2)
-        lineTo(0f, y)
-        lineTo(x, 0f)
-        close()
-    }
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            {  },
-            {  }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(text == "ϴ") night else screensBg
-        ),
-        modifier = Modifier
-            .height(buttonsSize)
-            .width(buttonsSize)
-            .padding(buttonsPadding)
-            .clip(rightToHexShape),
-    ) {
-        Box(modifier = Modifier.offset(buttonsSize / 12, 0.dp)){
-            if(text != "ϴ") {
-                Text(text, fontSize = fontSize.nonScaledSp, color = if(text == "ϴ") BackGray else textColor, modifier = Modifier
-                    .blur(6.dp, BlurredEdgeTreatment.Unbounded)
-                    .alpha(0.6f))
             }
-            Text(text, fontSize = fontSize.nonScaledSp, color = if(text == "ϴ") BackGray else textColor)
-//            Canvas(modifier = Modifier
-//                .fillMaxSize()
-//                .blur(if (false) 0.dp else 6.dp)
-//                .alpha(0.6f)){
-//                quantizeSymbol(padsMode)
-//            }
-//            Canvas(modifier = Modifier.fillMaxSize()){
-//                quantizeSymbol(padsMode)
-//            }
+            Text(
+                divisor.toString(),
+                fontSize = buttonTextSize.nonScaledSp,
+                color = if (divisor != divisorState) {
+                    if (triplet) night else dusk
+                } else buttonsColor,
+            )
         }
     }
 }
 
 
 @Composable
-fun SymbolButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            {  },
-            {  }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(false) notWhite else buttonsColor
-        ),
+fun SeqViewButton(
+    seqViewModel: SeqViewModel,
+    seqView: SeqView,
+    buttonSeqView: SeqView,
+    buttonsSize: Dp,
+    text: String,
+    textColor: Color = dusk,
+    fontSize: Int = buttonTextSize,
+){
+    Box(
         modifier = Modifier
             .size(buttonsSize)
-            .padding(buttonsPadding),
+            .padding(buttonsPadding)
+            .background(if (seqView == buttonSeqView) night else screensBg)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    seqViewModel.toggleTime,
+                    { seqViewModel.changeSeqViewState(buttonSeqView) }
+                ),
+                indication = null
+            ) {},
+        contentAlignment = Alignment.Center
     ) {
-        Box{
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (false) 0.dp else 6.dp)
-                .alpha(0.6f)){
-                quantizeSymbol(padsMode)
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                quantizeSymbol(padsMode)
-            }
+        if (seqView != buttonSeqView) {
+            Text(
+                text,
+                fontSize = fontSize.nonScaledSp,
+                color = textColor,
+                modifier = Modifier
+                    .blur(6.dp, BlurredEdgeTreatment.Unbounded)
+                    .alpha(0.6f)
+            )
         }
+        Text(
+            text,
+            fontSize = fontSize.nonScaledSp,
+            color = if (seqView == buttonSeqView) BackGray else textColor
+        )
     }
 }
 
@@ -886,53 +897,6 @@ fun TextButton(
                 .alpha(0.6f))
             Text(text, fontSize = fontSize.nonScaledSp, color = textColor)
         }
-    }
-}
-
-
-@Composable
-fun ShiftButton(
-    seqViewModel: SeqViewModel,
-    padsMode: PadsMode,
-    buttonsSize: Dp,
-    text: String = " ",
-    textColor: Color = notWhite,
-    fontSize: Int = buttonTextSize,
-){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            {  },
-            {  }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(false) notWhite else buttonsColor
-        ),
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box{
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (false) 0.dp else 6.dp)
-                .alpha(0.6f)){
-                shiftSymbol(padsMode)
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                shiftSymbol(padsMode)
-            }
-        }
-//        BoxWithConstraints{
-//            Text(text, fontSize = fontSize.nonScaledSp, color = textColor, modifier = Modifier
-//                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
-//                .alpha(0.6f)
-//                .offset(0.dp, maxHeight / 24))
-//            Text(text, fontSize = fontSize.nonScaledSp, color = textColor, modifier = Modifier.offset(0.dp, maxHeight / 24))
-//        }
     }
 }
 
