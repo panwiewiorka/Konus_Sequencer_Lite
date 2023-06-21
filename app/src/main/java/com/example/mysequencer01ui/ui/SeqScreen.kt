@@ -29,6 +29,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
     KeepScreenOn()
 
     BoxWithConstraints(Modifier.fillMaxHeight()) {
+        val spacerSize = 0.dp
         val buttonsSize = maxHeight / 5
         val c = buttonsSize.value / sqrt(3f)
         val y = buttonsSize.value / 2
@@ -42,8 +43,9 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
 
             // ----==== LEFT BUTTONS
             Column(
-                verticalArrangement = Arrangement.Bottom,
-                modifier = Modifier.fillMaxHeight().background(buttonsBg)
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .background(buttonsBg)
             ) {
 //                SymbolButton(seqViewModel, buttonsSize, seqUiState.padsMode, SELECTING, dusk)
                 ShiftButton(seqViewModel, seqUiState.padsMode, buttonsSize) // ë°╪
@@ -53,8 +55,9 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 RecButton(seqViewModel, seqUiState.padsMode, seqUiState.seqIsRecording, buttonsSize)
             }
             Column(
-                verticalArrangement = Arrangement.Bottom,
-                modifier = Modifier.fillMaxHeight().background(buttonsBg)
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .background(buttonsBg)
             ) {
                 QuantizeButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 LoadButton(seqViewModel, seqUiState.padsMode, buttonsSize)
@@ -101,22 +104,18 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                                     }
                                 }
                             },
-                            modifier = Modifier
-                                .width(320.dp)
-//                .padding(20.dp)
-                            ,
+                            modifier = Modifier.width(320.dp),
                             shape = CutCornerShape(14.dp)
                         )
                     }
 
                     //KeyboardRow(kmmk, 1)
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(spacerSize))
                     Column(
-                        verticalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxHeight()
                     ) {
-                        StepSequencer(seqUiState, buttonsSize)
-                        PadsGrid(seqViewModel, seqUiState)
+                        Spacer(modifier = Modifier.weight(1f))
+                        PadsGrid(seqViewModel, seqUiState, buttonsSize * 1.5f)
                     }
                     Column(
                         verticalArrangement = Arrangement.SpaceBetween,
@@ -125,6 +124,8 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                             .fillMaxHeight()
                             .weight(1f)
                     ) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        StepSequencer(seqUiState, buttonsSize)
                         VisualArray(seqUiState, buttonsSize)
                         Spacer(modifier = Modifier.height(1.dp))
                         Row(
@@ -143,6 +144,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                             Spacer(modifier = Modifier.width(1.dp))
                         }
                     }
+                    Spacer(modifier = Modifier.width(spacerSize))
                     Row(horizontalArrangement = Arrangement.spacedBy(columnsOffset.dp)){
                         Column(
                             //verticalArrangement = Arrangement.SpaceBetween,
@@ -165,12 +167,16 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     }
                 }
                 STEP -> {
-                    Box(modifier = Modifier.fillMaxHeight().weight(1f)){
-                        StepView(seqViewModel, seqUiState)
+                    Box(modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)){
+                        StepView(seqViewModel, seqUiState, buttonsSize)
                     }
                 }
                 else -> {
-                    Box(modifier = Modifier.fillMaxHeight().weight(1f)){
+                    Box(modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)){
 
                     }
                 }
@@ -178,9 +184,11 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
 
             // ----==== MAIN TABS
             Column(
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.End,
-                modifier = Modifier.fillMaxHeight()
+                //verticalArrangement = Arrangement.SpaceBetween,
+                //horizontalAlignment = Alignment.End,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .background(BackGray)
             ) {
                 SeqViewButton(seqViewModel, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
                 SeqViewButton(seqViewModel, seqUiState.seqView, STEP, buttonsSize, "ʭ")

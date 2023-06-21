@@ -51,7 +51,6 @@ val Int.nonScaledSp
     @Composable
     get() = (this / LocalDensity.current.fontScale).sp
 
-val padsSize = 119.dp
 val buttonsPadding = PaddingValues(top = 1.dp, end = 1.dp)
 val buttonsShape = RoundedCornerShape(0.dp)
 const val buttonTextSize = 12
@@ -59,16 +58,17 @@ const val buttonTextSize = 12
 
 @Composable
 fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
-            .size(padsSize * 2, buttonsSize + 1.dp)
-            .padding(1.dp)
+            .fillMaxWidth()
+            .height(buttonsSize)
+            .padding(buttonsPadding)
             .background(screensBg)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
 
             // STEP LINES
-            val step = (padsSize / 8).toPx()
+            val step = (maxWidth / 16).toPx()
             for (i in 0..15) {
                 drawLine(
                     if((i + 4) % 4 == 0) Color.White else Color.Gray,
@@ -158,7 +158,7 @@ fun VisualArray(seqUiState: SeqUiState, height: Dp) {
         modifier = Modifier
             .fillMaxWidth()
             .height(height)
-            .padding(1.dp)
+            .padding(buttonsPadding)
             .background(screensBg),
         contentAlignment = Alignment.TopStart
     ) {
@@ -193,6 +193,7 @@ fun PadButton(
     pitch: Int,
     seqViewModel: SeqViewModel,
     seqUiState: SeqUiState,
+    padsSize: Dp,
 ){
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
@@ -259,7 +260,7 @@ fun PadButton(
 
 
 @Composable
-fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState){
+fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
     Box(
         contentAlignment = Alignment.Center,
     ){
@@ -268,15 +269,15 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState){
                 //modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                PadButton(2, 26, seqViewModel, seqUiState)
-                PadButton(3, 39, seqViewModel, seqUiState)
+                PadButton(2, 26, seqViewModel, seqUiState, padsSize)
+                PadButton(3, 39, seqViewModel, seqUiState, padsSize)
             }
             Row(
                 //modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                PadButton(0, 4, seqViewModel, seqUiState)
-                PadButton(1, 14, seqViewModel, seqUiState)
+                PadButton(0, 4, seqViewModel, seqUiState, padsSize)
+                PadButton(1, 14, seqViewModel, seqUiState, padsSize)
             }
         }
     }

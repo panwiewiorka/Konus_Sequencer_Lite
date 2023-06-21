@@ -34,26 +34,27 @@ class Sequence (
     fun recordNote(pitch: Int, velocity: Int, staticNoteOffTime: Int, seqIsPlaying: Boolean, isRepeating: Boolean, repeatLength: Double, customRecTime: Int = -1) {
 
         val recordTime: Int
-        if(seqIsPlaying){
-            recordTime = if(customRecTime > -1) {
-                customRecTime
-            } else
-                if(isRepeating) {
-                    if(deltaTimeRepeat + wrapDelta < 0)   // wrap-around
-                        (deltaTimeRepeat + wrapDelta + totalTime).toInt()
-                    else
-                        (deltaTimeRepeat + wrapDelta).toInt()
-                } else deltaTime.toInt()
-        } else {            // Recording to beginning if Seq is stopped
-            if(velocity > 0) {
-                indexToPlay = 0
-                recordTime = 0
-            }
-            else {
-                indexToPlay = notes.indexOfFirst { it.time > 0 }
-                if(indexToPlay < 0) indexToPlay = notes.size
-                recordTime = staticNoteOffTime
-            }
+         if(customRecTime > -1) {
+            recordTime = customRecTime
+        } else {
+             if(seqIsPlaying){
+                 recordTime = if(isRepeating) {
+                     if(deltaTimeRepeat + wrapDelta < 0)   // wrap-around
+                         (deltaTimeRepeat + wrapDelta + totalTime).toInt()
+                     else
+                         (deltaTimeRepeat + wrapDelta).toInt()
+                 } else deltaTime.toInt()
+             } else {            // Recording to beginning if Seq is stopped
+                 if(velocity > 0) {
+                     indexToPlay = 0
+                     recordTime = 0
+                 }
+                 else {
+                     indexToPlay = notes.indexOfFirst { it.time > 0 }
+                     if(indexToPlay < 0) indexToPlay = notes.size
+                     recordTime = staticNoteOffTime
+                 }
+             }
         }
 
         var index = if(isRepeating) indexToRepeat else indexToPlay

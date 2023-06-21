@@ -13,6 +13,7 @@ import androidx.compose.material.SliderDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -23,10 +24,11 @@ import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.Note
 import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.ui.theme.*
+import kotlinx.coroutines.launch
 
 
 @Composable
-fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState) {
+fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
     Log.d("emptyTag", "for holding Log in import")
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -45,11 +47,19 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState) {
             valueRange = 5f..40f
         )
 
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()){
-            NotesGrid(seqViewModel, seqUiState)
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BackGray),
+            contentAlignment = Alignment.BottomStart
+        ){
 
-            // TODO move into NotesGrid
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxSize()){
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Transparent)
+            ){
                 for (i in 0..16) {
                     Box(
                         modifier = Modifier
@@ -60,13 +70,38 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState) {
                 }
             }
 
-            val playheadOffset = (seqUiState.sequences[seqUiState.selectedChannel].deltaTime / seqUiState.sequences[seqUiState.selectedChannel].totalTime * maxWidth.value).dp
-            Playhead(seqUiState = seqUiState, modifier = Modifier.offset(playheadOffset, 0.dp).width(0.6.dp))
+            NotesGrid(seqViewModel, seqUiState)
 
-            var playheadRepeatOffset = (seqUiState.sequences[seqUiState.selectedChannel].deltaTimeRepeat / seqUiState.sequences[seqUiState.selectedChannel].totalTime * maxWidth.value).dp
+            val sequence = seqUiState.sequences[seqUiState.selectedChannel]
+            val playheadOffset = (sequence.deltaTime / sequence.totalTime * maxWidth.value).dp
+
+            Playhead(
+                seqUiState = seqUiState,
+                modifier = Modifier
+                    .offset(playheadOffset, 0.dp)
+                    .width(0.6.dp)
+            )
+
+            var playheadRepeatOffset = (sequence.deltaTimeRepeat / sequence.totalTime * maxWidth.value).dp
             playheadRepeatOffset = if(playheadRepeatOffset.value < 0) playheadRepeatOffset + maxWidth else playheadRepeatOffset
 
-            if(seqUiState.isRepeating) Playhead(seqUiState = seqUiState, modifier = Modifier.offset(playheadRepeatOffset, 0.dp).width(2.dp))
+            if(seqUiState.isRepeating) {
+                Playhead(
+                    seqUiState = seqUiState,
+                    modifier = Modifier
+                        .offset(playheadRepeatOffset, 0.dp)
+                        .width(2.dp)
+                )
+            }
+
+            if(seqUiState.padsMode != DEFAULT) {
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                ){
+                    PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize * 1.5f)
+                    AllButton(seqViewModel = seqViewModel, buttonsSize = buttonsSize)
+                }
+            }
 
         }
     }
@@ -76,18 +111,9 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState) {
 @Composable
 fun NotesGrid(
     seqViewModel: SeqViewModel, seqUiState: SeqUiState
-
-//    height = seqUiState.pianoRollNoteHeight,
-//    sequence = seqUiState.sequences[seqUiState.selectedChannel],
-//    updateNotesGridState = seqViewModel::updateNotesGridState,
-//    pianoRollYScroll = seqUiState.sequences[seqUiState.selectedChannel].pianoRollYScroll,
-//    updatePianoRollYScroll = seqUiState.sequences[seqUiState.selectedChannel]::updatePianoRollYScroll,
-//    changePairedNoteOffPitch = seqUiState.sequences[seqUiState.selectedChannel]::changePairedNoteOffPitch,
-//    changePairedNoteOffTime = seqUiState.sequences[seqUiState.selectedChannel]::changePairedNoteOffTime
-
 ) {
     val sequence = seqUiState.sequences[seqUiState.selectedChannel]
-    val height = seqUiState.pianoRollNoteHeight
+    val noteHeight = seqUiState.pianoRollNoteHeight
 
     val coroutineScope = rememberCoroutineScope()
     val scr by remember { mutableStateOf(seqUiState.sequences[seqUiState.selectedChannel].pianoRollYScroll) }
@@ -99,58 +125,76 @@ fun NotesGrid(
 //        scrollState.scrollTo(scr)
 //    }
     BoxWithConstraints(
-        modifier = Modifier
-            .height(height * 128)
-            .fillMaxWidth()
-            .background(BackGray)
-            .verticalScroll(scrollState, reverseScrolling = true)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = { /* Called when the gesture starts */ },
-                    onDoubleTap = { /* Called on Double Tap */ },
-                    onLongPress = { /* Called on Long Press */ },
-                    onTap = {
-//                        sequence.recordNote(
-//                            pitch = 4,
-//                            velocity = 100,
-//                            staticNoteOffTime = seqViewModel.staticNoteOffTime,
-//                            seqIsPlaying = seqUiState.seqIsPlaying,
-//                            isRepeating = seqUiState.isRepeating,
-//                            repeatLength = seqUiState.repeatLength,
-//                            customRecTime = 100
-//                        )
-
-                    }
-                )
-            }
-//            .scrollable(scrollState, orientation = Orientation.Horizontal,)
+        modifier = Modifier.height(noteHeight * 128)
     ) {
-        Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier
-            .fillMaxWidth()
-            .height(maxHeight)){
-            for (i in 0..128) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(height)
-                        .background(BackGray)
-                        .border(BorderStroke(0.3.dp, buttonsBg))
+        val maxHeight = maxHeight
+        val maxWidth = maxWidth
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent)
+                .verticalScroll(scrollState, reverseScrolling = true)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = { /* Called when the gesture starts */ },
+                        onDoubleTap = { /* Called on Double Tap */ },
+                        onLongPress = { /* Called on Long Press */ },
+                        onTap = {
+                            sequence.recordNote(
+                                pitch = 127 - (127 * it.y.toDp().value / (noteHeight * 128).value + 0.5).toInt(), // TODO fix rounding or whatever (drawing doesn't align with tap)
+                                velocity = 100,
+                                staticNoteOffTime = seqViewModel.staticNoteOffTime,
+                                seqIsPlaying = seqUiState.seqIsPlaying,
+                                isRepeating = seqUiState.isRepeating,
+                                repeatLength = seqUiState.repeatLength,
+                                customRecTime = ((it.x.toDp().value / maxWidth.value) * sequence.totalTime).toInt()
+                            )
+
+                            sequence.recordNote(
+                                pitch = 127 - (127 * it.y.toDp().value / (noteHeight * 128).value + 0.5).toInt(), // TODO fix rounding or whatever (drawing doesn't align with tap)
+                                velocity = 0,
+                                staticNoteOffTime = seqViewModel.staticNoteOffTime,
+                                seqIsPlaying = seqUiState.seqIsPlaying,
+                                isRepeating = seqUiState.isRepeating,
+                                repeatLength = seqUiState.repeatLength,
+                                customRecTime = 100 + ((it.x.toDp().value / maxWidth.value) * sequence.totalTime).toInt()
+                            )
+                            seqViewModel.updateNotesGridState()
+                        }
+                    )
+                }
+//            .scrollable(scrollState, orientation = Orientation.Horizontal,)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ){
+                for (i in 0..127) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(noteHeight)
+                            .background(Color.Transparent)
+                            .border(BorderStroke(0.3.dp, buttonsBg))
+                    )
+                }
+            }
+
+            for(i in sequence.notes.indices) {
+                StepNote(
+                    indexNoteOn = i,
+                    indexNoteOff = searchForPairedNoteOFF(i, sequence.notes),
+                    noteHeight = noteHeight,
+                    maxX = maxWidth,
+                    maxY = maxHeight,
+                    note = sequence.notes[i],
+                    isRepeating = seqUiState.isRepeating,
+                    updateNotesGridState = seqViewModel::updateNotesGridState,
+                    changePairedNoteOffPitch = sequence::changePairedNoteOffPitch,
+                    changePairedNoteOffTime = sequence::changePairedNoteOffTime,
+                    erasing = sequence::erasing,
+                    toggleTime = seqViewModel.toggleTime,
                 )
             }
-        }
-
-        for(i in sequence.notes.indices) {
-            StepNote(
-                indexNoteOff = searchForPairedNoteOFF(i, sequence.notes),
-                height = height,
-                offY = height * (127 - sequence.notes[i].pitch),
-                maxX = maxWidth,
-                maxY = maxHeight,
-                note = sequence.notes[i],
-                updateNotesGridState = seqViewModel::updateNotesGridState,
-                changePairedNoteOffPitch = sequence::changePairedNoteOffPitch,
-                changePairedNoteOffTime = sequence::changePairedNoteOffTime
-            )
         }
     }
 }
@@ -158,35 +202,45 @@ fun NotesGrid(
 
 @Composable
 fun StepNote(
+    indexNoteOn: Int,
     indexNoteOff: Int,
-    height: Dp,
-    offY: Dp,
+    noteHeight: Dp,
     maxX: Dp,
     maxY: Dp,
     note: Note,
+    isRepeating: Boolean,
     updateNotesGridState: () -> Unit,
     changePairedNoteOffPitch: (index: Int, pitch: Int) -> Unit,
-    changePairedNoteOffTime: (index: Int, time: Int) -> Unit
+    changePairedNoteOffTime: (index: Int, time: Int) -> Unit,
+    erasing: (Boolean, Int) -> Boolean,
+    toggleTime: Int
 ) {
+    var tapTime by remember {mutableStateOf(0L)}
+    val offY = noteHeight * (127 - note.pitch)
     var offsetX by remember { mutableStateOf(maxX * note.time / 2000) }
     var offsetY by remember { mutableStateOf(offY) }
     var offsetThreshold by remember { mutableStateOf(0) }
     var savedThreshold by remember { mutableStateOf(0) }
     Box(modifier = Modifier
         .offset(offsetX, offsetY)
-        .height(height)
+        .height(noteHeight)
         .width(maxX * note.length / 2000)
         .background(buttonsBg)
         .border(BorderStroke(0.6.dp, playGreen), RoundedCornerShape(0.dp))
         .pointerInput(Unit) {
-//                detectTapGestures(
-//                    onPress = { /* Called when the gesture starts */ },
-//                    onDoubleTap = { /* Called on Double Tap */ },
-//                    onLongPress = { /* Called on Long Press */ },
-//                    onTap = { /* Called on Tap */ }
-//                )
+            detectTapGestures(
+                onPress = {/* Called when the gesture starts */ },
+                onDoubleTap = { /* Called on Double Tap */ },
+                onLongPress = { /* Called on Long Press */ },
+                onTap = {
+                    erasing(isRepeating, indexNoteOn)
+                    updateNotesGridState()
+                }
+            )
+        }
+        .pointerInput(Unit) {
             detectDragGestures(
-                onDragEnd = { offsetY = height * (127 - note.pitch) }
+                onDragEnd = { offsetY = noteHeight * (127 - note.pitch) }
             ) { change, dragAmount ->
                 change.consume()
                 offsetX += dragAmount.x.toDp()
@@ -209,7 +263,7 @@ fun StepNote(
                  */
 
                 val roundingY = if (offsetY > offY) 0.5 else -0.5
-                offsetThreshold = ( (offsetY - offY).value / height.value + roundingY ).toInt()
+                offsetThreshold = ((offsetY - offY).value / noteHeight.value + roundingY).toInt()
                 if (offsetThreshold > savedThreshold) {
                     note.pitch -= 1
                     changePairedNoteOffPitch(indexNoteOff, note.pitch)
