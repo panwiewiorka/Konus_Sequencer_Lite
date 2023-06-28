@@ -1,4 +1,4 @@
-package com.example.mysequencer01ui.ui
+package com.example.mysequencer01ui.ui.viewTabs
 
 import android.util.Log
 import androidx.compose.foundation.*
@@ -23,8 +23,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.Note
 import com.example.mysequencer01ui.PadsMode.*
+import com.example.mysequencer01ui.ui.SeqUiState
+import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.theme.*
-import kotlinx.coroutines.launch
 
 
 @Composable
@@ -36,74 +37,71 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
             .fillMaxSize()
             .background(screensBg)
     ) {
-        var value by remember { mutableStateOf(20f) }
-        VerticalSlider(
-            value = value,
-            onValueChange = { value = it; seqViewModel.changePianoRollNoteHeight(it.dp) },
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .height(50.dp)
-                .background(screensBg),
-            valueRange = 5f..40f
-        )
+//        var value by remember { mutableStateOf(20f) }
+//        VerticalSlider(
+//            value = value,
+//            onValueChange = { value = it; seqViewModel.changePianoRollNoteHeight(it.dp) },
+//            modifier = Modifier
+//                .fillMaxWidth(0.9f)
+//                .height(50.dp)
+//                .background(screensBg),
+//            valueRange = 5f..40f
+//        )
 
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BackGray),
-            contentAlignment = Alignment.BottomStart
-        ){
+        // TODO padding for notesGrid
 
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
+//        Box(
+//            modifier = Modifier
+//                .padding(16.dp)
+//                .border(BorderStroke(2.dp, buttonsColor))
+//        ) {
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Transparent)
+                    .background(BackGray),
             ){
-                for (i in 0..16) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(0.6.dp)
-                            .background(if ((i + 4) % 4 == 0) buttonsColor else buttonsBg)
-                    )
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Transparent)
+                ){
+                    for (i in 0..16) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(0.6.dp)
+                                .background(if ((i + 4) % 4 == 0) buttonsColor else buttonsBg)
+                        )
+                    }
                 }
-            }
 
-            NotesGrid(seqViewModel, seqUiState)
+                NotesGrid(seqViewModel, seqUiState)
 
-            val sequence = seqUiState.sequences[seqUiState.selectedChannel]
-            val playheadOffset = (sequence.deltaTime / sequence.totalTime * maxWidth.value).dp
+                val sequence = seqUiState.sequences[seqUiState.selectedChannel]
+                val playheadOffset = (sequence.deltaTime / sequence.totalTime * maxWidth.value).dp
 
-            Playhead(
-                seqUiState = seqUiState,
-                modifier = Modifier
-                    .offset(playheadOffset, 0.dp)
-                    .width(0.6.dp)
-            )
-
-            var playheadRepeatOffset = (sequence.deltaTimeRepeat / sequence.totalTime * maxWidth.value).dp
-            playheadRepeatOffset = if(playheadRepeatOffset.value < 0) playheadRepeatOffset + maxWidth else playheadRepeatOffset
-
-            if(seqUiState.isRepeating) {
                 Playhead(
                     seqUiState = seqUiState,
                     modifier = Modifier
-                        .offset(playheadRepeatOffset, 0.dp)
-                        .width(2.dp)
+                        .offset(playheadOffset, 0.dp)
+                        .width(0.6.dp)
                 )
-            }
 
-            if(seqUiState.padsMode != DEFAULT) {
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                ){
-                    PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize * 1.5f)
-                    AllButton(seqViewModel = seqViewModel, buttonsSize = buttonsSize)
+                var playheadRepeatOffset = (sequence.deltaTimeRepeat / sequence.totalTime * maxWidth.value).dp
+                playheadRepeatOffset = if(playheadRepeatOffset.value < 0) playheadRepeatOffset + maxWidth else playheadRepeatOffset
+
+                if(seqUiState.isRepeating) {
+                    Playhead(
+                        seqUiState = seqUiState,
+                        modifier = Modifier
+                            .offset(playheadRepeatOffset, 0.dp)
+                            .width(2.dp)
+                    )
                 }
             }
-
-        }
+//        }
     }
 }
 
@@ -113,17 +111,13 @@ fun NotesGrid(
     seqViewModel: SeqViewModel, seqUiState: SeqUiState
 ) {
     val sequence = seqUiState.sequences[seqUiState.selectedChannel]
-    val noteHeight = seqUiState.pianoRollNoteHeight
+    val noteHeight = seqUiState.stepViewNoteHeight
 
-    val coroutineScope = rememberCoroutineScope()
-    val scr by remember { mutableStateOf(seqUiState.sequences[seqUiState.selectedChannel].pianoRollYScroll) }
-    val scrollState = rememberScrollState(scr)
-    seqUiState.sequences[seqUiState.selectedChannel].updatePianoRollYScroll(scrollState.value)
-    //scr = scrollState.value
-    //scr = scrollState.maxValue / 128
-//    coroutineScope.launch {
-//        scrollState.scrollTo(scr)
-//    }
+    // TODO check if everything here is needed:
+    val scrY by remember { mutableStateOf(sequence.StepViewYScroll) }
+    val scrollState = rememberScrollState(scrY)
+    sequence.updateStepViewYScroll(scrollState.value)
+
     BoxWithConstraints(
         modifier = Modifier.height(noteHeight * 128)
     ) {
@@ -163,7 +157,6 @@ fun NotesGrid(
                         }
                     )
                 }
-//            .scrollable(scrollState, orientation = Orientation.Horizontal,)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
@@ -176,6 +169,16 @@ fun NotesGrid(
                             .background(Color.Transparent)
                             .border(BorderStroke(0.3.dp, buttonsBg))
                     )
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                if(seqUiState.visualArrayRefresh) {
+                    Box(modifier = Modifier.fillMaxHeight().width(0.1.dp).background( Color(0x01000000) ) )
+                    seqViewModel.recomposeVisualArray()
                 }
             }
 

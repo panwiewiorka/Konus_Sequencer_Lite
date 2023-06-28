@@ -3,23 +3,20 @@ package com.example.mysequencer01ui.ui
 
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CutCornerShape
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Slider
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mysequencer01ui.KmmkComponentContext
+import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.SeqView.*
 import com.example.mysequencer01ui.ui.theme.*
-import kotlin.math.sqrt
+import com.example.mysequencer01ui.ui.viewTabs.LiveView
+import com.example.mysequencer01ui.ui.viewTabs.PianoView
+import com.example.mysequencer01ui.ui.viewTabs.SettingsView
+import com.example.mysequencer01ui.ui.viewTabs.StepView
 
 
 @Composable
@@ -29,16 +26,12 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
     KeepScreenOn()
 
     BoxWithConstraints(Modifier.fillMaxHeight()) {
-        val spacerSize = 0.dp
         val buttonsSize = maxHeight / 5
-        val c = buttonsSize.value / sqrt(3f)
-        val y = buttonsSize.value / 2
-        val columnsOffset = -sqrt(c * c - y * y)
 
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(seqBg)
+                .background(buttonsBg)
         ) {
 
             // ----==== LEFT BUTTONS
@@ -48,7 +41,9 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     .background(buttonsBg)
             ) {
 //                SymbolButton(seqViewModel, buttonsSize, seqUiState.padsMode, SELECTING, dusk)
-                ShiftButton(seqViewModel, seqUiState.padsMode, buttonsSize) // ë°╪
+                if(seqUiState.padsMode != DEFAULT && seqUiState.padsMode != SELECTING && seqUiState.padsMode != LOADING)
+                    AllButton(seqViewModel, buttonsSize)
+                else ShiftButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 SaveButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 SoloButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 EraseButton(seqViewModel, seqUiState.padsMode, buttonsSize)
@@ -67,118 +62,20 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             }
 
             // ----==== SeqView CONTENT
-
-            when(seqUiState.seqView) {
-                LIVE -> {
-                    if(seqUiState.showSettings) {
-                        AlertDialog(
-                            onDismissRequest = { seqViewModel.showSettings() },
-                            buttons = {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(20.dp)
-                                ) {
-                                    MidiSelector(kmmk)
-
-                                    Row(
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier  =Modifier.fillMaxWidth()
-                                    ) {
-                                        Text("${seqUiState.bpm} BPM", Modifier.width(60.dp))
-                                        Spacer(modifier = Modifier.width(20.dp))
-
-
-                                        var sizeSliderPosition by remember { mutableStateOf(120f) }
-                                        Slider(
-                                            value = sizeSliderPosition,
-                                            onValueChange = {
-                                                sizeSliderPosition = it
-                                                seqViewModel.changeBPM(it)
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            valueRange = 40f..280f,
-                                            onValueChangeFinished = {  }
-                                        )
-                                    }
-                                }
-                            },
-                            modifier = Modifier.width(320.dp),
-                            shape = CutCornerShape(14.dp)
-                        )
-                    }
-
-                    //KeyboardRow(kmmk, 1)
-                    Spacer(modifier = Modifier.width(spacerSize))
-                    Column(
-                        modifier = Modifier.fillMaxHeight()
-                    ) {
-                        Spacer(modifier = Modifier.weight(1f))
-                        PadsGrid(seqViewModel, seqUiState, buttonsSize * 1.5f)
-                    }
-                    Column(
-                        verticalArrangement = Arrangement.SpaceBetween,
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight(1f)
-                    ) {
-                        Spacer(modifier = Modifier.weight(1f))
-                        StepSequencer(seqUiState, buttonsSize)
-                        VisualArray(seqUiState, buttonsSize)
-                        Spacer(modifier = Modifier.height(1.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ){
-                            AllButton(seqViewModel, buttonsSize)
-                            Text(
-                                text = "${seqUiState.bpm} BPM",
-                                color = Color.Gray,
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .clickable { seqViewModel.showSettings() }
-                            )
-                            Spacer(modifier = Modifier.width(1.dp))
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(spacerSize))
-                    Row(horizontalArrangement = Arrangement.spacedBy(columnsOffset.dp)){
-                        Column(
-                            //verticalArrangement = Arrangement.SpaceBetween,
-                            horizontalAlignment = Alignment.End,
-                            modifier = Modifier.fillMaxHeight()
-                        ) {
-                            RepeatButton(seqViewModel, buttonsSize, 2, seqUiState.divisorState)
-                            RepeatButton(seqViewModel, buttonsSize, 4, seqUiState.divisorState)
-                            RepeatButton(seqViewModel, buttonsSize, 8, seqUiState.divisorState)
-                            RepeatButton(seqViewModel, buttonsSize, 16, seqUiState.divisorState)
-                            RepeatButton(seqViewModel, buttonsSize, 32, seqUiState.divisorState)
-                        }
-                        Column(){
-                            Spacer(modifier = Modifier.height(buttonsSize / 2))
-                            RepeatButton(seqViewModel, buttonsSize, 3, seqUiState.divisorState, true)
-                            RepeatButton(seqViewModel, buttonsSize, 6, seqUiState.divisorState, true)
-                            RepeatButton(seqViewModel, buttonsSize, 12, seqUiState.divisorState, true)
-                            RepeatButton(seqViewModel, buttonsSize, 24, seqUiState.divisorState, true)
-                        }
-                    }
+            Box(
+                modifier = Modifier.fillMaxHeight().weight(1f),
+                contentAlignment = Alignment.BottomStart
+            ) {
+                when(seqUiState.seqView) {
+                    LIVE -> LiveView(seqViewModel, seqUiState, buttonsSize)
+                    STEP -> StepView(seqViewModel, seqUiState, buttonsSize)
+                    PIANO -> PianoView(seqViewModel, seqUiState, buttonsSize)
+                    AUTOMATION -> { }
+                    SETTINGS -> SettingsView(seqViewModel, seqUiState, buttonsSize, kmmk)
                 }
-                STEP -> {
-                    Box(modifier = Modifier
-                        .fillMaxHeight()
-                        .weight(1f)){
-                        StepView(seqViewModel, seqUiState, buttonsSize)
-                    }
-                }
-                else -> {
-                    Box(modifier = Modifier
-                        .fillMaxHeight()
-                        .weight(1f)){
 
-                    }
+                if(seqUiState.seqView != LIVE && seqUiState.padsMode != DEFAULT) {
+                    PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize * 1.5f)
                 }
             }
 
@@ -188,12 +85,12 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 //horizontalAlignment = Alignment.End,
                 modifier = Modifier
                     .fillMaxHeight()
-                    .background(BackGray)
+                    .background(buttonsBg)
             ) {
                 SeqViewButton(seqViewModel, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
                 SeqViewButton(seqViewModel, seqUiState.seqView, STEP, buttonsSize, "ʭ")
-                SeqViewButton(seqViewModel, seqUiState.seqView, AUTOMATION, buttonsSize, "ϡ")
-                SeqViewButton(seqViewModel, seqUiState.seqView, SONG, buttonsSize, "֎")
+                SeqViewButton(seqViewModel, seqUiState.seqView, PIANO, buttonsSize, "ϡ")
+                SeqViewButton(seqViewModel, seqUiState.seqView, AUTOMATION, buttonsSize, "֎")
                 SeqViewButton(seqViewModel, seqUiState.seqView, SETTINGS, buttonsSize, "╪")
             }
         }

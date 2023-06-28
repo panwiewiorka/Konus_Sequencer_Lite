@@ -16,7 +16,7 @@ enum class StopNotesMode{
 }
 
 enum class SeqView{
-    LIVE, STEP, AUTOMATION, SONG, SETTINGS
+    LIVE, STEP, PIANO, AUTOMATION, SETTINGS
 }
 
 

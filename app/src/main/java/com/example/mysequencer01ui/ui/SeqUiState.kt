@@ -7,8 +7,8 @@ import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.Sequence
 
 data class SeqUiState (
-    val seqView: SeqView = SeqView.STEP,
-    val pianoRollNoteHeight: Dp = 20.dp,
+    val seqView: SeqView = SeqView.LIVE,
+    val stepViewNoteHeight: Dp = 20.dp,
     val showSettings: Boolean = false,
     val bpm: Float = 120f,
     val factorBpm: Double = 1.0,

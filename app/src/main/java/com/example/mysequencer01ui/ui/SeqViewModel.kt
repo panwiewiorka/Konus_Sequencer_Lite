@@ -398,7 +398,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
     fun changePianoRollNoteHeight(noteHeight: Dp) {
-        _uiState.update { a -> a.copy( pianoRollNoteHeight = noteHeight ) }
+        _uiState.update { a -> a.copy( stepViewNoteHeight = noteHeight ) }
     }
 
     fun changeBPM(bpm: Float) {

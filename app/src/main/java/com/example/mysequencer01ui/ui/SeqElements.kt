@@ -56,14 +56,15 @@ val buttonsShape = RoundedCornerShape(0.dp)
 const val buttonTextSize = 12
 
 
+
 @Composable
-fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {
+fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move into LiveView
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .height(buttonsSize)
             .padding(buttonsPadding)
-            .background(screensBg)
+            .background(BackGray)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
 
@@ -71,9 +72,10 @@ fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {
             val step = (maxWidth / 16).toPx()
             for (i in 0..15) {
                 drawLine(
-                    if((i + 4) % 4 == 0) Color.White else Color.Gray,
-                    Offset(i * step, if((i + 4) % 4 == 0) 0f else (size.height / 1.1f)),
-                    Offset(i * step, size.height)
+                    if((i + 4) % 4 == 0) buttonsColor else buttonsColor,
+                    Offset(i * step, if((i + 4) % 4 == 0) 0f else (size.height / 2 - size.height / 32)),
+                    Offset(i * step, if((i + 4) % 4 == 0) size.height else size.height / 2 + size.height / 32),
+                    2f
                 )
             }
 
@@ -159,7 +161,7 @@ fun VisualArray(seqUiState: SeqUiState, height: Dp) {
             .fillMaxWidth()
             .height(height)
             .padding(buttonsPadding)
-            .background(screensBg),
+            .background(BackGray),
         contentAlignment = Alignment.TopStart
     ) {
         val playhead = ((seqUiState.sequences[0].deltaTime) / seqUiState.sequences[0].totalTime * maxWidth.value).dp  // TODO replace hardcoded channel
@@ -220,7 +222,7 @@ fun PadButton(
                 backgroundColor = buttonsColor
             ),
             modifier = Modifier
-                .size(padsSize)
+                .size(padsSize - 1.dp)
                 .border(
                     width = 4.dp,
                     color = if (seqUiState.sequences[channel].channelIsPlayingNotes) {
@@ -262,6 +264,7 @@ fun PadButton(
 @Composable
 fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
     Box(
+        modifier = Modifier.background(buttonsBg),
         contentAlignment = Alignment.Center,
     ){
         Column {
@@ -269,15 +272,16 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
                 //modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                PadButton(2, 26, seqViewModel, seqUiState, padsSize)
-                PadButton(3, 39, seqViewModel, seqUiState, padsSize)
+                PadButton(2, 60, seqViewModel, seqUiState, padsSize)
+                PadButton(3, 60, seqViewModel, seqUiState, padsSize)
             }
             Row(
                 //modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                PadButton(0, 4, seqViewModel, seqUiState, padsSize)
-                PadButton(1, 14, seqViewModel, seqUiState, padsSize)
+                PadButton(0, 60, seqViewModel, seqUiState, padsSize)
+                PadButton(1, 60, seqViewModel, seqUiState, padsSize)
+                PadButton(4, 60, seqViewModel, seqUiState, padsSize)
             }
         }
     }
@@ -315,6 +319,7 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
     }
     Button(
         interactionSource = interactionSource,
+        elevation = null,
         onClick = {},
         shape = RoundedCornerShape(0.dp),
         colors = ButtonDefaults.buttonColors(
@@ -324,7 +329,9 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
             .size(buttonsSize)
             .padding(buttonsPadding)
     ) {
-        Box{
+        Box(
+            modifier = Modifier
+        ) {
             Text("ALL", fontSize = buttonTextSize.nonScaledSp, color = Color.White, modifier = Modifier
                 .blur(6.dp, BlurredEdgeTreatment.Unbounded)
                 .alpha(0.6f))
@@ -707,19 +714,6 @@ fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: D
 }
 
 
-private class CustomRippleTheme : RippleTheme {
-    @Composable
-    override fun defaultColor(): Color = Color.Unspecified
-
-    @Composable
-    override fun rippleAlpha(): RippleAlpha = RippleAlpha(
-        draggedAlpha = 0f,
-        focusedAlpha = 0f,
-        hoveredAlpha = 0f,
-        pressedAlpha = 0f,
-    )
-}
-
 @Composable
 fun RepeatButton(
     seqViewModel: SeqViewModel,
@@ -788,15 +782,18 @@ fun RepeatButton(
 
     Button(
         interactionSource = interactionSource,
+        //elevation = null,
         onClick = {  },
         shape = if(triplet) rightToHexShape else leftToHexShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(divisor == divisorState) dusk else buttonsColor
+            backgroundColor = if(divisor == divisorState) dusk else seqBg
         ),
         modifier = Modifier
             .height(width)
             .width(width)
+            //.clip(if(triplet) rightToHexShape else leftToHexShape)
+            //.border(BorderStroke(0.3.dp, buttonsColor))
             .padding(buttonsPadding),
     ) {
         Box(
@@ -838,7 +835,7 @@ fun SeqViewButton(
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (seqView == buttonSeqView) night else screensBg)
+            .background(if (seqView == buttonSeqView) night else buttonsColor)
             .clickable(
                 interactionSource = buttonInteraction(
                     seqViewModel.toggleTime,
