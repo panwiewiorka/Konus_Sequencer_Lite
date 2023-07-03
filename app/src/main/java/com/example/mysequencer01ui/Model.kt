@@ -100,7 +100,19 @@ class KmmkComponentContext {
 //        noteOn(0, 4,0)
     }
 
-    fun sendProgramChange(programToChange: Int, channel: Int = 0) {
+    fun startClock() {
+        sendToAll(byteArrayOf(MidiSystemStatus.START.toByte()), 0)
+    }
+
+    fun stopClock() {
+        sendToAll(byteArrayOf(MidiSystemStatus.STOP.toByte()), 0)
+    }
+
+    fun sendTimingClock() {
+        sendToAll(byteArrayOf(MidiSystemStatus.TIMING_CLOCK.toByte()), 0)
+    }
+
+    fun  sendProgramChange(programToChange: Int, channel: Int = 0) {
         this.program.value = programToChange
         if (midiProtocol.value == MidiCIProtocolType.MIDI2) {
             val nOff = Ump(

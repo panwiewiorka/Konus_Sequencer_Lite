@@ -81,8 +81,6 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
 
             // ----==== MAIN TABS
             Column(
-                //verticalArrangement = Arrangement.SpaceBetween,
-                //horizontalAlignment = Alignment.End,
                 modifier = Modifier
                     .fillMaxHeight()
                     .background(buttonsBg)

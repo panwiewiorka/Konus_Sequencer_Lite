@@ -13,6 +13,7 @@ import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.StopNotesMode.*
 import com.example.mysequencer01ui.data.Patterns
 import com.example.mysequencer01ui.data.SeqDao
+import kotlin.time.Duration.Companion.nanoseconds
 
 
 class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqDao) : ViewModel() {
@@ -44,6 +45,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
 
         _uiState.update { a -> a.copy( seqIsPlaying = true ) }
+        var clockTicks = 0
+        kmmk.startClock()
 
         CoroutineScope(Dispatchers.Main).launch {
             while (uiState.value.seqIsPlaying) {
@@ -63,10 +66,20 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             }
                         }
 
+                        // CLOCK
+                        if(c == 0) {
+                            if(deltaTime >= uiState.value.timingClock * clockTicks) {
+                                kmmk.sendTimingClock()
+                                clockTicks++
+//                                Log.d("ryjtyj", "$clockTicks, ${uiState.value.timingClock}")
+                            }
+                        }
+
                         // END OF SEQUENCE
                         if (deltaTime >= totalTime) {
                             startTimeStamp = System.currentTimeMillis() - (deltaTime - totalTime).toLong()
                             indexToPlay = 0
+                            clockTicks = 0
                         }
 
                         /** IF REPEATING **/
@@ -114,7 +127,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                 savedRepeatsCount = repeatsCount
                             }
 
-                            if(c == 0) Log.d("ryjtyj", "wrapIndex = $wrapIndex, deltaTimeRepeat = $deltaTimeRepeat, wrapDelta = $wrapDelta")
+//                            if(c == 0) Log.d("ryjtyj", "wrapIndex = $wrapIndex, deltaTimeRepeat = $deltaTimeRepeat, wrapDelta = $wrapDelta")
                             // erasing or playing
                             while(
                                 notes.size > (indexToRepeat - wrapIndex)
@@ -135,7 +148,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 _uiState.update { a -> a.copy(
                     visualArrayRefresh = !uiState.value.visualArrayRefresh,
                 ) }
-                delay(1L)
+                delay(1000.nanoseconds)
             }
         }
     }
@@ -143,6 +156,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     fun stopSeq() {
         stopNotes(STOPSEQ)
+        kmmk.stopClock()
         _uiState.update { a ->
             a.copy(
                 sequences = uiState.value.sequences, // TODO needed?
@@ -374,15 +388,11 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         }
     }
 
-    fun recomposeVisualArray() {
+    fun recomposeVisualArray() { // TODO remove this or updateNotesGridState()
         _uiState.update { a -> a.copy(
             sequences = uiState.value.sequences,
             visualArrayRefresh = !uiState.value.visualArrayRefresh
         ) }
-    }
-
-    fun showSettings() {
-        _uiState.update { a -> a.copy( showSettings = !uiState.value.showSettings ) }
     }
 
     fun changeSeqViewState(seqView: SeqView) {
@@ -393,7 +403,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     fun updateNotesGridState() {
         _uiState.update { a -> a.copy(
-            sequences = uiState.value.sequences
+            sequences = uiState.value.sequences,
+            visualArrayRefresh = !uiState.value.visualArrayRefresh
         ) }
     }
 
@@ -405,7 +416,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         val bpmPointOne = (bpm * 10 + 0.5).toInt() / 10f
         _uiState.update { a -> a.copy (
             bpm = bpmPointOne,
-            factorBpm = bpmPointOne / 120.0
+            factorBpm = bpmPointOne / 120.0,
+            timingClock = 500.0 / 24.0 * bpmPointOne / 120.0
         ) }
 
         Log.d("emptyTag", " ") // to hold in imports

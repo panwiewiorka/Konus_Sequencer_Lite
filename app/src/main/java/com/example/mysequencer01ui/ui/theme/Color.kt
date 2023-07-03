@@ -10,7 +10,7 @@ val BackGray = Color(0xFF222222)
 
 val seqBg = Color(0xff3f3b3c)
 val buttonsColor = Color(0xff494344)
-val screensBg = Color(0xff3a3536)
+val screensBg = Color(0xff3a3537)
 val buttonsBg = Color(0xff3a3536)
 val warmRed = Color(0xffe8593a)
 val notWhite = Color(0xfffff2f0)

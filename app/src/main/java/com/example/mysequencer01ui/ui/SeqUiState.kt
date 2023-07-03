@@ -9,9 +9,9 @@ import com.example.mysequencer01ui.Sequence
 data class SeqUiState (
     val seqView: SeqView = SeqView.LIVE,
     val stepViewNoteHeight: Dp = 20.dp,
-    val showSettings: Boolean = false,
     val bpm: Float = 120f,
     val factorBpm: Double = 1.0,
+    val timingClock: Double = 500.0 / 24,
     val seqIsPlaying: Boolean = false,
     val seqIsRecording: Boolean = false,
     val padsMode: PadsMode = PadsMode.DEFAULT,

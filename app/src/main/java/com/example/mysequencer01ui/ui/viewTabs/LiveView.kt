@@ -18,6 +18,7 @@ import com.example.mysequencer01ui.ui.RepeatButton
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.StepSequencer
+import com.example.mysequencer01ui.ui.VisualArray
 import kotlin.math.sqrt
 
 @Composable
@@ -34,6 +35,7 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
         Spacer(modifier = Modifier.width(spacerSize))
         Column(modifier = Modifier.weight(1f)) {
             StepSequencer(seqUiState, buttonsSize)
+            VisualArray(seqUiState, buttonsSize)
             Row {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,

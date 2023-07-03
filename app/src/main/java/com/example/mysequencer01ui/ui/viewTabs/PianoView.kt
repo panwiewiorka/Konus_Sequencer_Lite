@@ -1,6 +1,5 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
-import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,11 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.theme.BackGray
-import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.buttonsColor
 import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.playGreen
@@ -46,7 +43,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-@SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
     Log.d("emptyTag", "for holding Log in import")
@@ -109,7 +105,6 @@ fun PianoKeyboard(
     scrollStateBlack: LazyListState,
     pressPad: (Int, Int, Int) -> Unit,
 ) {
-
     Column(
         verticalArrangement = Arrangement.spacedBy(-keyHeight / 2)
     ) {
@@ -174,7 +169,7 @@ fun PianoKey(
 ) {
     val keyColor = remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
-    LaunchedEffect(interactionSource) {
+    LaunchedEffect(interactionSource, selectedChannel) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
@@ -203,9 +198,7 @@ fun PianoKey(
                 interactionSource = interactionSource,
                 indication = null
             ) { }
-    ) {
-
-    }
+    ) { }
 }
 
 @Composable

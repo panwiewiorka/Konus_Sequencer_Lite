@@ -32,8 +32,16 @@ class Sequence (
     var wrapDelta: Int = 0,
     ) {
 
-    fun recordNote(pitch: Int, velocity: Int, staticNoteOffTime: Int, seqIsPlaying: Boolean, isRepeating: Boolean, repeatLength: Double, customRecTime: Int = -1) {
-
+    fun recordNote(
+        pitch: Int,
+        velocity: Int,
+        staticNoteOffTime: Int,
+        seqIsPlaying: Boolean,
+        isRepeating: Boolean,
+        repeatLength: Double,
+        customRecTime: Int = -1,
+        stepRecord: Boolean = false
+    ) {
         val recordTime: Int
          if(customRecTime > -1) {
             recordTime = customRecTime
@@ -47,7 +55,7 @@ class Sequence (
                  } else deltaTime.toInt()
              } else {            // Recording to beginning if Seq is stopped
                  if(velocity > 0) {
-                     indexToPlay = 0
+                     indexToPlay = 0 // TODO add indexToRepeat?
                      recordTime = 0
                  }
                  else {
@@ -58,7 +66,9 @@ class Sequence (
              }
         }
 
-        var index = if(isRepeating) indexToRepeat else indexToPlay
+        var index = if(stepRecord) {
+            notes.indexOfLast { it.time < customRecTime } + 1
+        } else if(isRepeating) indexToRepeat else indexToPlay
 
         // NOTE LENGTH (for StepSeq)
         var pairedNoteOnIndex = -1
@@ -296,11 +306,42 @@ class Sequence (
         if(lowerPiano) PianoViewLowPianoScroll = x else PianoViewHighPianoScroll = x
     }
 
+    fun searchForPairedNoteOffIndexAndTime(index: Int): Pair<Int, Int> {
+        val searchedPitch = notes[index].pitch
+        var pairedNoteOffIndex = -1
+        var searchedIndex: Int
+        // searching forward from indexToPlay
+        if (index < notes.lastIndex) {
+            searchedIndex = notes
+                .copyOfRange(index + 1, notes.size)
+                .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
+            pairedNoteOffIndex = if (searchedIndex == -1) -1 else index + 1 + searchedIndex
+        }
+        // searching forward from 0
+        if (pairedNoteOffIndex == -1) {
+            searchedIndex = notes
+                .copyOfRange(0, index)
+                .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
+            pairedNoteOffIndex = if (searchedIndex == -1) -1 else searchedIndex
+        }
+        return if(pairedNoteOffIndex > -1) Pair(pairedNoteOffIndex, notes[pairedNoteOffIndex].time) else Pair(pairedNoteOffIndex, 0)
+    }
+
     fun changePairedNoteOffPitch(index: Int, pitch: Int) {
         notes[index].pitch = pitch
     }
 
     fun changePairedNoteOffTime(index: Int, time: Int) {
         notes[index].time += time
+        if(notes[index].time >= 2000) notes[index].time -= 2000
+        else if(notes[index].time < 0) notes[index].time += 2000
+    }
+
+    fun changeNoteLength(index: Int, length: Int) {
+        notes[index].length = length
+    }
+
+    fun checkSorting(){
+        notes.sortBy { it.time }
     }
 }
