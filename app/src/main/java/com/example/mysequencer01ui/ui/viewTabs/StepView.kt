@@ -14,7 +14,6 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -23,7 +22,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.Note
+import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -31,7 +30,7 @@ import com.example.mysequencer01ui.ui.theme.*
 
 
 @Composable
-fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
+fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp, kmmk: KmmkComponentContext) {
     Log.d("emptyTag", "for holding Log in import")
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -42,9 +41,13 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
 //        var value by remember { mutableStateOf(20f) }
 //        VerticalSlider(
 //            value = value,
-//            onValueChange = { value = it; seqViewModel.changePianoRollNoteHeight(it.dp) },
+//            onValueChange = {
+//                value = it
+//                seqViewModel.changePianoRollNoteHeight(it.dp)
+//                seqViewModel.updateNotesGridState()
+//                            },
 //            modifier = Modifier
-//                .fillMaxWidth(0.9f)
+//                .fillMaxWidth(0.85f)
 //                .height(50.dp)
 //                .background(screensBg),
 //            valueRange = 5f..40f
@@ -61,7 +64,11 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 modifier = Modifier
                     .fillMaxSize()
                     .background(BackGray)
-                    .background(if(seqUiState.visualArrayRefresh) Color(0x00000000) else Color(0x01000000))
+                    .background(
+                        if (seqUiState.visualArrayRefresh) Color(0x00000000) else Color(
+                            0x01000000
+                        )
+                    )
                     //.recomposeHighlighter(),
             ){
 
@@ -81,7 +88,7 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                     }
                 }
 
-                NotesGrid(seqViewModel, seqUiState)
+                NotesGrid(seqViewModel, seqUiState, kmmk)
 
                 val sequence = seqUiState.sequences[seqUiState.selectedChannel]
                 val playheadOffset = (sequence.deltaTime / sequence.totalTime * maxWidth.value).dp
@@ -112,21 +119,21 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
 
 @Composable
 fun NotesGrid(
-    seqViewModel: SeqViewModel, seqUiState: SeqUiState
+    seqViewModel: SeqViewModel, seqUiState: SeqUiState, kmmk: KmmkComponentContext
 ) {
     with(seqUiState.sequences[seqUiState.selectedChannel]){
         val noteHeight = seqUiState.stepViewNoteHeight
 
-        // TODO check if everything here is needed:
-        val scrY by remember { mutableStateOf(StepViewYScroll) }
+        val scrY by remember { mutableStateOf(stepViewYScroll) }
         val scrollState = rememberScrollState(scrY)
         updateStepViewYScroll(scrollState.value)
 
         BoxWithConstraints(
             modifier = Modifier.height(noteHeight * 128)
         ) {
-            val maxHeight = maxHeight
             val maxWidth = maxWidth
+            var xOffset by remember { mutableStateOf(0f) }
+            var yOffset by remember { mutableStateOf(0f) }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -134,32 +141,124 @@ fun NotesGrid(
                     .verticalScroll(scrollState, reverseScrolling = true)
                     .pointerInput(Unit) {
                         detectTapGestures(
-                            onTap = {
-                                val pitch = 127 - (127 * it.y.toDp().value / (noteHeight * 128).value + 0.5).toInt() // TODO fix rounding or whatever (drawing doesn't align with tap)
-                                recordNote(
-                                    pitch = pitch,
-                                    velocity = 100,
-                                    staticNoteOffTime = seqViewModel.staticNoteOffTime,
-                                    seqIsPlaying = seqUiState.seqIsPlaying,
-                                    isRepeating = seqUiState.isRepeating,
-                                    repeatLength = seqUiState.repeatLength,
-                                    customRecTime = ((it.x.toDp().value / maxWidth.value) * totalTime).toInt(),
-                                    stepRecord = true,
-                                )
+                            onTap = { offset ->
+                                val pitch = 127 - (offset.y / noteHeight.toPx()).toInt()
+                                val time = ((offset.x.toDp().value / maxWidth.value) * totalTime).toInt()
 
-                                recordNote(
-                                    pitch = pitch,
-                                    velocity = 0,
-                                    staticNoteOffTime = seqViewModel.staticNoteOffTime,
-                                    seqIsPlaying = seqUiState.seqIsPlaying,
-                                    isRepeating = seqUiState.isRepeating,
-                                    repeatLength = seqUiState.repeatLength,
-                                    customRecTime = 100 + ((it.x.toDp().value / maxWidth.value) * totalTime).toInt(),
-                                    stepRecord = true,
-                                )
+                                var noteOnIndex = notes.indexOfLast {
+                                    it.pitch == pitch && it.velocity > 0 && it.time < time
+                                }
+                                if (noteOnIndex == -1 && notes.isNotEmpty() && notes[notes.lastIndex].velocity > 0) {
+                                    noteOnIndex = notes.lastIndex
+                                }
+                                val noteOffIndex = if (noteOnIndex > -1) returnPairedNoteOffIndexAndTime(noteOnIndex).first else -1
+
+                                // if note exists where we tap - erase it, else record new note
+                                if (
+                                    (noteOnIndex > -1 && noteOffIndex > -1) &&
+                                    (
+                                            (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
+                                                    || ((noteOnIndex > noteOffIndex) &&                                // wrap-around case
+                                                    (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
+                                            )
+                                ) {
+                                    erasing(kmmk, seqUiState.isRepeating, noteOnIndex)
+                                } else {
+                                    recordNote(
+                                        pitch = pitch,
+                                        velocity = 100,
+                                        staticNoteOffTime = seqViewModel.staticNoteOffTime,
+                                        seqIsPlaying = seqUiState.seqIsPlaying,
+                                        isRepeating = seqUiState.isRepeating,
+                                        repeatLength = seqUiState.repeatLength,
+                                        customTime = time,
+                                        stepRecord = true,
+                                    )
+                                    recordNote(
+                                        pitch = pitch,
+                                        velocity = 0,
+                                        staticNoteOffTime = seqViewModel.staticNoteOffTime,
+                                        seqIsPlaying = seqUiState.seqIsPlaying,
+                                        isRepeating = seqUiState.isRepeating,
+                                        repeatLength = seqUiState.repeatLength,
+                                        customTime = totalTime / 16 + time,
+                                        stepRecord = true,
+                                    )
+                                }
                                 seqViewModel.updateNotesGridState()
                             }
                         )
+                    }
+                    .pointerInput(Unit){
+                        var noteDetected = false
+                        var pitch = 0
+                        var time: Int
+                        var deltaTime: Int
+                        var noteOnIndex = -1
+                        var noteOffIndex = -1
+
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                xOffset = offset.x
+                                yOffset = offset.y
+                                pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
+                                time = ((xOffset / maxWidth.toPx()) * totalTime).toInt()
+
+                                noteOnIndex = notes.indexOfLast {
+                                    it.pitch == pitch && it.velocity > 0 && it.time < time
+                                }
+                                if (noteOnIndex == -1 && notes.isNotEmpty() && notes[notes.lastIndex].velocity > 0) {
+                                    noteOnIndex = notes.lastIndex
+                                }
+                                noteOffIndex = if (noteOnIndex > -1) returnPairedNoteOffIndexAndTime(noteOnIndex).first else -1
+
+                                // if note exists where we start dragging - move it, else scroll
+                                noteDetected =
+                                    (noteOnIndex > -1 && noteOffIndex > -1) &&
+                                        (
+                                            (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
+                                                || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
+                                                (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
+                                        )
+                            },
+                            onDragEnd = {
+                                //offsetY = noteHeight * (127 - note.pitch)
+                            }
+                        ) { change, dragAmount ->
+                            change.consume()
+
+                            if(noteDetected) {
+                                xOffset += dragAmount.x
+                                yOffset += dragAmount.y
+
+                                deltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
+                                changeNoteTime(noteOnIndex, deltaTime)
+                                changeNoteTime(noteOffIndex, deltaTime)
+
+                                if(pitch != 127 - (yOffset / noteHeight.toPx()).toInt()) {
+                                    pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
+                                    changeNotePitch(noteOnIndex, pitch)
+                                    changeNotePitch(noteOffIndex, pitch)
+                                }
+
+                                val tempNoteOnTime = notes[noteOnIndex].time
+                                val tempNoteOffTime = notes[noteOffIndex].time
+                                sortNotesByTime()
+
+                                if(
+                                    notes[noteOnIndex].time != tempNoteOnTime ||
+                                    notes[noteOffIndex].time != tempNoteOffTime
+                                ) {
+                                    noteOnIndex = notes.indexOfFirst{ it.time == tempNoteOnTime && it.pitch == pitch}
+                                    Log.d("ryjtyj", "$noteOnIndex")
+                                    noteOffIndex = returnPairedNoteOffIndexAndTime(noteOnIndex).first
+                                }
+
+                                seqViewModel.updateNotesGridState()
+                            } else {
+//                                Log.d("ryjtyj", "scroll")
+                            }
+                        }
                     }
             ) {
                 Column(
@@ -178,281 +277,79 @@ fun NotesGrid(
 
                 for(i in notes.indices) {
                     if(notes[i].velocity > 0) {
+
+                        val offsetX = maxWidth * notes[i].time / 2000
+                        val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(i)
+                        val noteOffIndex = noteOffIndexAndTime.first
+                        val noteLength = noteOffIndexAndTime.second - notes[i].time
+
                         StepNote(
+                            offsetX = offsetX,
+                            offsetY = noteHeight * (127 - notes[i].pitch),
+                            noteLength = if (i > noteOffIndex)
+                                maxWidth - offsetX
+                            else maxWidth * noteLength / 2000,
                             indexNoteOn = i,
-                            //indexNoteOff = searchForPairedNoteOFF(i, notes),
                             noteHeight = noteHeight,
-                            maxX = maxWidth,
-                            note = notes[i],
-                            isRepeating = seqUiState.isRepeating,
-                            searchForPairedNoteOffIndexAndTime = ::searchForPairedNoteOffIndexAndTime,
-                            updateNotesGridState = seqViewModel::updateNotesGridState,
-                            changePairedNoteOffPitch = ::changePairedNoteOffPitch,
-                            changePairedNoteOffTime = ::changePairedNoteOffTime,
-                            changeLength = ::changeNoteLength,
-                            erasing = ::erasing,
-                            checkSorting = ::checkSorting
+                            wrapAround = i > noteOffIndex,
+                            wrapAroundNoteLength = offsetX + maxWidth * noteLength / 2000,
                         )
                     }
                 }
             }
         }
     }
-
 }
 
 
 @Composable
 fun StepNote(
+    offsetX: Dp,
+    offsetY: Dp,
+    noteLength: Dp,
     indexNoteOn: Int,
-    //indexNoteOff: Int,
     noteHeight: Dp,
-    maxX: Dp,
-    note: Note,
-    isRepeating: Boolean,
-    searchForPairedNoteOffIndexAndTime: (index: Int) -> Pair<Int, Int>,
-    updateNotesGridState: () -> Unit,
-    changePairedNoteOffPitch: (index: Int, pitch: Int) -> Unit,
-    changePairedNoteOffTime: (index: Int, time: Int) -> Unit,
-    changeLength: (index: Int, length: Int) -> Unit,
-    erasing: (Boolean, Int) -> Boolean,
-    checkSorting: () -> Unit
+    wrapAround: Boolean,
+    wrapAroundNoteLength: Dp,
 ) {
-    val offY = noteHeight * (127 - note.pitch)
-    var offsetX by remember { mutableStateOf(maxX * note.time / 2000) }
-    var offsetY by remember { mutableStateOf(offY) }
-    var offsetThreshold by remember { mutableStateOf(0) }
-    var savedThreshold by remember { mutableStateOf(0) }
+    NoteBox(
+        offsetX = offsetX,
+        offsetY = offsetY,
+        width = noteLength,
+        noteHeight = noteHeight,
+        indexNoteOn = indexNoteOn
+    )
 
-    val indexNoteOff = searchForPairedNoteOffIndexAndTime(indexNoteOn).first
-    val noteOffTime = searchForPairedNoteOffIndexAndTime(indexNoteOn).second
-    val noteLength = noteOffTime - note.time
+    if(wrapAround) {
+        NoteBox(
+            offsetX = 0.dp,
+            offsetY = offsetY,
+            width = wrapAroundNoteLength,
+            noteHeight = noteHeight,
+            indexNoteOn = indexNoteOn
+        )
+    }
+}
 
-
+@Composable
+fun NoteBox(
+    offsetX: Dp,
+    offsetY: Dp,
+    width: Dp,
+    noteHeight: Dp,
+    indexNoteOn: Int,
+) {
     Box(
         modifier = Modifier
             .offset(offsetX, offsetY)
             .height(noteHeight)
-            .width(
-                if(indexNoteOn > indexNoteOff)
-                    maxX - offsetX
-                else maxX * noteLength / 2000
-//                if(note.length < 0 || maxX < offsetX + maxX * note.length / 2000) {
-//                    (maxX - offsetX)
-//                } else maxX * note.length / 2000
-            )
+            .width(width)
             .background(buttonsBg)
             .border(BorderStroke(0.6.dp, playGreen), RoundedCornerShape(0.dp))
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        erasing(isRepeating, indexNoteOn)
-                        updateNotesGridState()
-                    }
-                )
-            }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragEnd = {
-                        offsetY = noteHeight * (127 - note.pitch)
-                        checkSorting()  // TODO not on the DragEnd, but every crossing of other note
-                    }
-                ) { change, dragAmount ->
-                    change.consume()
-
-                    offsetX += dragAmount.x.toDp()
-                    val savedNoteTime = note.time
-                    note.time = (offsetX * 2000 / maxX).toInt()
-                    changePairedNoteOffTime(indexNoteOff, note.time - savedNoteTime)
-                    if(note.time >= 2000) note.time -= 2000
-                    else if(note.time < 0) note.time += 2000
-
-                    offsetY += dragAmount.y.toDp()
-
-                    /* BOUNDARIES
-                    when {
-                        offsetX < 0.dp -> offsetX = 0.dp
-                        offsetX > maxX - width -> offsetX = maxX - width
-                        else -> offsetX += dragAmount.x.toDp()
-                    }
-                    when {
-                        offsetY < 0.dp -> offsetY = 0.dp
-                        offsetY > maxY - height -> offsetY = maxY - height
-                        else -> {
-                     */
-
-                    val roundingY = if (offsetY > offY) 0.5 else -0.5
-                    offsetThreshold = ((offsetY - offY).value / noteHeight.value + roundingY).toInt()
-                    if (offsetThreshold > savedThreshold) {
-                        note.pitch -= 1
-                        changePairedNoteOffPitch(indexNoteOff, note.pitch)
-                        //updateNotesGridState()
-                        savedThreshold = offsetThreshold
-                    } else if (offsetThreshold < savedThreshold) {
-                        note.pitch += 1
-                        changePairedNoteOffPitch(indexNoteOff, note.pitch)
-                        //updateNotesGridState()
-                        savedThreshold = offsetThreshold
-                    }
-    //                    }
-    //                }
-                }
-            }
     ) {
-        Text("$indexNoteOn")
+//        Text("$indexNoteOn")
     }
-
-    Box(
-        modifier = Modifier
-            .alpha(if(indexNoteOn > indexNoteOff) 1f else 0f)
-            .offset(0.dp, offsetY)
-            .height(noteHeight)
-            .width(offsetX + maxX * noteLength / 2000)
-            .background(buttonsBg)
-            .border(BorderStroke(0.6.dp, playGreen), RoundedCornerShape(0.dp))
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        erasing(isRepeating, indexNoteOn)
-                        updateNotesGridState()
-                    }
-                )
-            }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragEnd = {
-                        offsetY = noteHeight * (127 - note.pitch)
-                        checkSorting()  // TODO not on the DragEnd, but every crossing of other note
-                    }
-                ) { change, dragAmount ->
-                    change.consume()
-
-                    offsetX += dragAmount.x.toDp()
-                    val savedNoteTime = note.time
-                    note.time = (offsetX * 2000 / maxX).toInt()
-                    changePairedNoteOffTime(indexNoteOff, note.time - savedNoteTime)
-                    if(note.time >= 2000) note.time -= 2000
-                    else if(note.time < 0) note.time += 2000
-
-                    offsetY += dragAmount.y.toDp()
-
-                    val roundingY = if (offsetY > offY) 0.5 else -0.5
-                    offsetThreshold = ((offsetY - offY).value / noteHeight.value + roundingY).toInt()
-                    if (offsetThreshold > savedThreshold) {
-                        note.pitch -= 1
-                        changePairedNoteOffPitch(indexNoteOff, note.pitch)
-                        savedThreshold = offsetThreshold
-                    } else if (offsetThreshold < savedThreshold) {
-                        note.pitch += 1
-                        changePairedNoteOffPitch(indexNoteOff, note.pitch)
-                        savedThreshold = offsetThreshold
-                    }
-                }
-            }
-    ) {
-        Text("$indexNoteOn w")
-    }
-
-    /*
-    // WRAP-AROUND NOTE
-    Box(
-        modifier = Modifier
-            .alpha(if(note.length < 0) 1f else 0f)
-            .offset(0.dp, offsetY)
-            .height(noteHeight)
-            .width(offsetX + maxX * note.length / 2000)
-            .background(buttonsBg)
-            .border(BorderStroke(0.6.dp, playGreen), RoundedCornerShape(0.dp))
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        erasing(isRepeating, indexNoteOn)
-                        updateNotesGridState()
-                    }
-                )
-            }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragEnd = {
-                        offsetY = noteHeight * (127 - note.pitch)
-                        checkSorting()
-                    }
-                ) { change, dragAmount ->
-                    change.consume()
-
-                    val indexNoteOff = searchForPairedNoteOffIndexAndTime(indexNoteOn)
-
-                    offsetX += dragAmount.x.toDp()
-                    val savedNoteTime = note.time
-                    note.time = (offsetX * 2000 / maxX).toInt()
-                    if(note.length < 0 && note.time + note.length <= 0) {  // drag left until end of wrap-around
-                        changeLength(indexNoteOn, 2000 + note.length)
-                    }
-                    changePairedNoteOffTime(indexNoteOff, note.time - savedNoteTime)
-                    if(note.time >= 2000) {  // drag right until END OF wrap-around
-                        note.time = 0
-                        changeLength(indexNoteOn, 2000 + note.length)
-                        changePairedNoteOffTime(indexNoteOff, note.length)
-                    }
-
-                    offsetY += dragAmount.y.toDp()
-
-                    /* BOUNDARIES
-                    when {
-                        offsetX < 0.dp -> offsetX = 0.dp
-                        offsetX > maxX - width -> offsetX = maxX - width
-                        else -> offsetX += dragAmount.x.toDp()
-                    }
-                    when {
-                        offsetY < 0.dp -> offsetY = 0.dp
-                        offsetY > maxY - height -> offsetY = maxY - height
-                        else -> {
-                     */
-
-                    val roundingY = if (offsetY > offY) 0.5 else -0.5
-                    offsetThreshold = ((offsetY - offY).value / noteHeight.value + roundingY).toInt()
-                    if (offsetThreshold > savedThreshold) {
-                        note.pitch -= 1
-                        changePairedNoteOffPitch(indexNoteOff, note.pitch)
-                        //updateNotesGridState()
-                        savedThreshold = offsetThreshold
-                    } else if (offsetThreshold < savedThreshold) {
-                        note.pitch += 1
-                        changePairedNoteOffPitch(indexNoteOff, note.pitch)
-                        //updateNotesGridState()
-                        savedThreshold = offsetThreshold
-                    }
-//                    }
-//                }
-                }
-            }
-    ) {
-        Text("$indexNoteOn w")
-    }
-    */
 }
-
-
-//fun searchForPairedNoteOFF(index: Int, notes: Array<Note>): Int {
-//    val searchedPitch = notes[index].pitch
-//    var pairedNoteOffIndex = -1
-//    var searchedIndex: Int
-//    // searching forward from indexToPlay
-//    if (index < notes.lastIndex) {
-//        searchedIndex = notes
-//            .copyOfRange(index + 1, notes.size)
-//            .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
-//        pairedNoteOffIndex = if (searchedIndex == -1) -1 else index + 1 + searchedIndex
-//    }
-//    // searching forward from 0
-//    if (pairedNoteOffIndex == -1) {
-//        searchedIndex = notes
-//            .copyOfRange(0, index)
-//            .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
-//        pairedNoteOffIndex = if (searchedIndex == -1) -1 else searchedIndex
-//    }
-//    return pairedNoteOffIndex
-//}
 
 
 @Composable

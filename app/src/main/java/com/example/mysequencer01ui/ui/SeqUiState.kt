@@ -12,6 +12,7 @@ data class SeqUiState (
     val bpm: Float = 120f,
     val factorBpm: Double = 1.0,
     val timingClock: Double = 500.0 / 24,
+    val transmitClock: Boolean = true,
     val seqIsPlaying: Boolean = false,
     val seqIsRecording: Boolean = false,
     val padsMode: PadsMode = PadsMode.DEFAULT,

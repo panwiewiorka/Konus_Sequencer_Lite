@@ -68,7 +68,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             ) {
                 when(seqUiState.seqView) {
                     LIVE -> LiveView(seqViewModel, seqUiState, buttonsSize)
-                    STEP -> StepView(seqViewModel, seqUiState, buttonsSize)
+                    STEP -> StepView(seqViewModel, seqUiState, buttonsSize, kmmk)
                     PIANO -> PianoView(seqViewModel, seqUiState, buttonsSize)
                     AUTOMATION -> { }
                     SETTINGS -> SettingsView(seqViewModel, seqUiState, buttonsSize, kmmk)

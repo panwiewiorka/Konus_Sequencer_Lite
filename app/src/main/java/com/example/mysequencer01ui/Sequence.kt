@@ -13,9 +13,9 @@ class Sequence (
     var pressedNotes: Array<Boolean> = Array(128){false}, // manually pressed notes that are muting same ones played by sequencer
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
 
-    var StepViewYScroll: Int = 0,
-    var PianoViewLowPianoScroll: Int = 7,
-    var PianoViewHighPianoScroll: Int = 21,
+    var stepViewYScroll: Int = 0,
+    var pianoViewLowPianoScroll: Int = 7,
+    var pianoViewHighPianoScroll: Int = 21,
 
     var indexToPlay: Int = 0,
     var startTimeStamp: Long = 0,
@@ -39,11 +39,13 @@ class Sequence (
         seqIsPlaying: Boolean,
         isRepeating: Boolean,
         repeatLength: Double,
-        customRecTime: Int = -1,
-        stepRecord: Boolean = false
+        customTime: Int = -1,
+        stepRecord: Boolean = false,
+        noteHeight: Float = 60f
     ) {
+        val customRecTime = if(customTime >= totalTime) customTime - totalTime else customTime
         val recordTime: Int
-         if(customRecTime > -1) {
+        if(customRecTime > -1) {
             recordTime = customRecTime
         } else {
              if(seqIsPlaying){
@@ -156,7 +158,7 @@ class Sequence (
             channelIsPlayingNotes = velocity > 0
 //        }
 
-
+        if(!stepRecord) stepViewYScroll = (noteHeight * pitch).toInt()
     }
 
     private fun recIntoArray(
@@ -202,10 +204,36 @@ class Sequence (
     }
 
 
-    fun erasing(isRepeating: Boolean, index: Int): Boolean {
+    fun erasing(kmmk: KmmkComponentContext, isRepeating: Boolean, index: Int): Boolean {
         if (notes[index].velocity > 0) {
-            val searchedPitch = notes[index].pitch
             var breakFlag = false
+
+            // searching for paired noteOFF
+            val pairedNoteOff = returnPairedNoteOffIndexAndTime(index)
+            var pairedNoteOffIndex = pairedNoteOff.first
+            val pairedNoteOffTime = pairedNoteOff.second
+
+            // stop note_to_be_erased if playing (StepView condition)
+            val dt = if(isRepeating) deltaTimeRepeat else deltaTime
+            val deltaTimeInRange = if(index < pairedNoteOffIndex) {
+                dt in notes[index].time.toDouble()..notes[pairedNoteOffIndex].time.toDouble()
+            } else {
+                dt in notes[index].time.toDouble()..totalTime.toDouble() || dt in 0.0..notes[pairedNoteOffIndex].time.toDouble()
+            }
+            if(isRepeating) {
+                if(playingNotes[notes[index].pitch] && deltaTimeInRange) {
+                    kmmk.noteOn(channel, notes[index].pitch, 0)
+                    playingNotes[notes[index].pitch] = false
+                    channelIsPlayingNotes = false // TODO !!!
+                }
+            } else {
+                if(playingNotes[notes[index].pitch] && deltaTimeInRange) {
+                    kmmk.noteOn(channel, notes[index].pitch, 0)
+                    playingNotes[notes[index].pitch] = false
+                    channelIsPlayingNotes = false // TODO !!!
+                }
+            }
+            if(pairedNoteOff.first > index) pairedNoteOffIndex -= 1
 
             // erasing noteON
             when {
@@ -229,24 +257,6 @@ class Sequence (
                 }
             }
 
-            // searching for paired noteOFF
-            var pairedNoteOffIndex = -1
-            var searchedIndex: Int
-            // searching forward from indexToPlay
-            if (index <= notes.lastIndex) {
-                searchedIndex = notes
-                    .copyOfRange(index, notes.size)
-                    .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
-                pairedNoteOffIndex = if (searchedIndex == -1) -1 else searchedIndex + index
-            }
-            // searching forward from 0
-            if (pairedNoteOffIndex == -1) {
-                searchedIndex = notes
-                    .copyOfRange(0, index)
-                    .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
-                pairedNoteOffIndex = if (searchedIndex == -1) -1 else searchedIndex
-            }
-
             // erasing paired noteOFF
             when {
                 // no paired noteOFF found
@@ -258,6 +268,7 @@ class Sequence (
                         notes = notes.copyOfRange(0, pairedNoteOffIndex)
                     } else {
                         notes = emptyArray()
+                        Log.d("ryjtyj", "erasing noteOff = emptyArray. index = $index, pairedNoteOffIndex = $pairedNoteOffIndex")
                     }
                     breakFlag = true
                 }
@@ -274,7 +285,7 @@ class Sequence (
 
             // updating index when erasing note before it
             if (pairedNoteOffIndex < index && pairedNoteOffIndex > -1) {
-                if(isRepeating) indexToRepeat-- else indexToPlay--
+                if(isRepeating) if(indexToRepeat > 0) indexToRepeat-- else if(indexToPlay > 0) indexToPlay--
             }
             if (breakFlag) return false // break out of while() when erased last note in array
 
@@ -299,14 +310,14 @@ class Sequence (
 
 
     fun updateStepViewYScroll(y: Int) {
-        StepViewYScroll = y
+        stepViewYScroll = y
     }
 
     fun updatePianoViewXScroll(x: Int, lowerPiano: Boolean = false) {
-        if(lowerPiano) PianoViewLowPianoScroll = x else PianoViewHighPianoScroll = x
+        if(lowerPiano) pianoViewLowPianoScroll = x else pianoViewHighPianoScroll = x
     }
 
-    fun searchForPairedNoteOffIndexAndTime(index: Int): Pair<Int, Int> {
+    fun returnPairedNoteOffIndexAndTime(index: Int): Pair<Int, Int> {
         val searchedPitch = notes[index].pitch
         var pairedNoteOffIndex = -1
         var searchedIndex: Int
@@ -324,24 +335,20 @@ class Sequence (
                 .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
             pairedNoteOffIndex = if (searchedIndex == -1) -1 else searchedIndex
         }
-        return if(pairedNoteOffIndex > -1) Pair(pairedNoteOffIndex, notes[pairedNoteOffIndex].time) else Pair(pairedNoteOffIndex, 0)
+        return if(pairedNoteOffIndex > -1) Pair(pairedNoteOffIndex, notes[pairedNoteOffIndex].time) else Pair(-1, -2)
     }
 
-    fun changePairedNoteOffPitch(index: Int, pitch: Int) {
+    fun changeNotePitch(index: Int, pitch: Int) {
         notes[index].pitch = pitch
     }
 
-    fun changePairedNoteOffTime(index: Int, time: Int) {
-        notes[index].time += time
+    fun changeNoteTime(index: Int, deltaTime: Int) {
+        notes[index].time += deltaTime
         if(notes[index].time >= 2000) notes[index].time -= 2000
         else if(notes[index].time < 0) notes[index].time += 2000
     }
 
-    fun changeNoteLength(index: Int, length: Int) {
-        notes[index].length = length
-    }
-
-    fun checkSorting(){
+    fun sortNotesByTime(){
         notes.sortBy { it.time }
     }
 }

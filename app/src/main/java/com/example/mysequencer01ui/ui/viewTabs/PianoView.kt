@@ -39,6 +39,7 @@ import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsColor
 import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.playGreen
+import com.example.mysequencer01ui.ui.theme.warmRed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,10 +61,10 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
 
     LaunchedEffect(key1 = scrollStateLowWhite, key2 = scrollStateHighWhite) {
         CoroutineScope(Dispatchers.Main).launch {
-            scrollStateLowWhite.scrollToItem(sequence.PianoViewLowPianoScroll + 7)
-            scrollStateLowBlack.scrollToItem(sequence.PianoViewLowPianoScroll + 7)
-            scrollStateHighWhite.scrollToItem(sequence.PianoViewHighPianoScroll + 7)
-            scrollStateHighBlack.scrollToItem(sequence.PianoViewHighPianoScroll + 7)
+            scrollStateLowWhite.scrollToItem(sequence.pianoViewLowPianoScroll)
+            scrollStateLowBlack.scrollToItem(sequence.pianoViewLowPianoScroll)
+            scrollStateHighWhite.scrollToItem(sequence.pianoViewHighPianoScroll)
+            scrollStateHighBlack.scrollToItem(sequence.pianoViewHighPianoScroll)
         }
     }
 
@@ -75,7 +76,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            PianoKeyboard(seqUiState.selectedChannel, keyWidth, keyHeight, notesPadding, scrollStateHighWhite, scrollStateHighBlack, seqViewModel::pressPad)
+            PianoKeyboard(seqUiState.selectedChannel, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, scrollStateHighWhite, scrollStateHighBlack, seqViewModel::pressPad)
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
@@ -90,7 +91,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, false)
                 OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, false, true)
             }
-            PianoKeyboard(seqUiState.selectedChannel, keyWidth, keyHeight, notesPadding, scrollStateLowWhite, scrollStateLowBlack, seqViewModel::pressPad)
+            PianoKeyboard(seqUiState.selectedChannel, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, scrollStateLowWhite, scrollStateLowBlack, seqViewModel::pressPad)
         }
     }
 }
@@ -98,6 +99,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
 @Composable
 fun PianoKeyboard(
     selectedChannel: Int,
+    seqIsRecording: Boolean,
     keyWidth: Dp,
     keyHeight: Dp,
     notesPadding: Dp,
@@ -108,7 +110,6 @@ fun PianoKeyboard(
     Column(
         verticalArrangement = Arrangement.spacedBy(-keyHeight / 2)
     ) {
-        // TODO check pattern: middle C == 60, -> lowest key = ?
         LazyRow(
             state = scrollStateWhite,
             userScrollEnabled = false
@@ -117,7 +118,7 @@ fun PianoKeyboard(
                 Box(
                     contentAlignment = Alignment.BottomCenter
                 ) {
-                    val octave = (it + 7) / 7
+                    val octave = (it + 7) / 7 - 1
                     val semitone = when( (it + 7) % 7) {
                         0 -> 0
                         1 -> 2
@@ -128,7 +129,7 @@ fun PianoKeyboard(
                         else -> 11
                     }
                     val pitch = semitone + octave * 12
-                    PianoKey(pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, true)
+                    PianoKey(seqIsRecording, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, true)
                     if ((it + 7) % 7 == 0) Text("${it / 7 - 4}")
                 }
             }
@@ -150,8 +151,8 @@ fun PianoKeyboard(
                 }
                 val pitch = semitone + octave * 12
                 val a = (it + 7) % 7
-                if(a == 2 || a == 6) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
-                else PianoKey(pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, false)
+                if(a == 2 || a == 6 || it == 74) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
+                else PianoKey(seqIsRecording, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, false)
             }
         }
     }
@@ -159,6 +160,7 @@ fun PianoKeyboard(
 
 @Composable
 fun PianoKey(
+    seqIsRecording: Boolean,
     pressPad: (Int, Int, Int) -> Unit,
     selectedChannel: Int,
     pitch: Int,
@@ -188,7 +190,9 @@ fun PianoKey(
         modifier = Modifier
             .padding(notesPadding, 0.dp)
             .background(
-                if(keyColor.value) playGreen else {
+                if(keyColor.value) {
+                    if(seqIsRecording) warmRed else playGreen
+                } else {
                     if (whiteKey) notWhite else BackGray
                 }
             )

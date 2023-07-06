@@ -22,7 +22,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     val uiState: StateFlow<SeqUiState> = _uiState.asStateFlow()
 
     var toggleTime = 150
-    var staticNoteOffTime = 1
+    var staticNoteOffTime = 100
     private var allChannelsMuted = false
     private var previousPadsMode: PadsMode = DEFAULT
 
@@ -59,7 +59,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         // NORMAL ERASING or PLAYING
                         while(notes.size > indexToPlay && notes[indexToPlay].time <= deltaTime) {
                             if(!uiState.value.isRepeating && (isErasing || (uiState.value.seqIsRecording && pressedNotes[notes[indexToPlay].pitch]))) {
-                                if (!erasing(false, indexToPlay)) break
+                                if (!erasing(kmmk,false, indexToPlay)) break
                             } else {
                                 if(!uiState.value.isRepeating) playing(kmmk, indexToPlay)
                                 indexToPlay++
@@ -67,7 +67,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         }
 
                         // CLOCK
-                        if(c == 0) {
+                        if(uiState.value.transmitClock && c == 0) {
                             if(deltaTime >= uiState.value.timingClock * clockTicks) {
                                 kmmk.sendTimingClock()
                                 clockTicks++
@@ -127,7 +127,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                 savedRepeatsCount = repeatsCount
                             }
 
-//                            if(c == 0) Log.d("ryjtyj", "wrapIndex = $wrapIndex, deltaTimeRepeat = $deltaTimeRepeat, wrapDelta = $wrapDelta")
                             // erasing or playing
                             while(
                                 notes.size > (indexToRepeat - wrapIndex)
@@ -136,7 +135,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             ) {
                                 if(isErasing || (uiState.value.seqIsRecording && pressedNotes[notes[indexToRepeat - wrapIndex].pitch])
                                 ) {
-                                    if (!erasing(true, indexToRepeat - wrapIndex)) break
+                                    if (!erasing(kmmk,true, indexToRepeat - wrapIndex)) break
                                 } else {
                                     playing(kmmk, indexToRepeat - wrapIndex)
                                     indexToRepeat++
@@ -310,6 +309,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         }
     }
 
+    // TODO move out of SeqUiState?
     private fun SeqUiState.stopNotesOnChannel(c: Int, mode: StopNotesMode) {
         for (p in 0..127) {
             if (sequences[c].playingNotes[p]) {
@@ -393,6 +393,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             sequences = uiState.value.sequences,
             visualArrayRefresh = !uiState.value.visualArrayRefresh
         ) }
+        Log.d("ryjtyj", "recomposeVisualArray()")
     }
 
     fun changeSeqViewState(seqView: SeqView) {
@@ -406,6 +407,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             sequences = uiState.value.sequences,
             visualArrayRefresh = !uiState.value.visualArrayRefresh
         ) }
+        Log.d("ryjtyj", "updateNotesGridState()")
     }
 
     fun changePianoRollNoteHeight(noteHeight: Dp) {
@@ -421,6 +423,12 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         ) }
 
         Log.d("emptyTag", " ") // to hold in imports
+    }
+
+    fun switchClockTransmitting() {
+        _uiState.update {
+            it.copy( transmitClock = !uiState.value.transmitClock )
+        }
     }
 
 }

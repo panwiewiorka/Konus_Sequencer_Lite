@@ -603,7 +603,7 @@ fun EraseButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp)
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (padsMode == ERASING) warmRed else buttonsColor)
+            .background(if (padsMode == ERASING) notWhite else buttonsColor)
             .clickable(
                 interactionSource = buttonInteraction(
                     seqViewModel.toggleTime,

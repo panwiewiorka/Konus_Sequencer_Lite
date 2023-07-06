@@ -35,7 +35,7 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
         Spacer(modifier = Modifier.width(spacerSize))
         Column(modifier = Modifier.weight(1f)) {
             StepSequencer(seqUiState, buttonsSize)
-            VisualArray(seqUiState, buttonsSize)
+            //VisualArray(seqUiState, buttonsSize)
             Row {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,

@@ -63,7 +63,7 @@ fun DrawScope.eraseSymbol(padsMode: PadsMode) {
 
     drawPath(
         path = pathX,
-        color = if (padsMode == PadsMode.ERASING) notWhite else warmRed,
+        color = warmRed,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round
@@ -78,7 +78,7 @@ fun DrawScope.eraseSymbol(padsMode: PadsMode) {
 
     drawPath(
         path = pathV,
-        color = notWhite,
+        color = if (padsMode == ERASING) warmRed else notWhite,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round

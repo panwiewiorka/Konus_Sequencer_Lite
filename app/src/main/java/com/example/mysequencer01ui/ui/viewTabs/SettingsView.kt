@@ -1,13 +1,18 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
+import android.widget.ToggleButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.Button
 import androidx.compose.material.Slider
+import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +28,7 @@ import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.ui.MidiSelector
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
+import com.example.mysequencer01ui.ui.theme.notWhite
 
 @Composable
 fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp, kmmk: KmmkComponentContext) {
@@ -30,17 +36,10 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .padding(20.dp)
+            .padding(40.dp)
     ) {
-        Text(
-            text = "${seqUiState.bpm} BPM",
-            color = Color.Gray,
-            modifier = Modifier.padding(10.dp)
-        )
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             MidiSelector(kmmk)
 
@@ -49,7 +48,11 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
                 verticalAlignment = Alignment.CenterVertically,
                 modifier  = Modifier.fillMaxWidth()
             ) {
-
+                Text(
+                    text = "${seqUiState.bpm} BPM",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(end = 10.dp)
+                )
 
                 var sizeSliderPosition by remember { mutableStateOf(120f) }
                 Slider(
@@ -62,6 +65,11 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
                     valueRange = 40f..280f,
                     onValueChangeFinished = {  }
                 )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Clock transmit", color = notWhite, modifier = Modifier.padding(end = 10.dp))
+                Switch(checked = seqUiState.transmitClock, onCheckedChange = {seqViewModel.switchClockTransmitting()})
             }
         }
     }
