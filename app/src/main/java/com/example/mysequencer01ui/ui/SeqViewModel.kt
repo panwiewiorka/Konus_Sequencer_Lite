@@ -26,32 +26,34 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private var allChannelsMuted = false
     private var previousPadsMode: PadsMode = DEFAULT
 
-    /*
-    val patterns: Array<Array<Note>> = emptyArray()
+    private var patterns: Array<Array<Array<Note>>> = Array(16){ Array(16) { emptyArray() } }
+//    private var patterns: Array<Array<Array<Note>>> = emptyArray()
     init {
         CoroutineScope(Dispatchers.Main).launch {
-            for(pattern in 0..15) {
+            for(p in 0..15) {
                 for (c in 0..15) {
-                    val lastIndex = dao.getLastIndex(pattern, c) ?: -1
-//                _uiState.value.sequences[c].notes = Array(size) { Note(0, 0, 0, 0) }
+                    val lastIndex = dao.getLastIndex(p, c) ?: -1
+                    Log.d("ryjtyj", "$lastIndex")
+                    patterns[p][c] = Array(lastIndex + 1){Note(0,0,0,0)}
                     for (i in 0..lastIndex) {
-                        val note = dao.loadPattern(pattern = pattern, channel = c, index = i)
-//                    _uiState.value.sequences[c].notes[i].apply {
-//                        time = note.time
-//                        pitch = note.pitch
-//                        velocity = note.velocity
-//                        length = note.length
-//                    }
-                        _uiState.value.sequences[c].recordNote(
-                            note.pitch,
-                            note.velocity,
-                            staticNoteOffTime,
-                            uiState.value.seqIsPlaying,
-                            uiState.value.isRepeating,
-                            uiState.value.repeatLength,
-                            note.time,
-                            true,
-                        )
+                        val note = dao.loadNoteFromPattern(pattern = p, channel = c, index = i)
+                        Log.d("ryjtyj", "dao.loadNoteFromPattern $p $c $i")
+                        patterns[p][c][i].apply {
+                            time = note.time
+                            pitch = note.pitch
+                            velocity = note.velocity
+                            length = note.length
+                        }
+//                        _uiState.value.sequences[c].recordNote(
+//                            note.pitch,
+//                            note.velocity,
+//                            staticNoteOffTime,
+//                            uiState.value.seqIsPlaying,
+//                            uiState.value.isRepeating,
+//                            uiState.value.repeatLength,
+//                            note.time,
+//                            true,
+//                        )
                     }
                 }
             }
@@ -60,7 +62,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             ) }
         }
     }
-     */
 
     fun startSeq() {
         if(
@@ -182,7 +183,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 _uiState.update { a -> a.copy(
                     visualArrayRefresh = !uiState.value.visualArrayRefresh,
                 ) }
-                delay(1000.nanoseconds)
+                delay(3000.nanoseconds)
             }
         }
     }
@@ -309,7 +310,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     else channelIsPlayingNotes = false // TODO implement UNDO CLEAR, move {channelIsPlayingNotes = false} into IF?
                 }
                 SAVING -> {
-                    if(velocity > 0) savePattern(pattern = channel, sequence = uiState.value.sequences)
+                    if(velocity > 0) savePattern(pattern = channel, sequences = uiState.value.sequences)
                 }
                 LOADING -> {
                     if(!allButton && velocity > 0) {
@@ -381,20 +382,21 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-    private fun savePattern(pattern: Int, sequence: MutableList<Sequence>) {
+    private fun savePattern(pattern: Int, sequences: MutableList<Sequence>) {
         CoroutineScope(Dispatchers.Default).launch {
             dao.deletePattern(pattern)
-            for(c in sequence.indices) {
-                for(i in sequence[c].notes.indices) {
-                    dao.savePattern(
+            for(c in sequences.indices) {
+                patterns[pattern][c] = sequences[c].notes
+                for(i in sequences[c].notes.indices) {
+                    dao.saveNoteToPattern(
                         Patterns(
                             pattern = pattern,
                             channel = c,
                             noteIndex = i,
-                            time = sequence[c].notes[i].time,
-                            pitch = sequence[c].notes[i].pitch,
-                            velocity = sequence[c].notes[i].velocity,
-                            length = sequence[c].notes[i].length
+                            time = sequences[c].notes[i].time,
+                            pitch = sequences[c].notes[i].pitch,
+                            velocity = sequences[c].notes[i].velocity,
+                            length = sequences[c].notes[i].length
                         )
                     )
                 }
@@ -405,26 +407,26 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private fun loadPattern(pattern: Int) {
         CoroutineScope(Dispatchers.Main).launch {
             for(c in 0..15) {
-                val lastIndex = dao.getLastIndex(pattern, c) ?: -1
-//                _uiState.value.sequences[c].notes = Array(size) { Note(0, 0, 0, 0) }
-                for(i in 0 ..lastIndex) {
-                    val note = dao.loadPattern(pattern = pattern, channel = c, index = i)
-//                    _uiState.value.sequences[c].notes[i].apply {
-//                        time = note.time
-//                        pitch = note.pitch
-//                        velocity = note.velocity
-//                        length = note.length
-//                    }
-                    _uiState.value.sequences[c].recordNote(
-                        note.pitch,
-                        note.velocity,
-                        staticNoteOffTime,
-                        uiState.value.seqIsPlaying,
-                        uiState.value.isRepeating,
-                        uiState.value.repeatLength,
-                        note.time,
-                        true,
-                    )
+//                val lastIndex = patterns[pattern][c].lastIndex
+//                for(i in 0 ..lastIndex) {
+//                    val note = patterns[pattern][c][i]
+//                    _uiState.value.sequences[c].recordNote(
+//                        note.pitch,
+//                        note.velocity,
+//                        staticNoteOffTime,
+//                        uiState.value.seqIsPlaying,
+//                        uiState.value.isRepeating,
+//                        uiState.value.repeatLength,
+//                        note.time,
+//                        true,
+//                    )
+//                }
+                with(_uiState.value.sequences[c]) {
+                    notes = patterns[pattern][c]
+                    indexToPlay = notes.indexOfLast { it.time < deltaTime / uiState.value.factorBpm } + 1
+                    if(uiState.value.isRepeating) {
+                        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat / uiState.value.factorBpm } + 1
+                    }
                 }
             }
             _uiState.update { a -> a.copy(

@@ -8,10 +8,10 @@ interface SeqDao {
 //    suspend fun populateSettings(patterns: Patterns)
 
     @Insert
-    suspend fun savePattern(patterns: Patterns)
+    suspend fun saveNoteToPattern(patterns: Patterns)
 
     @Query("SELECT * from Patterns WHERE pattern = :pattern AND channel = :channel AND noteIndex = :index")
-    suspend fun loadPattern(pattern: Int, channel: Int, index: Int): Patterns
+    suspend fun loadNoteFromPattern(pattern: Int, channel: Int, index: Int): Patterns
 
     @Query("DELETE FROM Patterns WHERE pattern = :pattern")
     suspend fun deletePattern(pattern: Int)
