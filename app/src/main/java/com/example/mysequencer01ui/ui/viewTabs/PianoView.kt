@@ -140,7 +140,7 @@ fun PianoKeyboard(
             modifier = Modifier.offset(keyWidth / 2 + notesPadding, -keyHeight / 2)
         ) {
             items(75){
-                val octave = (it + 7) / 7
+                val octave = (it + 7) / 7 - 1
                 val semitone = when( (it + 7) % 7) {
                     0 -> 1
                     1 -> 3

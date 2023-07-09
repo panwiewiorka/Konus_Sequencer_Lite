@@ -37,6 +37,8 @@ class Sequence (
         velocity: Int,
         staticNoteOffTime: Int,
         seqIsPlaying: Boolean,
+//        isQuantizing: Boolean,
+//        quantization: Int,
         isRepeating: Boolean,
         repeatLength: Double,
         customTime: Int = -1,
@@ -46,6 +48,13 @@ class Sequence (
         val customRecTime = if(customTime >= totalTime) customTime - totalTime else customTime
         val recordTime: Int
         if(customRecTime > -1) {
+//            recordTime = if(isQuantizing) {
+//                val remainder = customRecTime % (totalTime / quantization)
+//                if(remainder > quantization / 2)
+//                    customRecTime - remainder + quantization
+//                else
+//                    customRecTime - remainder
+//            } else customRecTime
             recordTime = customRecTime
         } else {
              if(seqIsPlaying){
@@ -69,7 +78,8 @@ class Sequence (
         }
 
         var index = if(stepRecord) {
-            notes.indexOfLast { it.time < customRecTime } + 1
+            val searchedIndex = notes.indexOfLast { it.time <= customRecTime } + 1
+            if(searchedIndex != 0 && velocity == 0 && notes[searchedIndex - 1].time == customRecTime) searchedIndex - 1 else searchedIndex
         } else if(isRepeating) indexToRepeat else indexToPlay
 
         // NOTE LENGTH (for StepSeq)
@@ -158,7 +168,9 @@ class Sequence (
             channelIsPlayingNotes = velocity > 0
 //        }
 
-        if(!stepRecord) stepViewYScroll = (noteHeight * pitch).toInt()
+        if(!stepRecord) stepViewYScroll = (noteHeight * pitch
+                //- notesGridHeight / 2
+                ).toInt()
     }
 
     private fun recIntoArray(
@@ -342,10 +354,17 @@ class Sequence (
         notes[index].pitch = pitch
     }
 
-    fun changeNoteTime(index: Int, deltaTime: Int) {
-        notes[index].time += deltaTime
-        if(notes[index].time >= 2000) notes[index].time -= 2000
-        else if(notes[index].time < 0) notes[index].time += 2000
+    fun changeNoteTime(index: Int, time: Int, isDeltaTime: Boolean = false) {
+        notes[index].time = if(isDeltaTime) {
+            notes[index].time + time
+        } else {
+            time
+        }
+        if(notes[index].time >= 2000) {
+            notes[index].time -= 2000
+        } else if(notes[index].time < 0) {
+            notes[index].time += 2000
+        }
     }
 
     fun sortNotesByTime(){

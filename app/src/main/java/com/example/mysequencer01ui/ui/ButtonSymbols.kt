@@ -169,13 +169,13 @@ fun DrawScope.quantizeSymbolColor(padsMode: PadsMode) {
     )
 }
 
-fun DrawScope.quantizeSymbol(padsMode: PadsMode) {
+fun DrawScope.quantizeSymbol(quantizing: Boolean) {
     val m = size.height / 8
     val s = size.height / 16
     val xs = size.height / 32
 
-    drawArc(if (padsMode == QUANTIZING) buttonsColor else dusk, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(if (padsMode == QUANTIZING) buttonsColor else dusk, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(if (quantizing) buttonsColor else dusk, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(if (quantizing) buttonsColor else dusk, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
 
     val path = Path()
     path.moveTo(center.x + m, center.y - s - xs)
@@ -189,7 +189,7 @@ fun DrawScope.quantizeSymbol(padsMode: PadsMode) {
 
     drawPath(
         path = path,
-        color = if (padsMode == QUANTIZING) buttonsColor else dusk,
+        color = if (quantizing) buttonsColor else dusk,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
 }

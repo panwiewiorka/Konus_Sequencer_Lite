@@ -219,7 +219,7 @@ fun PadButton(
             onClick = {},
             shape = RoundedCornerShape(0.dp),
             colors = ButtonDefaults.buttonColors(
-                backgroundColor = buttonsColor
+                backgroundColor = if(seqUiState.selectedChannel == channel) selectedButton else buttonsColor
             ),
             modifier = Modifier
                 .size(padsSize - 1.dp)
@@ -450,29 +450,51 @@ fun ShiftButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp,
 
 
 @Composable
-fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
+fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp, isQuantizing: Boolean){
+    val quantizing = (isQuantizing || padsMode == QUANTIZING)
+    val interactionSource = remember { MutableInteractionSource() }
+    var elapsedTime = 0L
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> {
+                    seqViewModel.editCurrentPadsMode(QUANTIZING); elapsedTime = System.currentTimeMillis()
+                }
+                is PressInteraction.Release -> {
+                    if ((System.currentTimeMillis() - elapsedTime) < seqViewModel.toggleTime) {
+                        seqViewModel.switchQuantization()
+                    }
+                    seqViewModel.editCurrentPadsMode(QUANTIZING, true)
+                }
+                is PressInteraction.Cancel -> {
+                    if ((System.currentTimeMillis() - elapsedTime) < seqViewModel.toggleTime) {
+                        seqViewModel.switchQuantization()
+                    }
+                    seqViewModel.editCurrentPadsMode(QUANTIZING, true)
+                }
+            }
+        }
+    }
     Box(
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (padsMode == QUANTIZING) dusk else buttonsColor)
+            .background( if(quantizing) dusk else buttonsColor )
             .clickable(
-                interactionSource = buttonInteraction(
-                    0,
-                    { seqViewModel.editCurrentPadsMode(QUANTIZING) },
-                    { seqViewModel.editCurrentPadsMode(QUANTIZING, true) }
-                ),
+                interactionSource = interactionSource,
                 indication = null
             ) { }
     ){
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .blur(if (padsMode == QUANTIZING) 0.dp else 6.dp)
-            .alpha(0.6f)){
-            quantizeSymbol(padsMode)
+        if (!quantizing) {
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(6.dp)
+                .alpha(0.6f)){
+                quantizeSymbol(false)
+            }
         }
         Canvas(modifier = Modifier.fillMaxSize()){
-            quantizeSymbol(padsMode)
+            quantizeSymbol(quantizing)
         }
     }
 }

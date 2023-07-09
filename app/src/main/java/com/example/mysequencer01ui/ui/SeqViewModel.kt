@@ -275,7 +275,10 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 }
                 SAVING -> { if(velocity > 0) savePattern(pattern = channel, sequence = uiState.value.sequences) }
                 LOADING -> { if(!allButton && velocity > 0) loadPattern(pattern = channel) }
-                SELECTING -> { if(!allButton && velocity > 0) _uiState.update { a -> a.copy(selectedChannel = channel) } }
+                SELECTING -> { if(!allButton && velocity > 0) {
+                    _uiState.update { a -> a.copy(selectedChannel = channel) }
+                    updateNotesGridState() // TODO remove?
+                } }
                 else -> {
                     if (playingNotes[pitch] && velocity > 0) {
                         kmmk.noteOn(channel, pitch, 0)  // allows to retrigger already playing notes
@@ -377,6 +380,25 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
+    fun quantizeTime(time: Int): Int {
+        return if(uiState.value.isQuantizing) {
+            val quantizationTime = 240000 / uiState.value.bpm / uiState.value.quantizationValue * uiState.value.factorBpm
+            val remainder = time % quantizationTime
+//            if(remainder > quantizationTime / 2)
+//                (time - remainder + quantizationTime).toInt()
+//            else
+//                (time - remainder).toInt()
+            (time - remainder).toInt()
+        } else time
+    }
+
+    fun switchQuantization() {
+        _uiState.update { it.copy(
+            isQuantizing = !uiState.value.isQuantizing
+        ) }
+    }
+
+
     fun editCurrentPadsMode(mode: PadsMode, momentary: Boolean = false){
         if(mode != uiState.value.padsMode) {
             previousPadsMode = uiState.value.padsMode
@@ -410,7 +432,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         Log.d("ryjtyj", "updateNotesGridState()")
     }
 
-    fun changePianoRollNoteHeight(noteHeight: Dp) {
+    fun changeStepViewNoteHeight(noteHeight: Dp) {
         _uiState.update { a -> a.copy( stepViewNoteHeight = noteHeight ) }
     }
 
@@ -426,9 +448,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
     fun switchClockTransmitting() {
-        _uiState.update {
-            it.copy( transmitClock = !uiState.value.transmitClock )
-        }
+        _uiState.update { it.copy(
+            transmitClock = !uiState.value.transmitClock
+        ) }
     }
 
 }

@@ -2,6 +2,7 @@ package com.example.mysequencer01ui.ui.viewTabs
 
 import android.util.Log
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -10,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderColors
 import androidx.compose.material.SliderDefaults
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +27,9 @@ import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.theme.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -36,100 +39,90 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxSize()
-            .background(screensBg)
+            .background(BackGray)
     ) {
-//        var value by remember { mutableStateOf(20f) }
-//        VerticalSlider(
-//            value = value,
-//            onValueChange = {
-//                value = it
-//                seqViewModel.changePianoRollNoteHeight(it.dp)
-//                seqViewModel.updateNotesGridState()
-//                            },
-//            modifier = Modifier
-//                .fillMaxWidth(0.85f)
-//                .height(50.dp)
-//                .background(screensBg),
-//            valueRange = 5f..40f
-//        )
+        val selectedChannel = seqUiState.sequences[seqUiState.selectedChannel]
+        val scrollState = rememberScrollState(selectedChannel.stepViewYScroll)
+        VerticalSlider(
+            value = selectedChannel.stepViewYScroll.toFloat(),
+            onValueChange = {
+                selectedChannel.updateStepViewYScroll(it.toInt())
+                CoroutineScope(Dispatchers.Main).launch {
+//                    val tempScrollValue = scrollState.value
+                    scrollState.scrollTo(selectedChannel.stepViewYScroll)
+//                    if(scrollState.value == tempScrollValue) selectedChannel.updateStepViewYScroll(scrollState.value)
+                    seqViewModel.updateNotesGridState()
+                } },
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .height(50.dp)
+                .background(BackGray),
+            valueRange = 0f..scrollState.maxValue.toFloat()
+        )
 
-        // TODO padding for notesGrid
-
-//        Box(
-//            modifier = Modifier
-//                .padding(16.dp)
-//                .border(BorderStroke(2.dp, buttonsColor))
-//        ) {
-            BoxWithConstraints(
+        BoxWithConstraints(
+            modifier = Modifier
+                .padding(top = 10.dp, end = 10.dp, bottom = 10.dp)
+                .fillMaxSize()
+                .border(0.5.dp, selectedButton)
+                .background(BackGray)
+        ){
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(BackGray)
-                    .background(
-                        if (seqUiState.visualArrayRefresh) Color(0x00000000) else Color(
-                            0x01000000
-                        )
-                    )
-                    //.recomposeHighlighter(),
+                    .background(Color.Transparent)
             ){
-
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Transparent)
-                ){
-                    for (i in 0..16) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(0.6.dp)
-                                .background(if ((i + 4) % 4 == 0) buttonsColor else buttonsBg)
-                        )
-                    }
-                }
-
-                NotesGrid(seqViewModel, seqUiState, kmmk)
-
-                val sequence = seqUiState.sequences[seqUiState.selectedChannel]
-                val playheadOffset = (sequence.deltaTime / sequence.totalTime * maxWidth.value).dp
-
-                Playhead(
-                    seqUiState = seqUiState,
-                    modifier = Modifier
-                        .offset(playheadOffset, 0.dp)
-                        .width(0.6.dp)
-                )
-
-                var playheadRepeatOffset = (sequence.deltaTimeRepeat / sequence.totalTime * maxWidth.value).dp
-                playheadRepeatOffset = if(playheadRepeatOffset.value < 0) playheadRepeatOffset + maxWidth else playheadRepeatOffset
-
-                if(seqUiState.isRepeating) {
-                    Playhead(
-                        seqUiState = seqUiState,
+                for (i in 0..16) {
+                    Box(
                         modifier = Modifier
-                            .offset(playheadRepeatOffset, 0.dp)
-                            .width(2.dp)
+                            .fillMaxHeight()
+                            .width(0.6.dp)
+                            .background(if ((i + 4) % 4 == 0) shadeOfGray else buttonsBg)
                     )
                 }
             }
-//        }
+
+            NotesGrid(seqViewModel, seqUiState, kmmk, scrollState)
+
+            val sequence = seqUiState.sequences[seqUiState.selectedChannel]
+            val playheadOffset = (sequence.deltaTime / sequence.totalTime * maxWidth.value).dp
+
+            Playhead(
+                seqUiState = seqUiState,
+                modifier = Modifier
+                    .offset(playheadOffset, 0.dp)
+                    .width(0.6.dp)
+            )
+
+            var playheadRepeatOffset = (sequence.deltaTimeRepeat / sequence.totalTime * maxWidth.value).dp
+            playheadRepeatOffset = if(playheadRepeatOffset.value < 0) playheadRepeatOffset + maxWidth else playheadRepeatOffset
+
+            if(seqUiState.isRepeating) {
+                Playhead(
+                    seqUiState = seqUiState,
+                    modifier = Modifier
+                        .offset(playheadRepeatOffset, 0.dp)
+                        .width(2.dp)
+                )
+            }
+        }
     }
 }
 
 
 @Composable
 fun NotesGrid(
-    seqViewModel: SeqViewModel, seqUiState: SeqUiState, kmmk: KmmkComponentContext
+    seqViewModel: SeqViewModel, seqUiState: SeqUiState, kmmk: KmmkComponentContext, scrollState: ScrollState,
 ) {
     with(seqUiState.sequences[seqUiState.selectedChannel]){
+
         val noteHeight = seqUiState.stepViewNoteHeight
 
-        val scrY by remember { mutableStateOf(stepViewYScroll) }
-        val scrollState = rememberScrollState(scrY)
-        updateStepViewYScroll(scrollState.value)
-
         BoxWithConstraints(
-            modifier = Modifier.height(noteHeight * 128)
+            modifier = Modifier
+                .padding(0.5.dp)
+                .height(noteHeight * 128)
         ) {
             val maxWidth = maxWidth
             var xOffset by remember { mutableStateOf(0f) }
@@ -138,12 +131,17 @@ fun NotesGrid(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Transparent)
-                    .verticalScroll(scrollState, reverseScrolling = true)
-                    .pointerInput(Unit) {
+                    .verticalScroll(
+                        scrollState,
+                        reverseScrolling = true,
+                        flingBehavior = flingBehavior()
+                    )
+                    .pointerInput(seqUiState.selectedChannel) {
                         detectTapGestures(
                             onTap = { offset ->
                                 val pitch = 127 - (offset.y / noteHeight.toPx()).toInt()
-                                val time = ((offset.x.toDp().value / maxWidth.value) * totalTime).toInt()
+                                var time =
+                                    ((offset.x.toDp().value / maxWidth.value) * totalTime).toInt()
 
                                 var noteOnIndex = notes.indexOfLast {
                                     it.pitch == pitch && it.velocity > 0 && it.time < time
@@ -151,7 +149,10 @@ fun NotesGrid(
                                 if (noteOnIndex == -1 && notes.isNotEmpty() && notes[notes.lastIndex].velocity > 0) {
                                     noteOnIndex = notes.lastIndex
                                 }
-                                val noteOffIndex = if (noteOnIndex > -1) returnPairedNoteOffIndexAndTime(noteOnIndex).first else -1
+                                val noteOffIndex =
+                                    if (noteOnIndex > -1) returnPairedNoteOffIndexAndTime(
+                                        noteOnIndex
+                                    ).first else -1
 
                                 // if note exists where we tap - erase it, else record new note
                                 if (
@@ -164,6 +165,15 @@ fun NotesGrid(
                                 ) {
                                     erasing(kmmk, seqUiState.isRepeating, noteOnIndex)
                                 } else {
+                                    time = seqViewModel.quantizeTime(time)
+                                    val noteOffTime =
+                                        time + totalTime / seqUiState.quantizationValue
+                                    val noteOffInTheMiddle =
+                                        notes.indexOfFirst { it.pitch == pitch && it.velocity == 0 && it.time in time until noteOffTime }
+                                    if (noteOffInTheMiddle != -1) changeNoteTime(
+                                        noteOffInTheMiddle,
+                                        time
+                                    )
                                     recordNote(
                                         pitch = pitch,
                                         velocity = 100,
@@ -181,7 +191,7 @@ fun NotesGrid(
                                         seqIsPlaying = seqUiState.seqIsPlaying,
                                         isRepeating = seqUiState.isRepeating,
                                         repeatLength = seqUiState.repeatLength,
-                                        customTime = totalTime / 16 + time,
+                                        customTime = noteOffTime,
                                         stepRecord = true,
                                     )
                                 }
@@ -189,7 +199,7 @@ fun NotesGrid(
                             }
                         )
                     }
-                    .pointerInput(Unit){
+                    .pointerInput(Unit) {
                         var noteDetected = false
                         var pitch = 0
                         var time: Int
@@ -210,16 +220,19 @@ fun NotesGrid(
                                 if (noteOnIndex == -1 && notes.isNotEmpty() && notes[notes.lastIndex].velocity > 0) {
                                     noteOnIndex = notes.lastIndex
                                 }
-                                noteOffIndex = if (noteOnIndex > -1) returnPairedNoteOffIndexAndTime(noteOnIndex).first else -1
+                                noteOffIndex =
+                                    if (noteOnIndex > -1) returnPairedNoteOffIndexAndTime(
+                                        noteOnIndex
+                                    ).first else -1
 
-                                // if note exists where we start dragging - move it, else scroll
+                                // does note exists where we start dragging?
                                 noteDetected =
                                     (noteOnIndex > -1 && noteOffIndex > -1) &&
-                                        (
-                                            (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
-                                                || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
-                                                (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
-                                        )
+                                            (
+                                                    (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
+                                                            || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
+                                                            (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
+                                                    )
                             },
                             onDragEnd = {
                                 //offsetY = noteHeight * (127 - note.pitch)
@@ -227,15 +240,16 @@ fun NotesGrid(
                         ) { change, dragAmount ->
                             change.consume()
 
-                            if(noteDetected) {
+                            // if note exists where we start dragging - move it, else scroll
+                            if (noteDetected) {
                                 xOffset += dragAmount.x
                                 yOffset += dragAmount.y
 
                                 deltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
-                                changeNoteTime(noteOnIndex, deltaTime)
-                                changeNoteTime(noteOffIndex, deltaTime)
+                                changeNoteTime(noteOnIndex, deltaTime, true)
+                                changeNoteTime(noteOffIndex, deltaTime, true)
 
-                                if(pitch != 127 - (yOffset / noteHeight.toPx()).toInt()) {
+                                if (pitch != 127 - (yOffset / noteHeight.toPx()).toInt()) {
                                     pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
                                     changeNotePitch(noteOnIndex, pitch)
                                     changeNotePitch(noteOffIndex, pitch)
@@ -245,18 +259,25 @@ fun NotesGrid(
                                 val tempNoteOffTime = notes[noteOffIndex].time
                                 sortNotesByTime()
 
-                                if(
+                                if (
                                     notes[noteOnIndex].time != tempNoteOnTime ||
                                     notes[noteOffIndex].time != tempNoteOffTime
                                 ) {
-                                    noteOnIndex = notes.indexOfFirst{ it.time == tempNoteOnTime && it.pitch == pitch}
-                                    Log.d("ryjtyj", "$noteOnIndex")
-                                    noteOffIndex = returnPairedNoteOffIndexAndTime(noteOnIndex).first
+                                    noteOnIndex =
+                                        notes.indexOfFirst { it.time == tempNoteOnTime && it.pitch == pitch }
+                                    noteOffIndex =
+                                        returnPairedNoteOffIndexAndTime(noteOnIndex).first
                                 }
 
                                 seqViewModel.updateNotesGridState()
                             } else {
-//                                Log.d("ryjtyj", "scroll")
+                                updateStepViewYScroll(stepViewYScroll + dragAmount.y.toInt())
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    val tempScrollValue = scrollState.value
+                                    scrollState.scrollTo(stepViewYScroll)
+                                    if (scrollState.value == tempScrollValue) updateStepViewYScroll(scrollState.value)
+                                    seqViewModel.updateNotesGridState()
+                                }
                             }
                         }
                     }

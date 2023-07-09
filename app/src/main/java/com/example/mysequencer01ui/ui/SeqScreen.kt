@@ -54,7 +54,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     .fillMaxHeight()
                     .background(buttonsBg)
             ) {
-                QuantizeButton(seqViewModel, seqUiState.padsMode, buttonsSize)
+                QuantizeButton(seqViewModel, seqUiState.padsMode, buttonsSize, seqUiState.isQuantizing)
                 LoadButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 MuteButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 ClearButton(seqViewModel, seqUiState.padsMode, buttonsSize)
