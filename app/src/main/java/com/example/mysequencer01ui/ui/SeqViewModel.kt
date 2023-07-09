@@ -26,6 +26,41 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private var allChannelsMuted = false
     private var previousPadsMode: PadsMode = DEFAULT
 
+    /*
+    val patterns: Array<Array<Note>> = emptyArray()
+    init {
+        CoroutineScope(Dispatchers.Main).launch {
+            for(pattern in 0..15) {
+                for (c in 0..15) {
+                    val lastIndex = dao.getLastIndex(pattern, c) ?: -1
+//                _uiState.value.sequences[c].notes = Array(size) { Note(0, 0, 0, 0) }
+                    for (i in 0..lastIndex) {
+                        val note = dao.loadPattern(pattern = pattern, channel = c, index = i)
+//                    _uiState.value.sequences[c].notes[i].apply {
+//                        time = note.time
+//                        pitch = note.pitch
+//                        velocity = note.velocity
+//                        length = note.length
+//                    }
+                        _uiState.value.sequences[c].recordNote(
+                            note.pitch,
+                            note.velocity,
+                            staticNoteOffTime,
+                            uiState.value.seqIsPlaying,
+                            uiState.value.isRepeating,
+                            uiState.value.repeatLength,
+                            note.time,
+                            true,
+                        )
+                    }
+                }
+            }
+            _uiState.update { a -> a.copy(
+                sequences = uiState.value.sequences
+            ) }
+        }
+    }
+     */
 
     fun startSeq() {
         if(
@@ -273,12 +308,22 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     if(velocity > 0) clearChannel(channel, kmmk)
                     else channelIsPlayingNotes = false // TODO implement UNDO CLEAR, move {channelIsPlayingNotes = false} into IF?
                 }
-                SAVING -> { if(velocity > 0) savePattern(pattern = channel, sequence = uiState.value.sequences) }
-                LOADING -> { if(!allButton && velocity > 0) loadPattern(pattern = channel) }
-                SELECTING -> { if(!allButton && velocity > 0) {
-                    _uiState.update { a -> a.copy(selectedChannel = channel) }
-                    updateNotesGridState() // TODO remove?
-                } }
+                SAVING -> {
+                    if(velocity > 0) savePattern(pattern = channel, sequence = uiState.value.sequences)
+                }
+                LOADING -> {
+                    if(!allButton && velocity > 0) {
+                        for(c in 0..15) {
+                            uiState.value.sequences[c].clearChannel(c, kmmk)
+                        }
+                        loadPattern(pattern = channel)
+                    }
+                }
+                SELECTING -> {
+                    if(!allButton && velocity > 0) {
+                        _uiState.update { a -> a.copy(selectedChannel = channel) }
+                    }
+                }
                 else -> {
                     if (playingNotes[pitch] && velocity > 0) {
                         kmmk.noteOn(channel, pitch, 0)  // allows to retrigger already playing notes
@@ -340,15 +385,16 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         CoroutineScope(Dispatchers.Default).launch {
             dao.deletePattern(pattern)
             for(c in sequence.indices) {
-                sequence[c].notes.forEach {
+                for(i in sequence[c].notes.indices) {
                     dao.savePattern(
                         Patterns(
                             pattern = pattern,
                             channel = c,
-                            time = it.time,
-                            pitch = it.pitch,
-                            velocity = it.velocity,
-                            length = it.length
+                            noteIndex = i,
+                            time = sequence[c].notes[i].time,
+                            pitch = sequence[c].notes[i].pitch,
+                            velocity = sequence[c].notes[i].velocity,
+                            length = sequence[c].notes[i].length
                         )
                     )
                 }
@@ -359,18 +405,26 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private fun loadPattern(pattern: Int) {
         CoroutineScope(Dispatchers.Main).launch {
             for(c in 0..15) {
-                val size = dao.countNotes(pattern, c)
-                _uiState.value.sequences[c].notes = Array(size) { Note(0, 0, 0, 0) }
-                var advanceTime = -1
-                for(i in 0 until size) {
-                    val note = dao.loadPattern(pattern = pattern, channel = c, advanceTime = advanceTime)
-                    _uiState.value.sequences[c].notes[i].apply {
-                        time = note.time
-                        pitch = note.pitch
-                        velocity = note.velocity
-                        length = note.length
-                    }
-                    advanceTime = uiState.value.sequences[c].notes[i].time
+                val lastIndex = dao.getLastIndex(pattern, c) ?: -1
+//                _uiState.value.sequences[c].notes = Array(size) { Note(0, 0, 0, 0) }
+                for(i in 0 ..lastIndex) {
+                    val note = dao.loadPattern(pattern = pattern, channel = c, index = i)
+//                    _uiState.value.sequences[c].notes[i].apply {
+//                        time = note.time
+//                        pitch = note.pitch
+//                        velocity = note.velocity
+//                        length = note.length
+//                    }
+                    _uiState.value.sequences[c].recordNote(
+                        note.pitch,
+                        note.velocity,
+                        staticNoteOffTime,
+                        uiState.value.seqIsPlaying,
+                        uiState.value.isRepeating,
+                        uiState.value.repeatLength,
+                        note.time,
+                        true,
+                    )
                 }
             }
             _uiState.update { a -> a.copy(

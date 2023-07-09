@@ -41,7 +41,7 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    //VisualArray(seqUiState, buttonsSize)
+                    VisualArray(seqUiState, buttonsSize)
                     Spacer(modifier = Modifier.weight(1f))
                     PadsGrid(seqViewModel, seqUiState, buttonsSize * 1.5f)
                 }

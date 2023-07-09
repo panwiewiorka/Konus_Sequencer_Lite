@@ -106,7 +106,7 @@ class Sequence (
         }
 
         // if same note is already playing -> find and erase it's paired noteOFF, and record noteOFF in current recordTime
-        if (playingNotes[pitch] && velocity > 0) {
+        if (!stepRecord && playingNotes[pitch] && velocity > 0) {
             var pairedNoteOffIndex = -1
             // searching for paired NoteOFF forward from index
             if (index < notes.size) {
