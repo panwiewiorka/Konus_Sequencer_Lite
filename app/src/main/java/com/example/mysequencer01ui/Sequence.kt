@@ -13,6 +13,8 @@ class Sequence (
     var pressedNotes: Array<Boolean> = Array(128){false}, // manually pressed notes that are muting same ones played by sequencer
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
 
+    var draggedNoteOnIndex: Int = -1,
+
     var stepViewYScroll: Int = 0, // TODO float?
     var pianoViewHighKeyboardScroll: Float = 3000f,
     var pianoViewLowKeyboardScroll: Float = 1500f,
@@ -81,6 +83,7 @@ class Sequence (
 
         var index = if(stepRecord) {
             val searchedIndex = notes.indexOfLast { it.time <= customRecTime } + 1
+            // if noteOff has the same time as some other noteON -> place it before:
             if(searchedIndex != 0 && velocity == 0 && notes[searchedIndex - 1].time == customRecTime) searchedIndex - 1 else searchedIndex
         } else if(isRepeating) indexToRepeat else indexToPlay
 
@@ -161,14 +164,16 @@ class Sequence (
         }
 
         // RECORDING
-//        if(!(!playingNotes[pitch] && velocity == 0)) {  // to disable writing second NoteOFF when note is already off // TODO  redo (uncomment)
+//        if(!(!playingNotes[pitch] && velocity == 0)) {  // to disable writing second NoteOFF when note is already off // TODO  redo (uncomment)?
             recIntoArray(index, recordTime, pitch, velocity)
             if(isRepeating) {
-                indexToRepeat++
-                if(deltaTime >= repeatEndTime - repeatLength) indexToPlay++
-            } else indexToPlay++
+                if(!stepRecord || (customRecTime < deltaTimeRepeat)) indexToRepeat++
+                if(deltaTime >= repeatEndTime - repeatLength && (!stepRecord || (customRecTime < deltaTime))) indexToPlay++
+            } else if(!stepRecord || (customRecTime < deltaTime)) indexToPlay++
             channelIsPlayingNotes = velocity > 0
 //        }
+
+        Log.d("ryjtyj", "$indexToPlay, index = $index")
 
         if(!stepRecord) stepViewYScroll = (noteHeight * pitch
                 //- notesGridHeight / 2
@@ -215,6 +220,7 @@ class Sequence (
             playingNotes[notes[index].pitch] = notes[index].velocity > 0
         }
         channelIsPlayingNotes = notes[index].velocity > 0
+        // TODO polyphony: channelIsPlayingNotes += if(notes[index].velocity > 0) 1 else -1; if(channelIsPlayingNotes < 0) channelIsPlayingNotes = 0; update when stop() etc..
     }
 
 
@@ -228,25 +234,8 @@ class Sequence (
             val pairedNoteOffTime = pairedNoteOff.second
 
             // stop note_to_be_erased if playing (StepView condition)
-            val dt = if(isRepeating) deltaTimeRepeat else deltaTime
-            val deltaTimeInRange = if(index < pairedNoteOffIndex) {
-                dt in notes[index].time.toDouble()..notes[pairedNoteOffIndex].time.toDouble()
-            } else {
-                dt in notes[index].time.toDouble()..totalTime.toDouble() || dt in 0.0..notes[pairedNoteOffIndex].time.toDouble()
-            }
-            if(isRepeating) {
-                if(playingNotes[notes[index].pitch] && deltaTimeInRange) {
-                    kmmk.noteOn(channel, notes[index].pitch, 0)
-                    playingNotes[notes[index].pitch] = false
-                    channelIsPlayingNotes = false // TODO !!!
-                }
-            } else {
-                if(playingNotes[notes[index].pitch] && deltaTimeInRange) {
-                    kmmk.noteOn(channel, notes[index].pitch, 0)
-                    playingNotes[notes[index].pitch] = false
-                    channelIsPlayingNotes = false // TODO !!!
-                }
-            }
+            stopNoteIfPlaying(isRepeating, index, pairedNoteOffIndex, kmmk)
+
             if(pairedNoteOff.first > index) pairedNoteOffIndex -= 1
 
             // erasing noteON
@@ -282,7 +271,6 @@ class Sequence (
                         notes = notes.copyOfRange(0, pairedNoteOffIndex)
                     } else {
                         notes = emptyArray()
-                        Log.d("ryjtyj", "erasing noteOff = emptyArray. index = $index, pairedNoteOffIndex = $pairedNoteOffIndex")
                     }
                     breakFlag = true
                 }
@@ -322,6 +310,25 @@ class Sequence (
         Log.d("emptyTag", " ") // to hold in imports
     }
 
+
+    fun stopNoteIfPlaying(
+        isRepeating: Boolean,
+        noteOnIndex: Int,
+        noteOffIndex: Int,
+        kmmk: KmmkComponentContext
+    ) {
+        val dt = if (isRepeating) deltaTimeRepeat else deltaTime
+        val deltaTimeInRange = if (noteOnIndex < noteOffIndex) {
+            dt in notes[noteOnIndex].time.toDouble()..notes[noteOffIndex].time.toDouble()
+        } else {
+            dt in notes[noteOnIndex].time.toDouble()..totalTime.toDouble() || dt in 0.0..notes[noteOffIndex].time.toDouble()
+        }
+        if (playingNotes[notes[noteOnIndex].pitch] && deltaTimeInRange) {
+            kmmk.noteOn(channel, notes[noteOnIndex].pitch, 0)
+            playingNotes[notes[noteOnIndex].pitch] = false
+            channelIsPlayingNotes = false // TODO !!!
+        }
+    }
 
     fun changeStepViewYScroll(y: Int) {
         stepViewYScroll = y

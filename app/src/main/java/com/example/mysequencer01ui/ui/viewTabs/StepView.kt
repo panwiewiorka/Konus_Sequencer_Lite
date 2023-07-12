@@ -23,12 +23,14 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.KmmkComponentContext
+import com.example.mysequencer01ui.Note
 import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.theme.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
@@ -196,11 +198,11 @@ fun NotesGrid(
                             }
                         )
                     }
-                    .pointerInput(Unit) {
+                    .pointerInput(seqUiState.seqIsPlaying) {
                         var noteDetected = false
                         var pitch = 0
                         var time: Int
-                        var deltaTime: Int
+                        var dragDeltaTime: Int
                         var noteOnIndex = -1
                         var noteOffIndex = -1
 
@@ -217,21 +219,29 @@ fun NotesGrid(
                                 if (noteOnIndex == -1 && notes.isNotEmpty() && notes[notes.lastIndex].velocity > 0) {
                                     noteOnIndex = notes.lastIndex
                                 }
-                                noteOffIndex =
-                                    if (noteOnIndex > -1) returnPairedNoteOffIndexAndTime(
-                                        noteOnIndex
-                                    ).first else -1
+                                noteOffIndex = if (noteOnIndex > -1) returnPairedNoteOffIndexAndTime(noteOnIndex).first else -1
 
                                 // does note exists where we start dragging?
                                 noteDetected =
                                     (noteOnIndex > -1 && noteOffIndex > -1) &&
-                                            (
-                                                    (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
-                                                            || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
-                                                            (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
-                                                    )
+                                        (
+                                            (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
+                                                || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
+                                                    (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
+                                        )
+
+                                if(noteDetected && seqUiState.seqIsPlaying) {
+                                    CoroutineScope(Dispatchers.Default).launch {
+                                        val tempPitch = pitch // TODO remove?
+                                        delay((notes[noteOffIndex].time - (if(seqUiState.isRepeating) deltaTimeRepeat else deltaTime) / seqUiState.factorBpm).toLong())
+                                        kmmk.noteOn(channel, tempPitch, 0)
+                                        playingNotes[tempPitch] = false
+                                        channelIsPlayingNotes = false // TODO !!!
+                                    }
+                                }
                             },
                             onDragEnd = {
+                                draggedNoteOnIndex = -1
                                 //offsetY = noteHeight * (127 - note.pitch)
                             }
                         ) { change, dragAmount ->
@@ -242,14 +252,16 @@ fun NotesGrid(
                                 xOffset += dragAmount.x
                                 yOffset += dragAmount.y
 
-                                deltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
-                                changeNoteTime(noteOnIndex, deltaTime, true)
-                                changeNoteTime(noteOffIndex, deltaTime, true)
+//                                stopNoteIfPlaying (seqUiState.isRepeating, noteOnIndex, noteOffIndex, kmmk)
+
+                                dragDeltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
+                                changeNoteTime (noteOnIndex, dragDeltaTime, true)
+                                changeNoteTime (noteOffIndex, dragDeltaTime, true)
 
                                 if (pitch != 127 - (yOffset / noteHeight.toPx()).toInt()) {
                                     pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
-                                    changeNotePitch(noteOnIndex, pitch)
-                                    changeNotePitch(noteOffIndex, pitch)
+                                    changeNotePitch (noteOnIndex, pitch)
+                                    changeNotePitch (noteOffIndex, pitch)
                                 }
 
                                 val tempNoteOnTime = notes[noteOnIndex].time
@@ -265,6 +277,7 @@ fun NotesGrid(
                                     noteOffIndex =
                                         returnPairedNoteOffIndexAndTime(noteOnIndex).first
                                 }
+                                draggedNoteOnIndex = noteOnIndex
 
                                 seqViewModel.updateSequencesUiState()
                             } else {

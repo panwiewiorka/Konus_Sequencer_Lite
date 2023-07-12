@@ -33,11 +33,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             for(p in 0..15) {
                 for (c in 0..15) {
                     val lastIndex = dao.getLastIndex(p, c) ?: -1
-                    Log.d("ryjtyj", "$lastIndex")
                     patterns[p][c] = Array(lastIndex + 1){Note(0,0,0,0)}
                     for (i in 0..lastIndex) {
                         val note = dao.loadNoteFromPattern(pattern = p, channel = c, index = i)
-                        Log.d("ryjtyj", "dao.loadNoteFromPattern $p $c $i")
                         patterns[p][c][i].apply {
                             time = note.time
                             pitch = note.pitch
@@ -97,7 +95,19 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             if(!uiState.value.isRepeating && (isErasing || (uiState.value.seqIsRecording && pressedNotes[notes[indexToPlay].pitch]))) {
                                 if (!erasing(kmmk,false, indexToPlay)) break
                             } else {
-                                if(!uiState.value.isRepeating) playing(kmmk, indexToPlay)
+                                if(!uiState.value.isRepeating) {
+                                    playing(kmmk, indexToPlay)
+                                    if(indexToPlay == draggedNoteOnIndex) {
+                                        val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(draggedNoteOnIndex).second
+                                        val pitchTemp = notes[indexToPlay].pitch
+                                        CoroutineScope(Dispatchers.Default).launch {
+                                            delay(noteOffIndexAndTime.toLong())
+                                            kmmk.noteOn(channel, pitchTemp, 0)
+                                            playingNotes[pitchTemp] = false
+                                            channelIsPlayingNotes = false // TODO !!!
+                                        }
+                                    }
+                                }
                                 indexToPlay++
                             }
                         }
@@ -107,7 +117,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             if(deltaTime >= uiState.value.timingClock * clockTicks) {
                                 kmmk.sendTimingClock()
                                 clockTicks++
-//                                Log.d("ryjtyj", "$clockTicks, ${uiState.value.timingClock}")
                             }
                         }
 
@@ -174,6 +183,16 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                     if (!erasing(kmmk,true, indexToRepeat - wrapIndex)) break
                                 } else {
                                     playing(kmmk, indexToRepeat - wrapIndex)
+                                    if(indexToRepeat == draggedNoteOnIndex) {
+                                        val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(draggedNoteOnIndex).second
+                                        val pitchTemp = notes[indexToRepeat].pitch
+                                        CoroutineScope(Dispatchers.Default).launch {
+                                            delay(noteOffIndexAndTime.toLong())
+                                            kmmk.noteOn(channel, pitchTemp, 0)
+                                            playingNotes[pitchTemp] = false
+                                            channelIsPlayingNotes = false // TODO !!!
+                                        }
+                                    }
                                     indexToRepeat++
                                 }
                             }
