@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.KmmkComponentContext
-import com.example.mysequencer01ui.Note
 import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -198,11 +197,14 @@ fun NotesGrid(
                             }
                         )
                     }
-                    .pointerInput(seqUiState.seqIsPlaying) {
+                    .pointerInput(seqUiState.seqIsPlaying, seqUiState.isQuantizing) {
                         var noteDetected = false
-                        var pitch = 0
-                        var time: Int
+//                        var pitch = 0
+                        var pitch = -1
+//                        var time: Int
+                        var time = -1
                         var dragDeltaTime: Int
+                        var dragQuantizingDeltaTime = 0
                         var noteOnIndex = -1
                         var noteOffIndex = -1
 
@@ -230,18 +232,27 @@ fun NotesGrid(
                                                     (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
                                         )
 
-                                if(noteDetected && seqUiState.seqIsPlaying) {
-                                    CoroutineScope(Dispatchers.Default).launch {
-                                        val tempPitch = pitch // TODO remove?
-                                        delay((notes[noteOffIndex].time - (if(seqUiState.isRepeating) deltaTimeRepeat else deltaTime) / seqUiState.factorBpm).toLong())
-                                        kmmk.noteOn(channel, tempPitch, 0)
-                                        playingNotes[tempPitch] = false
-                                        channelIsPlayingNotes = false // TODO !!!
+                                if(noteDetected) {
+                                    if(seqUiState.isQuantizing) {
+                                        dragQuantizingDeltaTime = 0
+                                        val tempTime = notes[noteOnIndex].time
+                                        changeNoteTime(noteOnIndex, seqViewModel.quantizeTime(tempTime))
+                                        changeNoteTime(noteOffIndex, notes[noteOnIndex].time - tempTime, true)
+                                    }
+                                    if(seqUiState.seqIsPlaying) {
+                                        CoroutineScope(Dispatchers.Default).launch {
+                                            val tempPitch = pitch // TODO remove?
+                                            delay((notes[noteOffIndex].time - (if(seqUiState.isRepeating) deltaTimeRepeat else deltaTime) / seqUiState.factorBpm).toLong())
+                                            kmmk.noteOn(channel, tempPitch, 0)
+                                            playingNotes[tempPitch] = false
+                                            channelIsPlayingNotes = false // TODO !!!
+                                        }
                                     }
                                 }
                             },
                             onDragEnd = {
                                 draggedNoteOnIndex = -1
+                                dragQuantizingDeltaTime = 0
                                 //offsetY = noteHeight * (127 - note.pitch)
                             }
                         ) { change, dragAmount ->
@@ -254,9 +265,22 @@ fun NotesGrid(
 
 //                                stopNoteIfPlaying (seqUiState.isRepeating, noteOnIndex, noteOffIndex, kmmk)
 
-                                dragDeltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
-                                changeNoteTime (noteOnIndex, dragDeltaTime, true)
-                                changeNoteTime (noteOffIndex, dragDeltaTime, true)
+                                if (seqUiState.isQuantizing) {
+                                    dragQuantizingDeltaTime += (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
+                                    val quantizationTime = 240000 / seqUiState.bpm / seqUiState.quantizationValue * seqUiState.factorBpm
+                                    if (dragQuantizingDeltaTime > quantizationTime || dragQuantizingDeltaTime < -quantizationTime) {
+                                        dragQuantizingDeltaTime = seqViewModel.quantizeTime(dragQuantizingDeltaTime)
+                                        changeNoteTime (noteOnIndex, dragQuantizingDeltaTime, true)
+                                        changeNoteTime (noteOffIndex, dragQuantizingDeltaTime, true)
+                                        dragQuantizingDeltaTime = 0
+                                    }
+                                } else {
+                                    Log.d("ryjtyj", "else")
+
+                                    dragDeltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
+                                    changeNoteTime (noteOnIndex, dragDeltaTime, true)
+                                    changeNoteTime (noteOffIndex, dragDeltaTime, true)
+                                }
 
                                 if (pitch != 127 - (yOffset / noteHeight.toPx()).toInt()) {
                                     pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
