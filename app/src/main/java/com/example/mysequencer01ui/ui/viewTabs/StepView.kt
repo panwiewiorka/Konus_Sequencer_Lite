@@ -46,18 +46,15 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
         VerticalSlider(
             value = selectedChannel.stepViewYScroll.toFloat(),
             onValueChange = {
-                selectedChannel.updateStepViewYScroll(it.toInt())
+                selectedChannel.changeStepViewYScroll(it.toInt())
                 CoroutineScope(Dispatchers.Main).launch {
-//                    val tempScrollValue = scrollState.value
                     scrollState.scrollTo(selectedChannel.stepViewYScroll)
-//                    if(scrollState.value == tempScrollValue) selectedChannel.updateStepViewYScroll(scrollState.value)
-                    seqViewModel.updateNotesGridState()
+                    seqViewModel.updateSequencesUiState()
                 } },
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .height(50.dp)
-                .background(BackGray),
-            valueRange = 0f..scrollState.maxValue.toFloat()
+                .height(50.dp),
+            valueRange = 0f..scrollState.maxValue.toFloat() // TODO hardcode
         )
 
         BoxWithConstraints(
@@ -195,7 +192,7 @@ fun NotesGrid(
                                         stepRecord = true,
                                     )
                                 }
-                                seqViewModel.updateNotesGridState()
+                                seqViewModel.updateSequencesUiState()
                             }
                         )
                     }
@@ -269,14 +266,14 @@ fun NotesGrid(
                                         returnPairedNoteOffIndexAndTime(noteOnIndex).first
                                 }
 
-                                seqViewModel.updateNotesGridState()
+                                seqViewModel.updateSequencesUiState()
                             } else {
-                                updateStepViewYScroll(stepViewYScroll + dragAmount.y.toInt())
+                                changeStepViewYScroll(stepViewYScroll + dragAmount.y.toInt())
                                 CoroutineScope(Dispatchers.Main).launch {
                                     val tempScrollValue = scrollState.value
                                     scrollState.scrollTo(stepViewYScroll)
-                                    if (scrollState.value == tempScrollValue) updateStepViewYScroll(scrollState.value)
-                                    seqViewModel.updateNotesGridState()
+                                    if (scrollState.value == tempScrollValue) changeStepViewYScroll(scrollState.value)
+                                    seqViewModel.updateSequencesUiState()
                                 }
                             }
                         }

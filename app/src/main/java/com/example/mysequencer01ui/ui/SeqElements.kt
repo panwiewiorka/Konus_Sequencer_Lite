@@ -299,20 +299,20 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 100, allButton = true)
                     }
-                    seqViewModel.recomposeVisualArray()
+                    seqViewModel.updateSequencesUiState()
                     elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
                     }
-                    seqViewModel.recomposeVisualArray()
+                    seqViewModel.updateSequencesUiState()
                 }
                 is PressInteraction.Cancel -> {
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
                     }
-                    seqViewModel.recomposeVisualArray()
+                    seqViewModel.updateSequencesUiState()
                 }
             }
         }

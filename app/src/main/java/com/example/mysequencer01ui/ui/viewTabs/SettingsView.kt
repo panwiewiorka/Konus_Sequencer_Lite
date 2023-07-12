@@ -67,10 +67,17 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
                 )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Clock transmit", color = notWhite, modifier = Modifier.padding(end = 10.dp))
-                Switch(checked = seqUiState.transmitClock, onCheckedChange = {seqViewModel.switchClockTransmitting()})
-            }
+            TextAndSwitch("Clock transmit", seqUiState.transmitClock) { seqViewModel.switchClockTransmitting() }
+
+            TextAndSwitch("LazyKeyboard", seqUiState.lazyKeyboard) { seqViewModel.switchLazyKeyboard() }
         }
+    }
+}
+
+@Composable
+fun TextAndSwitch(text: String, switchState: Boolean, toDo: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(text, color = notWhite, modifier = Modifier.padding(end = 10.dp))
+        Switch(checked = switchState, onCheckedChange = {toDo()})
     }
 }

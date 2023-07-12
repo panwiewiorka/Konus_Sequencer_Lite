@@ -27,7 +27,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private var previousPadsMode: PadsMode = DEFAULT
 
     private var patterns: Array<Array<Array<Note>>> = Array(16){ Array(16) { emptyArray() } }
-//    private var patterns: Array<Array<Array<Note>>> = emptyArray()
+
     init {
         CoroutineScope(Dispatchers.Main).launch {
             for(p in 0..15) {
@@ -345,7 +345,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     _uiState.update { a -> a.copy(selectedChannel = channel) }
                 }
             }
-        }.also { if(!allButton) recomposeVisualArray() } // allButton recomposes by itself // TODO is this function still needed at all?
+        }.also { if(!allButton) updateSequencesUiState() } // allButton recomposes by itself // TODO is this function still needed at all?
     }
 
 
@@ -466,26 +466,18 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         }
     }
 
-    fun recomposeVisualArray() { // TODO remove this or updateNotesGridState()
-        _uiState.update { a -> a.copy(
-            sequences = uiState.value.sequences,
-            visualArrayRefresh = !uiState.value.visualArrayRefresh
-        ) }
-        Log.d("ryjtyj", "recomposeVisualArray()")
-    }
-
     fun changeSeqViewState(seqView: SeqView) {
         _uiState.update { a -> a.copy(
             seqView = seqView
         ) }
     }
 
-    fun updateNotesGridState() {
+    fun updateSequencesUiState() {
         _uiState.update { a -> a.copy(
             sequences = uiState.value.sequences,
             visualArrayRefresh = !uiState.value.visualArrayRefresh
         ) }
-        Log.d("ryjtyj", "updateNotesGridState()")
+        Log.d("ryjtyj", "updateSequencesUiState()")
     }
 
     fun changeStepViewNoteHeight(noteHeight: Dp) {
@@ -506,6 +498,12 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     fun switchClockTransmitting() {
         _uiState.update { it.copy(
             transmitClock = !uiState.value.transmitClock
+        ) }
+    }
+
+    fun switchLazyKeyboard() {
+        _uiState.update { it.copy(
+            lazyKeyboard = !uiState.value.lazyKeyboard
         ) }
     }
 

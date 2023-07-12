@@ -13,6 +13,7 @@ data class SeqUiState (
     val factorBpm: Double = 1.0,
     val timingClock: Double = 500.0 / 24,
     val transmitClock: Boolean = true,
+    val lazyKeyboard: Boolean = false,
     val seqIsPlaying: Boolean = false,
     val seqIsRecording: Boolean = false,
     val padsMode: PadsMode = PadsMode.DEFAULT,
@@ -23,5 +24,5 @@ data class SeqUiState (
     val isRepeating: Boolean = false,
     val divisorState: Int = 0,
     val repeatLength: Double = 0.0,
-    val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it)},
+    val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it) },
     )

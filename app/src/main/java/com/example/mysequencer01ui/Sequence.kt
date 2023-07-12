@@ -13,9 +13,11 @@ class Sequence (
     var pressedNotes: Array<Boolean> = Array(128){false}, // manually pressed notes that are muting same ones played by sequencer
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
 
-    var stepViewYScroll: Int = 0,
-    var pianoViewLowPianoScroll: Int = 7,
+    var stepViewYScroll: Int = 0, // TODO float?
+    var pianoViewHighKeyboardScroll: Float = 3000f,
+    var pianoViewLowKeyboardScroll: Float = 1500f,
     var pianoViewHighPianoScroll: Int = 21,
+    var pianoViewLowPianoScroll: Int = 7,
 
     var indexToPlay: Int = 0,
     var startTimeStamp: Long = 0,
@@ -321,11 +323,15 @@ class Sequence (
     }
 
 
-    fun updateStepViewYScroll(y: Int) {
+    fun changeStepViewYScroll(y: Int) {
         stepViewYScroll = y
     }
 
-    fun updatePianoViewXScroll(x: Int, lowerPiano: Boolean = false) {
+    fun changePianoViewKeyboardScroll(x: Float, lowKeyboard: Boolean) {
+        if(lowKeyboard) pianoViewLowKeyboardScroll = x else pianoViewHighKeyboardScroll = x
+    }
+
+    fun changePianoViewXScroll(x: Int, lowerPiano: Boolean = false) {
         if(lowerPiano) pianoViewLowPianoScroll = x else pianoViewHighPianoScroll = x
     }
 
