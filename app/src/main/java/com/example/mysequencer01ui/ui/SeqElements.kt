@@ -81,21 +81,28 @@ fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move int
 
             for(c in 0..3) {
                 with(seqUiState.sequences[c]) {
-                    val playhead = (deltaTime / totalTime * size.width).toFloat()
-                    var playheadRepeat = (deltaTimeRepeat / totalTime * size.width).toFloat()
+                    val playhead = (size.width * deltaTime / totalTime).toFloat()
+                    var playheadRepeat = (size.width * deltaTimeRepeat / totalTime).toFloat()
                     playheadRepeat = if(playheadRepeat < 0) playheadRepeat + size.width else playheadRepeat
 
                     // NOTES
                     for (i in notes.indices) {
-                        val noteStart = notes[i].time.toFloat() / totalTime * size.width
+                        if(notes[i].velocity > 0) {
+                        val noteStart = size.width * notes[i].time / totalTime
+                        val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(i)
+                        Log.d("ryjtyj", "$noteOffIndexAndTime")
+                        val noteOffIndex = noteOffIndexAndTime.first
+                        val noteLength = noteOffIndexAndTime.second - notes[i].time
                         val noteWidth =
-                            if(notes[i].length != 0) {   // TODO null instead of 0?  0 might be a rare case of wrap-around note?
-                                notes[i].length.toFloat() / totalTime * size.width   // TODO minimum visible length
+                            if(noteOffIndex != -1) {
+                                Log.d("ryjtyj", "$noteLength ${size.width * noteLength / totalTime}")
+                                size.width * noteLength / totalTime   // TODO minimum visible length
                             } else {
                                 if(seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
                             }
-                        if(notes[i].velocity > 0) {
-                            if(notes[i].length >= 0 && noteWidth >= 0) { // normal note (not wrap-around)  // TODO {&& noteWidth >= 0} unnecessary?
+
+                            if(noteWidth >= 0) { // normal note (not wrap-around)
+                                Log.d("ryjtyj", "noteWidth >= 0")
                                 drawRect(
                                     if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     Offset(noteStart, size.height - ((c + 1) * size.height / 4)),
@@ -155,7 +162,7 @@ fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move int
 
 
 @Composable
-fun VisualArray(seqUiState: SeqUiState, height: Dp) {
+fun VisualArray(seqUiState: SeqUiState, height: Dp) {    // TODO move into LiveView
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()

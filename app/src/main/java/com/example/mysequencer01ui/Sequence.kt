@@ -105,10 +105,12 @@ class Sequence (
                 if (pairedNoteOnIndex != -1) pairedNoteOnIndex += index
             }
         }
+        /*
         // updating previous noteON length
         if((velocity == 0 || (playingNotes[pitch] && velocity > 0)) && pairedNoteOnIndex != -1) {
             notes[pairedNoteOnIndex].length = recordTime - notes[pairedNoteOnIndex].time
         }
+         */
 
         // if same note is already playing -> find and erase it's paired noteOFF, and record noteOFF in current recordTime
         if (!stepRecord && playingNotes[pitch] && velocity > 0) {
@@ -360,6 +362,11 @@ class Sequence (
                 .indexOfFirst { it.pitch == searchedPitch && it.velocity == 0 }
             pairedNoteOffIndex = if (searchedIndex == -1) -1 else searchedIndex
         }
+        // case of live-writing note (note noteOff yet)
+//        if( (pairedNoteOffIndex > index && notes.copyOfRange(index + 1, pairedNoteOffIndex).count { it.velocity > 0 } > notes.copyOfRange(index + 1, pairedNoteOffIndex).count { it.velocity < 0 })
+//            || (pairedNoteOffIndex in 0 until index && notes.copyOfRange(pairedNoteOffIndex + 1, index).count { it.velocity > 0 } > notes.copyOfRange(pairedNoteOffIndex + 1, index).count { it.velocity < 0 }) )
+//            pairedNoteOffIndex = -1
+
         return if(pairedNoteOffIndex > -1) Pair(pairedNoteOffIndex, notes[pairedNoteOffIndex].time) else Pair(-1, -2)
     }
 

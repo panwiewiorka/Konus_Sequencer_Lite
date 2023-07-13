@@ -33,14 +33,14 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             for(p in 0..15) {
                 for (c in 0..15) {
                     val lastIndex = dao.getLastIndex(p, c) ?: -1
-                    patterns[p][c] = Array(lastIndex + 1){Note(0,0,0,0)}
+                    patterns[p][c] = Array(lastIndex + 1){Note(0,0,0)}
                     for (i in 0..lastIndex) {
                         val note = dao.loadNoteFromPattern(pattern = p, channel = c, index = i)
                         patterns[p][c][i].apply {
                             time = note.time
                             pitch = note.pitch
                             velocity = note.velocity
-                            length = note.length
+//                            length = note.length
                         }
 //                        _uiState.value.sequences[c].recordNote(
 //                            note.pitch,
@@ -424,7 +424,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             time = sequences[c].notes[i].time,
                             pitch = sequences[c].notes[i].pitch,
                             velocity = sequences[c].notes[i].velocity,
-                            length = sequences[c].notes[i].length
+//                            length = sequences[c].notes[i].length
                         )
                     )
                 }

@@ -4,7 +4,7 @@ data class Note (
     var time: Int,
     var pitch: Int = 60,
     var velocity: Int = 100,
-    var length: Int = 0,
+//    var length: Int = 0,
 )
 
 enum class PadsMode{
