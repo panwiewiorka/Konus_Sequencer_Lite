@@ -267,16 +267,15 @@ fun NotesGrid(
 
                                 if (seqUiState.isQuantizing) {
                                     dragQuantizingDeltaTime += (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
-                                    val quantizationTime = 240000 / seqUiState.bpm / seqUiState.quantizationValue * seqUiState.factorBpm
+                                    val quantizationTime = 240000 * seqUiState.factorBpm / seqUiState.bpm / seqUiState.quantizationValue
                                     if (dragQuantizingDeltaTime > quantizationTime || dragQuantizingDeltaTime < -quantizationTime) {
+                                        val tempTime = dragQuantizingDeltaTime
                                         dragQuantizingDeltaTime = seqViewModel.quantizeTime(dragQuantizingDeltaTime)
                                         changeNoteTime (noteOnIndex, dragQuantizingDeltaTime, true)
                                         changeNoteTime (noteOffIndex, dragQuantizingDeltaTime, true)
-                                        dragQuantizingDeltaTime = 0
+                                        dragQuantizingDeltaTime = tempTime - dragQuantizingDeltaTime
                                     }
                                 } else {
-                                    Log.d("ryjtyj", "else")
-
                                     dragDeltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
                                     changeNoteTime (noteOnIndex, dragDeltaTime, true)
                                     changeNoteTime (noteOffIndex, dragDeltaTime, true)

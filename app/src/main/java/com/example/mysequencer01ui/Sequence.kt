@@ -311,7 +311,7 @@ class Sequence (
     }
 
 
-    fun stopNoteIfPlaying(
+    private fun stopNoteIfPlaying(
         isRepeating: Boolean,
         noteOnIndex: Int,
         noteOffIndex: Int,
@@ -377,6 +377,7 @@ class Sequence (
             notes[index].time -= 2000
         } else if(notes[index].time < 0) {
             notes[index].time += 2000
+            Log.d("ryjtyj", "${notes[index].time}")
         }
     }
 

@@ -22,7 +22,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     val uiState: StateFlow<SeqUiState> = _uiState.asStateFlow()
 
     var toggleTime = 150
-    var staticNoteOffTime = 100
+    var staticNoteOffTime = 100 // TODO replace with quantization time?
     private var allChannelsMuted = false
     private var previousPadsMode: PadsMode = DEFAULT
 
@@ -60,6 +60,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             ) }
         }
     }
+
 
     fun startSeq() {
         if(
@@ -339,6 +340,14 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         loadPattern(pattern = channel)
                     }
                 }
+                QUANTIZING -> {
+                    if(velocity > 0) {
+                        val tempIsQuantizing = uiState.value.isQuantizing
+                        _uiState.update { a -> a.copy(isQuantizing = true) }
+                        quantizeChannel(channel)
+                        _uiState.update { a -> a.copy(isQuantizing = tempIsQuantizing) }
+                    }
+                }
                 SELECTING -> {
                     if(!allButton && velocity > 0) {
                         _uiState.update { a -> a.copy(selectedChannel = channel) }
@@ -364,7 +373,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     _uiState.update { a -> a.copy(selectedChannel = channel) }
                 }
             }
-        }.also { if(!allButton) updateSequencesUiState() } // allButton recomposes by itself // TODO is this function still needed at all?
+        }.also { if(!allButton) updateSequencesUiState() } // allButton recomposes by itself // TODO is it still needed here?
     }
 
 
@@ -465,6 +474,19 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 //                (time - remainder).toInt()
             (time - remainder).toInt()
         } else time
+    }
+
+    private fun quantizeChannel(channel: Int) {
+        with(uiState.value.sequences[channel]) {
+            for(i in notes.indices) {
+                if(notes[i].velocity > 0) {
+                    val tempTime = notes[i].time
+                    changeNoteTime(i, quantizeTime(notes[i].time))
+                    changeNoteTime(returnPairedNoteOffIndexAndTime(i).first, quantizeTime(notes[i].time) - tempTime, true)
+                    sortNotesByTime()
+                }
+            }
+        }
     }
 
     fun switchQuantization() {

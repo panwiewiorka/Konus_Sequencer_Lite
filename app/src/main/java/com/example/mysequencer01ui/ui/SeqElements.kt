@@ -292,12 +292,14 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
 fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
+    var buttonPressed by remember { mutableStateOf(false) }
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 100, allButton = true)
+                        buttonPressed = true
                     }
                     seqViewModel.updateSequencesUiState()
                     elapsedTime = System.currentTimeMillis()
@@ -306,38 +308,53 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
                     }
+                    buttonPressed = false
                     seqViewModel.updateSequencesUiState()
                 }
                 is PressInteraction.Cancel -> {
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
                     }
+                    buttonPressed = false
                     seqViewModel.updateSequencesUiState()
                 }
             }
         }
     }
-    Button(
-        interactionSource = interactionSource,
-        elevation = null,
-        onClick = {},
-        shape = RoundedCornerShape(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = buttonsColor
-        ),
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-    ) {
+//    Button(
+//        interactionSource = interactionSource,
+//        elevation = null,
+//        onClick = {},
+//        shape = RoundedCornerShape(0.dp),
+//        colors = ButtonDefaults.buttonColors(
+//            backgroundColor = buttonsColor
+//        ),
+//        contentPadding = PaddingValues(0.dp),
+//        modifier = Modifier
+//            .size(buttonsSize)
+//            .padding(buttonsPadding)
+//    ) {
         Box(
             modifier = Modifier
+                .size(buttonsSize)
+                .padding(buttonsPadding)
+                .background(if (buttonPressed) dusk else buttonsColor)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null
+                ) {}
         ) {
-            Text("ALL", fontSize = buttonTextSize.nonScaledSp, color = Color.White, modifier = Modifier
-                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
-                .alpha(0.6f))
-            Text("ALL", fontSize = buttonTextSize.nonScaledSp, color = notWhite)
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(if (buttonPressed) 0.dp else 6.dp)
+                .alpha(0.6f)){
+                allSymbol(buttonPressed)
+            }
+            Canvas(modifier = Modifier.fillMaxSize()){
+                allSymbol(buttonPressed)
+            }
         }
-    }
+//    }
 }
 
 
@@ -451,14 +468,14 @@ fun ShiftButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp,
 
 @Composable
 fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp, isQuantizing: Boolean){
-    val quantizing = (isQuantizing || padsMode == QUANTIZING)
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = 0L
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
-                    seqViewModel.editCurrentPadsMode(QUANTIZING); elapsedTime = System.currentTimeMillis()
+                    elapsedTime = System.currentTimeMillis()
+                    seqViewModel.editCurrentPadsMode(QUANTIZING)
                 }
                 is PressInteraction.Release -> {
                     if ((System.currentTimeMillis() - elapsedTime) < seqViewModel.toggleTime) {
@@ -479,22 +496,22 @@ fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: 
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background( if(quantizing) dusk else buttonsColor )
+            .background( if(padsMode == QUANTIZING) dusk else buttonsColor )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
             ) { }
     ){
-        if (!quantizing) {
+        if (padsMode != QUANTIZING) {
             Canvas(modifier = Modifier
                 .fillMaxSize()
                 .blur(6.dp)
                 .alpha(0.6f)){
-                quantizeSymbol(false)
+                if(isQuantizing) quantizeSymbolColor(false) else quantizeSymbol(false)
             }
         }
         Canvas(modifier = Modifier.fillMaxSize()){
-            quantizeSymbol(quantizing)
+            if(isQuantizing) quantizeSymbolColor(padsMode == QUANTIZING) else quantizeSymbol(padsMode == QUANTIZING)
         }
     }
 }

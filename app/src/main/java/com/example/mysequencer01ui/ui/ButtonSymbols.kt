@@ -2,6 +2,7 @@ package com.example.mysequencer01ui.ui
 
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import com.example.mysequencer01ui.PadsMode
@@ -135,18 +136,18 @@ fun DrawScope.clearSymbol(padsMode: PadsMode) {
 }
 
 
-fun DrawScope.quantizeSymbolColor(padsMode: PadsMode) {
+fun DrawScope.quantizeSymbolColor(quantizing: Boolean) {
     val m = size.height / 8
     val s = size.height / 16
     drawArc(warmRed, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(night, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(if (quantizing) night else dusk, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
 
     val pathRed = Path()
     pathRed.moveTo(center.x + m, center.y)
     pathRed.lineTo(center.x + m, center.y - m)
     drawPath(
         path = pathRed,
-        color = if (false) buttonsColor else warmRed,
+        color = if (false) night else warmRed,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
     val pathBlue = Path()
@@ -154,7 +155,7 @@ fun DrawScope.quantizeSymbolColor(padsMode: PadsMode) {
     pathBlue.lineTo(center.x - m, center.y - m)
     drawPath(
         path = pathBlue,
-        color = if (false) buttonsColor else night,
+        color = if (quantizing) night else dusk,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
     val pathWhite = Path()
@@ -164,7 +165,7 @@ fun DrawScope.quantizeSymbolColor(padsMode: PadsMode) {
     pathWhite.lineTo(center.x - m, center.y - m)
     drawPath(
         path = pathWhite,
-        color = if (false) buttonsColor else dusk,
+        color = if (quantizing) buttonsColor else notWhite,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
 }
@@ -174,8 +175,8 @@ fun DrawScope.quantizeSymbol(quantizing: Boolean) {
     val s = size.height / 16
     val xs = size.height / 32
 
-    drawArc(if (quantizing) buttonsColor else dusk, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(if (quantizing) buttonsColor else dusk, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(if (quantizing) buttonsColor else selectedButton, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(if (quantizing) buttonsColor else selectedButton, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
 
     val path = Path()
     path.moveTo(center.x + m, center.y - s - xs)
@@ -189,7 +190,32 @@ fun DrawScope.quantizeSymbol(quantizing: Boolean) {
 
     drawPath(
         path = path,
-        color = if (quantizing) buttonsColor else dusk,
+        color = if (quantizing) buttonsColor else selectedButton,
+        style = Stroke( width = thickness, join = StrokeJoin.Round )
+    )
+}
+
+fun DrawScope.quantizeLineCounter(quantizing: Boolean) {
+    val m = size.height / 8
+    val s = size.height / 16
+    val xs = size.height / 32
+
+    drawArc(if (quantizing) buttonsColor else selectedButton, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(if (quantizing) buttonsColor else selectedButton, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+
+    val path = Path()
+    path.moveTo(center.x + m, center.y - s - xs)
+    path.lineTo(center.x + m, center.y - m)
+    path.moveTo(center.x - m, center.y - s - xs)
+    path.lineTo(center.x - m, center.y - m)
+    path.moveTo(center.x + m, center.y)
+    path.lineTo(center.x + m, center.y - s)
+    path.moveTo(center.x - m, center.y)
+    path.lineTo(center.x - m, center.y - s)
+
+    drawPath(
+        path = path,
+        color = if (quantizing) buttonsColor else selectedButton,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
 }
@@ -252,6 +278,35 @@ fun DrawScope.saveLoadSymbol() {
         end = Offset(center.x - m - s, center.y + m - s),
         strokeWidth = thickness,
         cap = StrokeCap.Round
+    )
+}
+
+
+fun DrawScope.allSymbol(buttonPressed: Boolean) {
+    val m = size.height / 8f
+    val l = m * 2
+    drawRect(
+        color = if (buttonPressed) buttonsColor else dusk,
+        topLeft = Offset(center.x - m, center.y - m),
+        size = Size(l, l),
+        style = Stroke(
+            width = thickness,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    )
+    val path = Path()
+    path.moveTo(center.x, center.y - m)
+    path.lineTo(center.x, center.y + m)
+    path.moveTo(center.x - m, center.y)
+    path.lineTo(center.x + m, center.y)
+    drawPath(
+        path = path,
+        color = if (buttonPressed) buttonsColor else dusk,
+        style = Stroke(
+            width = thickness,
+            cap = StrokeCap.Round
+        )
     )
 }
 

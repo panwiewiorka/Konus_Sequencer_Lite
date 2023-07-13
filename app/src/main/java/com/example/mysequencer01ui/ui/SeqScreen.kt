@@ -17,6 +17,11 @@ import com.example.mysequencer01ui.ui.viewTabs.LiveView
 import com.example.mysequencer01ui.ui.viewTabs.PianoView
 import com.example.mysequencer01ui.ui.viewTabs.SettingsView
 import com.example.mysequencer01ui.ui.viewTabs.StepView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 
 @Composable
@@ -63,7 +68,9 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
 
             // ----==== SeqView CONTENT
             Box(
-                modifier = Modifier.fillMaxHeight().weight(1f),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(1f),
                 contentAlignment = Alignment.BottomStart
             ) {
                 when(seqUiState.seqView) {
@@ -75,11 +82,17 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 }
 
                 if(seqUiState.seqView != LIVE && seqUiState.padsMode != DEFAULT) {
-                    PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize * 1.5f)
+                    if(seqUiState.padsMode == QUANTIZING) {
+//                        CoroutineScope(Dispatchers.Default).launch {  }
+//                        LaunchedEffect(key1 = seqUiState.padsMode,) {
+//                            delay(seqViewModel.toggleTime.milliseconds)
+//                            PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize * 1.5f)
+//                        }
+                    } else PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize * 1.5f)
                 }
             }
 
-            // ----==== MAIN TABS
+            // ----==== RIGHT SeqView TABS
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
