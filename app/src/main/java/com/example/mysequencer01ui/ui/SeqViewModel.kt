@@ -23,6 +23,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     var toggleTime = 150
     var staticNoteOffTime = 100 // TODO replace with quantization time?
+    var quantizationTime = 240000 / uiState.value.bpm / uiState.value.quantizationValue * uiState.value.factorBpm
     private var allChannelsMuted = false
     private var previousPadsMode: PadsMode = DEFAULT
 
@@ -466,7 +467,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     fun quantizeTime(time: Int): Int {
         return if(uiState.value.isQuantizing) {
-            val quantizationTime = 240000 / uiState.value.bpm / uiState.value.quantizationValue * uiState.value.factorBpm
             val remainder = time % quantizationTime
 //            if(remainder > quantizationTime / 2)
 //                (time - remainder + quantizationTime).toInt()
@@ -481,8 +481,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             for(i in notes.indices) {
                 if(notes[i].velocity > 0) {
                     val tempTime = notes[i].time
-                    changeNoteTime(i, quantizeTime(notes[i].time))
-                    changeNoteTime(returnPairedNoteOffIndexAndTime(i).first, quantizeTime(notes[i].time) - tempTime, true)
+                    val time = quantizeTime((notes[i].time + quantizationTime / 2).toInt())
+                    changeNoteTime(i, time)
+                    changeNoteTime(returnPairedNoteOffIndexAndTime(i).first, time - tempTime, true)
                     sortNotesByTime()
                 }
             }
