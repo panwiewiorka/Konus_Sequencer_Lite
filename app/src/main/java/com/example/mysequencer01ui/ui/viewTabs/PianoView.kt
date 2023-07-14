@@ -104,7 +104,6 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
         val lowKeyboardScrollState = rememberScrollState(sequence.pianoViewLowKeyboardScroll.toInt())
 
         val keyWidth = (maxWidth - notesPadding * 26) / 14
-        Log.d("ryjtyj", "${maxWidth / 14}")
 
         val maxScrollValue = keyWidth.value * LocalDensity.current.density * 65
         val sliderWidth = (maxWidth - spaceBetweenSliders) / 2

@@ -47,6 +47,22 @@ fun DrawScope.playSymbol(seqIsPlaying: Boolean) {
 }
 
 
+fun DrawScope.stopSymbol() {
+    val m = size.height / 8f
+    val l = m * 2
+    drawRect(
+        color =  notWhite,
+        topLeft = Offset(center.x - m, center.y - m),
+        size = Size(l, l),
+        style = Stroke(
+            width = thickness,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    )
+}
+
+
 fun DrawScope.eraseSymbol(padsMode: PadsMode) {
 
     val r = size.height / 24

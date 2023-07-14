@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode.*
@@ -17,11 +18,6 @@ import com.example.mysequencer01ui.ui.viewTabs.LiveView
 import com.example.mysequencer01ui.ui.viewTabs.PianoView
 import com.example.mysequencer01ui.ui.viewTabs.SettingsView
 import com.example.mysequencer01ui.ui.viewTabs.StepView
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
 
 
 @Composable
@@ -63,7 +59,9 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 LoadButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 MuteButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 ClearButton(seqViewModel, seqUiState.padsMode, buttonsSize)
-                PlayButton(seqViewModel, seqUiState.seqIsPlaying, buttonsSize)
+                if(!seqUiState.seqIsPlaying && seqUiState.padsMode == SELECTING)
+                    StopButton(seqViewModel, buttonsSize)
+                else PlayButton(seqViewModel, seqUiState.seqIsPlaying, buttonsSize)
             }
 
             // ----==== SeqView CONTENT
@@ -121,10 +119,6 @@ width = 3f,
 
     Log.d("emptyTag", " ") // to hold in imports
 }
-
-
-
-
 
 
 @Preview(showBackground = true, showSystemUi = true)

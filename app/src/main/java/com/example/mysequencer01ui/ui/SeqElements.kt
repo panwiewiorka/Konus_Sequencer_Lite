@@ -12,9 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.material.ripple.LocalRippleTheme
-import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,19 +87,16 @@ fun StepSequencer(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move int
                         if(notes[i].velocity > 0) {
                         val noteStart = size.width * notes[i].time / totalTime
                         val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(i)
-                        Log.d("ryjtyj", "$noteOffIndexAndTime")
                         val noteOffIndex = noteOffIndexAndTime.first
                         val noteLength = noteOffIndexAndTime.second - notes[i].time
                         val noteWidth =
                             if(noteOffIndex != -1) {
-                                Log.d("ryjtyj", "$noteLength ${size.width * noteLength / totalTime}")
                                 size.width * noteLength / totalTime   // TODO minimum visible length
                             } else {
                                 if(seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
                             }
 
                             if(noteWidth >= 0) { // normal note (not wrap-around)
-                                Log.d("ryjtyj", "noteWidth >= 0")
                                 drawRect(
                                     if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     Offset(noteStart, size.height - ((c + 1) * size.height / 4)),
@@ -183,7 +177,9 @@ fun VisualArray(seqUiState: SeqUiState, height: Dp) {    // TODO move into LiveV
         for(c in 0..3){
             for (i in seqUiState.sequences[c].notes.indices) {
                 Text(
-                    text = if (seqUiState.sequences[c].notes[i].velocity > 0) "${seqUiState.sequences[c].notes[i].pitch}" else "]",
+//                    text = if (seqUiState.sequences[c].notes[i].velocity > 0) "${seqUiState.sequences[c].notes[i].pitch}" else "]",
+//                    text = "${seqUiState.sequences[c].notes[i].id}",
+                    text = "${seqUiState.sequences[c].playingNotes[60]}",
                     color = if(seqUiState.sequences[c].notes[i].velocity > 0) Color(0xFFFFFFFF) else Color(0xFF999999),
                     modifier = Modifier.offset(
                         (seqUiState.sequences[c].notes[i].time.toFloat() / seqUiState.sequences[c].totalTime * maxWidth.value).dp,
@@ -755,6 +751,33 @@ fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: D
         }
         Canvas(modifier = Modifier.fillMaxSize()){
             playSymbol(seqIsPlaying)
+        }
+    }
+}
+
+@Composable
+fun StopButton(seqViewModel: SeqViewModel, buttonsSize: Dp) {
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding)
+            .background(buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    0,
+                    { seqViewModel.stopAllNotes() },
+                ),
+                indication = LocalIndication.current
+            ) { }
+    ){
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .blur(6.dp)
+            .alpha(0.6f)){
+            stopSymbol()
+        }
+        Canvas(modifier = Modifier.fillMaxSize()){
+            stopSymbol()
         }
     }
 }
