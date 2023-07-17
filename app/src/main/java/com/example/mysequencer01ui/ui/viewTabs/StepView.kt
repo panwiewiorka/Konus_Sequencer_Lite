@@ -183,7 +183,7 @@ fun NotesGrid(
 //                                                    (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
 //                                            )
                                 ) {
-                                    erasing(kmmk, seqUiState.isRepeating, noteOnIndex1)
+                                    erasing(kmmk, seqUiState.isRepeating, noteOnIndex1, true)
                                 } else {
                                     time = seqViewModel.quantizeTime(time)
                                     val noteOffTime =
@@ -326,8 +326,6 @@ fun NotesGrid(
                                 xOffset += dragAmount.x
                                 yOffset += dragAmount.y
 
-//                                stopNoteIfPlaying (seqUiState.isRepeating, noteOnIndex, noteOffIndex, kmmk)
-
                                 if (seqUiState.isQuantizing) {
                                     dragQuantizingDeltaTime += (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
                                     if (dragQuantizingDeltaTime > seqViewModel.quantizationTime || dragQuantizingDeltaTime < -seqViewModel.quantizationTime) {
@@ -362,6 +360,14 @@ fun NotesGrid(
                                         notes.indexOfFirst { it.time == tempNoteOnTime && it.pitch == pitch }
                                     noteOffIndex =
                                         returnPairedNoteOffIndexAndTime(noteOnIndex).first
+
+                                    if(seqUiState.isRepeating) {
+                                        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
+                                        if(indexToRepeat == -1) indexToRepeat = 0
+                                    } else {
+                                        indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
+                                        if(indexToPlay == -1) indexToPlay = 0
+                                    }
                                 }
                                 draggedNoteOnIndex = noteOnIndex
                                 draggedNoteOffIndex = noteOffIndex

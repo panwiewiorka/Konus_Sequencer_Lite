@@ -32,6 +32,7 @@ class Sequence (
     var indexToStartRepeating: Int = 0,
     var indexToRepeat: Int = 0,
     var deltaTimeRepeat: Double = 0.0,
+    var repeatStartTime: Double = 0.0,
     var repeatEndTime: Double = 0.0,
     var repeatsCount: Int = 0,
     var savedRepeatsCount: Int = 0,
@@ -81,60 +82,19 @@ class Sequence (
             if(searchedIndex != 0 && velocity == 0 && notes[searchedIndex - 1].time == customRecTime) searchedIndex - 1 else searchedIndex
         } else if(isRepeating) indexToRepeat else indexToPlay
 
-        /*
-// NOTE LENGTH (for StepSeq)
-var pairedNoteOnIndex = -1
-if(velocity == 0 || (playingNotes[pitch] && velocity > 0)) {
-    // searching for paired NoteON
-    // searching backwards from index
-    if (index > 0) {
-        pairedNoteOnIndex = notes
-            .copyOfRange(0, index)
-            .indexOfLast { it.pitch == pitch && it.velocity > 0 }
-    }
-    // searching backwards from end of array
-    if (pairedNoteOnIndex == -1) {
-        pairedNoteOnIndex = notes
-            .copyOfRange(index, notes.size)
-            .indexOfLast { it.pitch == pitch && it.velocity > 0 }
-        if (pairedNoteOnIndex != -1) pairedNoteOnIndex += index
-    }
-}
-
-// updating previous noteON length
-if((velocity == 0 || (playingNotes[pitch] && velocity > 0)) && pairedNoteOnIndex != -1) {
-    notes[pairedNoteOnIndex].length = recordTime - notes[pairedNoteOnIndex].time
-}
- */
-
         // if same note is already playing -> find and erase it's paired noteOFF, and record noteOFF in current recordTime
         if (!stepRecord && playingNotes[pitch] > 0 && velocity > 0) {
-            val noteOnIndex = notes.indexOfLast { it.pitch == pitch && it.velocity > 0 && it.time < if(isRepeating) deltaTimeRepeat else deltaTime }
-            val pairedNoteOffIndex: Int = if(noteOnIndex == -1) {
-                notes.indexOfFirst { it.pitch == pitch && it.velocity == 0 && it.time > if(isRepeating) deltaTimeRepeat else deltaTime }
+            Log.d("ryjtyj", "pitch = $pitch, velocity = $velocity, recordTime = $recordTime")
+            val noteOnIndex = notes.indexOfLast { it.pitch == pitch && it.velocity > 0 && it.time <= recordTime }
+            Log.d("ryjtyj", "noteOnIndex = $noteOnIndex")
+            val pairedNoteOffIndex = if(noteOnIndex == -1) {
+                notes.indexOfFirst { it.pitch == pitch && it.velocity == 0 && it.time > recordTime }
             } else returnPairedNoteOffIndexAndTime(noteOnIndex).first
 
             val retrigId = if(pairedNoteOffIndex == -1) {
                 increaseNoteId()
                 noteId - 1
             } else notes[pairedNoteOffIndex].id
-
-            /*
-            var pairedNoteOffIndex = -1
-            // searching for paired NoteOFF forward from index
-            if (index < notes.size) {
-                pairedNoteOffIndex = notes
-                    .copyOfRange(index, notes.size)
-                    .indexOfFirst { it.pitch == pitch && it.velocity == 0 }
-                if (pairedNoteOffIndex != -1) pairedNoteOffIndex += index
-            }
-            // searching forward from start of array
-            if (pairedNoteOffIndex == -1) {
-                pairedNoteOffIndex = notes
-                    .copyOfRange(0, index)
-                    .indexOfFirst { it.pitch == pitch && it.velocity == 0 }
-            }
-            */
 
             // erasing paired noteOFF // SAME AS PART 3 of fun erasing()
             when {
@@ -162,10 +122,6 @@ if((velocity == 0 || (playingNotes[pitch] && velocity > 0)) && pairedNoteOnIndex
             // updating index when erasing note before it
             if(isRepeating && pairedNoteOffIndex in 0 until indexToRepeat) indexToRepeat--
             if(pairedNoteOffIndex in 0 until indexToPlay) indexToPlay--
-//            if (pairedNoteOffIndex < index && pairedNoteOffIndex > -1) {
-//                if(isRepeating) indexToRepeat--
-//                indexToPlay--
-//            }
 
             // then record noteOFF to retrigger afterwards
             recIntoArray(index, recordTime, pitch, 0, retrigId)
@@ -184,9 +140,10 @@ if((velocity == 0 || (playingNotes[pitch] && velocity > 0)) && pairedNoteOnIndex
             channelIsPlayingNotes = velocity > 0
 //        }
 
-        if(!stepRecord) stepViewYScroll = (noteHeight * pitch
-                //- notesGridHeight / 2
-                ).toInt()
+        if(!stepRecord) {
+            stepViewYScroll = (noteHeight * (pitch - 5)).toInt()
+            if(stepViewYScroll < 0) stepViewYScroll = 0
+        }
     }
 
     private fun recIntoArray(
@@ -234,7 +191,7 @@ if((velocity == 0 || (playingNotes[pitch] && velocity > 0)) && pairedNoteOnIndex
     }
 
 
-    fun erasing(kmmk: KmmkComponentContext, isRepeating: Boolean, index: Int): Boolean {
+    fun erasing(kmmk: KmmkComponentContext, isRepeating: Boolean, index: Int, stepViewCase: Boolean): Boolean {
         if (notes[index].velocity > 0) {
             var breakFlag = false
 
@@ -244,7 +201,7 @@ if((velocity == 0 || (playingNotes[pitch] && velocity > 0)) && pairedNoteOnIndex
             val pairedNoteOffTime = pairedNoteOff.second
 
             // stop note_to_be_erased if playing (StepView condition)
-            stopNoteIfPlaying(isRepeating, index, pairedNoteOffIndex, kmmk)
+            if(stepViewCase) stopNoteIfPlaying(isRepeating, index, pairedNoteOffIndex, kmmk)
 
             if(pairedNoteOff.first > index) pairedNoteOffIndex -= 1
 
@@ -333,7 +290,7 @@ if((velocity == 0 || (playingNotes[pitch] && velocity > 0)) && pairedNoteOnIndex
         } else {
             dt in notes[noteOnIndex].time.toDouble()..totalTime.toDouble() || dt in 0.0..notes[noteOffIndex].time.toDouble()
         }
-        while (playingNotes[notes[noteOnIndex].pitch] > 0 && deltaTimeInRange) {
+        while (!pressedNotes[notes[noteOnIndex].pitch].first && playingNotes[notes[noteOnIndex].pitch] > 0 && deltaTimeInRange) {
             kmmk.noteOn(channel, notes[noteOnIndex].pitch, 0)
             changePlayingNotes(notes[noteOnIndex].pitch, 0)
             channelIsPlayingNotes = false // TODO !!!

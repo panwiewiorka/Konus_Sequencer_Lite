@@ -1,6 +1,5 @@
 package com.example.mysequencer01ui.ui
 
-
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,7 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode.*
@@ -55,7 +53,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     .fillMaxHeight()
                     .background(buttonsBg)
             ) {
-                QuantizeButton(seqViewModel, seqUiState.padsMode, buttonsSize, seqUiState.isQuantizing)
+                QuantizeButton(seqViewModel, seqUiState.padsMode, buttonsSize, seqUiState.isQuantizing, seqUiState.quantizeModeTimer)
                 LoadButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 MuteButton(seqViewModel, seqUiState.padsMode, buttonsSize)
                 ClearButton(seqViewModel, seqUiState.padsMode, buttonsSize)
@@ -80,13 +78,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 }
 
                 if(seqUiState.seqView != LIVE && seqUiState.padsMode != DEFAULT) {
-                    if(seqUiState.padsMode == QUANTIZING) {
-//                        CoroutineScope(Dispatchers.Default).launch {  }
-//                        LaunchedEffect(key1 = seqUiState.padsMode,) {
-//                            delay(seqViewModel.toggleTime.milliseconds)
-//                            PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize * 1.5f)
-//                        }
-                    } else PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize * 1.5f)
+                    PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize)
                 }
             }
 

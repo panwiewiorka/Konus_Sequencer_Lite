@@ -12,8 +12,11 @@ data class SeqUiState (
     val bpm: Float = 120f,
     val factorBpm: Double = 1.0,
     val timingClock: Double = 500.0 / 24,
+
     val transmitClock: Boolean = true,
     val lazyKeyboard: Boolean = false,
+    val visualDebugger: Boolean = false,
+
     val seqIsPlaying: Boolean = false,
     val seqIsRecording: Boolean = false,
     val padsMode: PadsMode = PadsMode.DEFAULT,
@@ -21,6 +24,7 @@ data class SeqUiState (
     val selectedChannel: Int = 0,
     val isQuantizing: Boolean = true,
     val quantizationValue: Int = 16,
+    val quantizeModeTimer: Int = 0,
     val isRepeating: Boolean = false,
     val divisorState: Int = 0,
     val repeatLength: Double = 0.0,

@@ -14,10 +14,10 @@ const val thickness = 4f
 
 fun DrawScope.recSymbol(padsMode: PadsMode, seqIsRecording: Boolean) {
     drawCircle(
-        color = if (seqIsRecording && padsMode == PadsMode.DEFAULT) buttonsColor else warmRed,
+        color = if (seqIsRecording && padsMode == DEFAULT) buttonsColor else warmRed,
         radius = size.height / 6.67f,
         center = center,
-        style = if(padsMode != PadsMode.DEFAULT && seqIsRecording) Fill else Stroke(width = thickness),
+        style = if(padsMode != DEFAULT && seqIsRecording) Fill else Stroke(width = thickness),
     )
 }
 
@@ -117,7 +117,7 @@ fun DrawScope.muteSymbol(padsMode: PadsMode) {
 
     drawPath(
         path = path,
-        color = if (padsMode == PadsMode.MUTING) buttonsColor else violet,
+        color = if (padsMode == MUTING) buttonsColor else violet,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
 }
@@ -143,7 +143,7 @@ fun DrawScope.clearSymbol(padsMode: PadsMode) {
 
     drawPath(
         path = path,
-        color = if (padsMode == PadsMode.CLEARING) buttonsColor else notWhite,
+        color = if (padsMode == CLEARING) buttonsColor else notWhite,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round
@@ -186,13 +186,15 @@ fun DrawScope.quantizeSymbolColor(quantizing: Boolean) {
     )
 }
 
-fun DrawScope.quantizeSymbol(quantizing: Boolean) {
+fun DrawScope.quantizeSymbol(quantizingPadsMode: Boolean, isQuantizing: Boolean) {
     val m = size.height / 8
     val s = size.height / 16
     val xs = size.height / 32
 
-    drawArc(if (quantizing) buttonsColor else selectedButton, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(if (quantizing) buttonsColor else selectedButton, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    val color = if(isQuantizing) notWhite else selectedButton
+
+    drawArc(if (quantizingPadsMode) buttonsColor else color, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(if (quantizingPadsMode) buttonsColor else color, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
 
     val path = Path()
     path.moveTo(center.x + m, center.y - s - xs)
@@ -206,34 +208,13 @@ fun DrawScope.quantizeSymbol(quantizing: Boolean) {
 
     drawPath(
         path = path,
-        color = if (quantizing) buttonsColor else selectedButton,
+        color = if (quantizingPadsMode) buttonsColor else color,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
 }
 
-fun DrawScope.quantizeLineCounter(quantizing: Boolean) {
-    val m = size.height / 8
-    val s = size.height / 16
-    val xs = size.height / 32
-
-    drawArc(if (quantizing) buttonsColor else selectedButton, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(if (quantizing) buttonsColor else selectedButton, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-
-    val path = Path()
-    path.moveTo(center.x + m, center.y - s - xs)
-    path.lineTo(center.x + m, center.y - m)
-    path.moveTo(center.x - m, center.y - s - xs)
-    path.lineTo(center.x - m, center.y - m)
-    path.moveTo(center.x + m, center.y)
-    path.lineTo(center.x + m, center.y - s)
-    path.moveTo(center.x - m, center.y)
-    path.lineTo(center.x - m, center.y - s)
-
-    drawPath(
-        path = path,
-        color = if (quantizing) buttonsColor else selectedButton,
-        style = Stroke( width = thickness, join = StrokeJoin.Round )
-    )
+fun DrawScope.quantizeLineCounter(progress: Float) {
+    drawLine(dusk, Offset(size.width, size.height), Offset(size.width, size.height - progress * size.height), thickness)
 }
 
 

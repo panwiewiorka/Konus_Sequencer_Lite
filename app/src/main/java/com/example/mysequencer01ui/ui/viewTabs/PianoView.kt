@@ -75,112 +75,112 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
     val notesPadding = 1.dp
     val spaceBetweenSliders = 20.dp
 
-    val sequence = seqUiState.sequences[seqUiState.selectedChannel]
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-    ) {
-        val scrollStateLowWhite = rememberLazyListState()
-        val scrollStateLowBlack = rememberLazyListState()
-        val scrollStateHighWhite = rememberLazyListState()
-        val scrollStateHighBlack = rememberLazyListState()
-
-        LaunchedEffect(
-            key1 = scrollStateLowWhite, key2 = scrollStateHighWhite
+    with(seqUiState.sequences[seqUiState.selectedChannel]) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
         ) {
-            CoroutineScope(Dispatchers.Main).launch {
-                scrollStateLowWhite.scrollToItem(sequence.pianoViewLowPianoScroll)
-                scrollStateLowBlack.scrollToItem(sequence.pianoViewLowPianoScroll)
-                scrollStateHighWhite.scrollToItem(sequence.pianoViewHighPianoScroll)
-                scrollStateHighBlack.scrollToItem(sequence.pianoViewHighPianoScroll)
-            }
-        }
+            val scrollStateLowWhite = rememberLazyListState()
+            val scrollStateLowBlack = rememberLazyListState()
+            val scrollStateHighWhite = rememberLazyListState()
+            val scrollStateHighBlack = rememberLazyListState()
 
-        //==============
-
-        val highKeyboardScrollState = rememberScrollState(sequence.pianoViewHighKeyboardScroll.toInt())
-        val lowKeyboardScrollState = rememberScrollState(sequence.pianoViewLowKeyboardScroll.toInt())
-
-        val keyWidth = (maxWidth - notesPadding * 26) / 14
-
-        val maxScrollValue = keyWidth.value * LocalDensity.current.density * 65
-        val sliderWidth = (maxWidth - spaceBetweenSliders) / 2
-        val factor = maxScrollValue / sliderWidth.value / LocalDensity.current.density
-
-        val highSliderScrollState = rememberScrollState((sequence.pianoViewHighKeyboardScroll / factor).toInt())
-        val lowSliderScrollState = rememberScrollState((sequence.pianoViewLowKeyboardScroll / factor).toInt())
-
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            if(seqUiState.lazyKeyboard) {
-                LazyPianoKeyboard(seqUiState.selectedChannel, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, scrollStateHighWhite, scrollStateHighBlack, seqViewModel::pressPad)
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    val updatePianoViewXScroll = seqUiState.sequences[seqUiState.selectedChannel]::changePianoViewXScroll
-                    OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, true)
-                    OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, true, true)
-                    Spacer(modifier = Modifier.width(buttonsSize))
-                    OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, false)
-                    OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, false, true)
-
+            LaunchedEffect(
+                key1 = scrollStateLowWhite, key2 = scrollStateHighWhite
+            ) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    scrollStateLowWhite.scrollToItem(pianoViewLowPianoScroll)
+                    scrollStateLowBlack.scrollToItem(pianoViewLowPianoScroll)
+                    scrollStateHighWhite.scrollToItem(pianoViewHighPianoScroll)
+                    scrollStateHighBlack.scrollToItem(pianoViewHighPianoScroll)
                 }
-                LazyPianoKeyboard(seqUiState.selectedChannel, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, scrollStateLowWhite, scrollStateLowBlack, seqViewModel::pressPad)
-            } else {
-                PianoKeyboard(seqUiState.selectedChannel, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, highKeyboardScrollState, seqViewModel::pressPad)
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    CustomSlider(
-                        thumbWidth = 1.dp,
-                        thumbHeight = 20.dp,
-                        up = false,
-                        width = (sliderWidth.value * LocalDensity.current.density).toInt(),
-                        contourColor = violet,
-                        fillColor = buttonsBg,
-                        scrollState = lowKeyboardScrollState,
-                        sliderScrollState = lowSliderScrollState,
-                        factor = factor,
-                        sequence = sequence,
-                        updateSequencesUiState = seqViewModel::updateSequencesUiState,
-                        modifier = Modifier.width(sliderWidth)
-                    )
+            }
+
+            //==============
+
+            val highKeyboardScrollState = rememberScrollState(pianoViewHighKeyboardScroll.toInt())
+            val lowKeyboardScrollState = rememberScrollState(pianoViewLowKeyboardScroll.toInt())
+
+            val keyWidth = (maxWidth - notesPadding * 26) / 14
+
+            val maxScrollValue = keyWidth.value * LocalDensity.current.density * 65
+            val sliderWidth = (maxWidth - spaceBetweenSliders) / 2
+            val factor = maxScrollValue / sliderWidth.value / LocalDensity.current.density
+
+            val highSliderScrollState = rememberScrollState((pianoViewHighKeyboardScroll / factor).toInt())
+            val lowSliderScrollState = rememberScrollState((pianoViewLowKeyboardScroll / factor).toInt())
+
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if(seqUiState.lazyKeyboard) {
+                    LazyPianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, scrollStateHighWhite, scrollStateHighBlack, seqViewModel::pressPad)
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        val updatePianoViewXScroll = seqUiState.sequences[seqUiState.selectedChannel]::changePianoViewXScroll
+                        OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, true)
+                        OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, true, true)
+                        Spacer(modifier = Modifier.width(buttonsSize))
+                        OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, false)
+                        OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, false, true)
+
+                    }
+                    LazyPianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, scrollStateLowWhite, scrollStateLowBlack, seqViewModel::pressPad)
+                } else {
+                    PianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, highKeyboardScrollState, seqViewModel::pressPad)
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        CustomSlider(
+                            thumbWidth = 1.dp,
+                            thumbHeight = 20.dp,
+                            up = false,
+                            width = (sliderWidth.value * LocalDensity.current.density).toInt(),
+                            contourColor = violet,
+                            fillColor = buttonsBg,
+                            scrollState = lowKeyboardScrollState,
+                            sliderScrollState = lowSliderScrollState,
+                            factor = factor,
+                            sequence = this@with,
+                            updateSequencesUiState = seqViewModel::updateSequencesUiState,
+                            modifier = Modifier.width(sliderWidth)
+                        )
 //                    KeyboardSlider(sequence, true,
 //                        Modifier
 //                            .weight(1f)
 //                            .offset(0.dp, 7.dp), lowKeyboardScrollState, seqViewModel::updateSequencesUiState)
-                    Spacer(modifier = Modifier.width(spaceBetweenSliders))
+                        Spacer(modifier = Modifier.width(spaceBetweenSliders))
 //                    KeyboardSlider(sequence, false,
 //                        Modifier
 //                            .weight(1f)
 //                            .offset(0.dp, (-7).dp), highKeyboardScrollState, seqViewModel::updateSequencesUiState)
-                    CustomSlider(
-                        thumbWidth = 1.dp,
-                        thumbHeight = 20.dp,
-                        up = true,
-                        width = (sliderWidth.value * LocalDensity.current.density).toInt(),
-                        contourColor = violet,
-                        fillColor = buttonsBg,
-                        scrollState = highKeyboardScrollState,
-                        sliderScrollState = highSliderScrollState,
-                        factor = factor,
-                        sequence = sequence,
-                        updateSequencesUiState = seqViewModel::updateSequencesUiState,
-                        modifier = Modifier.width(sliderWidth)
-                    )
+                        CustomSlider(
+                            thumbWidth = 1.dp,
+                            thumbHeight = 20.dp,
+                            up = true,
+                            width = (sliderWidth.value * LocalDensity.current.density).toInt(),
+                            contourColor = violet,
+                            fillColor = buttonsBg,
+                            scrollState = highKeyboardScrollState,
+                            sliderScrollState = highSliderScrollState,
+                            factor = factor,
+                            sequence = this@with,
+                            updateSequencesUiState = seqViewModel::updateSequencesUiState,
+                            modifier = Modifier.width(sliderWidth)
+                        )
+                    }
+                    PianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, lowKeyboardScrollState, seqViewModel::pressPad)
                 }
-                PianoKeyboard(seqUiState.selectedChannel, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, lowKeyboardScrollState, seqViewModel::pressPad)
             }
         }
     }
@@ -190,7 +190,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
 @Composable
 fun PianoKeyboard(
     selectedChannel: Int,
-//    playingNotes: Array<Boolean>,
+    playingNotes: Array<Int>,
     seqIsRecording: Boolean,
     keyWidth: Dp,
     keyHeight: Dp,
@@ -218,7 +218,7 @@ fun PianoKeyboard(
                         else -> 11
                     }
                     val pitch = semitone + octave * 12
-                    PianoKey(seqIsRecording, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, true)
+                    PianoKey(seqIsRecording, playingNotes[pitch] > 0, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, true)
                     if ((it + 7) % 7 == 0) Text("${it / 7 - 4}")
                 }
             }
@@ -239,7 +239,7 @@ fun PianoKeyboard(
                 val pitch = semitone + octave * 12
                 val a = (it + 7) % 7
                 if(a == 2 || a == 6 || it == 74) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
-                else PianoKey(seqIsRecording, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, false)
+                else PianoKey(seqIsRecording, playingNotes[pitch] > 0, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, false)
             }
         }
     }
@@ -249,6 +249,7 @@ fun PianoKeyboard(
 @Composable
 fun LazyPianoKeyboard(
     selectedChannel: Int,
+    playingNotes: Array<Int>,
     seqIsRecording: Boolean,
     keyWidth: Dp,
     keyHeight: Dp,
@@ -279,7 +280,7 @@ fun LazyPianoKeyboard(
                         else -> 11
                     }
                     val pitch = semitone + octave * 12
-                    PianoKey(seqIsRecording, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, true)
+                    PianoKey(seqIsRecording,playingNotes[pitch] > 0, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, true)
                     if ((it + 7) % 7 == 0) Text("${it / 7 - 4}")
                 }
             }
@@ -302,7 +303,7 @@ fun LazyPianoKeyboard(
                 val pitch = semitone + octave * 12
                 val a = (it + 7) % 7
                 if(a == 2 || a == 6 || it == 74) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
-                else PianoKey(seqIsRecording, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, false)
+                else PianoKey(seqIsRecording,playingNotes[pitch] > 0, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, false)
             }
         }
     }
@@ -312,7 +313,7 @@ fun LazyPianoKeyboard(
 @Composable
 fun PianoKey(
     seqIsRecording: Boolean,
-//    noteIsPlaying: Boolean,
+    noteIsPlaying: Boolean,
     pressPad: (Int, Int, Int) -> Unit,
     selectedChannel: Int,
     pitch: Int,
@@ -321,18 +322,18 @@ fun PianoKey(
     notesPadding: Dp,
     whiteKey: Boolean = true,
 ) {
-    val keyColor = remember { mutableStateOf(false) }
+    val keyIsPressed = remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     LaunchedEffect(interactionSource, selectedChannel) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     pressPad(selectedChannel, pitch, 100)
-                    keyColor.value = true
+                    keyIsPressed.value = true
                 }
                 is PressInteraction.Release -> {
                     pressPad(selectedChannel, pitch, 0)
-                    keyColor.value = false
+                    keyIsPressed.value = false
                 }
                 is PressInteraction.Cancel -> {  }
             }
@@ -342,9 +343,9 @@ fun PianoKey(
     Box(
         modifier = Modifier
             .padding(notesPadding, 0.dp)
-//            .border(notesPadding, if(noteIsPlaying) color else Color.Transparent)
+            .border(4.dp, if(noteIsPlaying) color else Color.Transparent)
             .background(
-                if (keyColor.value) {
+                if (keyIsPressed.value) {
                     color
                 } else {
                     if (whiteKey) notWhite else BackGray
