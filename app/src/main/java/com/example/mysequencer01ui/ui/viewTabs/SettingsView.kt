@@ -15,6 +15,7 @@ import androidx.compose.material.Card
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.RadioButton
 import androidx.compose.material.Slider
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
@@ -74,8 +75,30 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
             TextAndSwitch("Clock transmit", seqUiState.transmitClock) { seqViewModel.switchClockTransmitting() }
 
             TextAndSwitch("LazyKeyboard", seqUiState.lazyKeyboard) { seqViewModel.switchLazyKeyboard() }
-
-            TextAndSwitch("VisualDebugger", seqUiState.visualDebugger) { seqViewModel.switchVisualDebugger() }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextAndSwitch("VisualDebugger", seqUiState.visualDebugger) { seqViewModel.switchVisualDebugger() }
+                if(seqUiState.visualDebugger) {
+                    Text("pitch", color = notWhite, modifier = Modifier.padding(start = 10.dp))
+                    RadioButton(
+                        selected = seqUiState.debuggerViewSetting == 0,
+                        onClick = { seqViewModel.selectDebuggerSetting(0) },
+                        modifier = Modifier.padding(end = 10.dp))
+                    Text("index", color = notWhite)
+                    RadioButton(
+                        selected = seqUiState.debuggerViewSetting == 1,
+                        onClick = { seqViewModel.selectDebuggerSetting(1) },
+                        modifier = Modifier.padding(end = 10.dp))
+                    Text("noteId", color = notWhite)
+                    RadioButton(
+                        selected = seqUiState.debuggerViewSetting == 2,
+                        onClick = { seqViewModel.selectDebuggerSetting(2) },
+                        modifier = Modifier.padding(end = 10.dp))
+                }
+            }
         }
     }
 }

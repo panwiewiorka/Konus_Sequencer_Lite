@@ -205,7 +205,6 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move in
             }
         }
         if(seqUiState.visualDebugger) {
-            Text("[0]noteId = ${seqUiState.sequences[0].noteId - Int.MIN_VALUE}", color = selectedButton)
             VisualDebugger(seqUiState, buttonsSize)
         }
     }
@@ -222,6 +221,22 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {    // TODO move into Li
             .background(Color.Transparent),
         contentAlignment = Alignment.TopStart
     ) {
+        Column() {
+            with(seqUiState.sequences[0]) {
+                Text(
+                    "noteId = ${noteId - Int.MIN_VALUE},    " +
+                        "notes ON: ${playingNotes[60]},     ",
+                    color = selectedButton)
+                Text(
+                    "#toPlay = ${indexToPlay},     " +
+                        "#toRepeat = $indexToRepeat      " +
+                        "#toStartRepeating = $indexToStartRepeating",
+                    color = selectedButton)
+                Text(
+                    "#indexToRepeat - wrapIndex = ${indexToRepeat - wrapIndex}",
+                    color = selectedButton)
+            }
+        }
 //        val playhead = ((seqUiState.sequences[0].deltaTime) / seqUiState.sequences[0].totalTime * maxWidth.value).dp  // TODO replace hardcoded channel
         Canvas(modifier = Modifier.fillMaxSize()) {
 //            drawLine(
@@ -236,9 +251,13 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {    // TODO move into Li
             with(seqUiState.sequences[c]) {
                 for (i in notes.indices) {
                     Text(
-//                    text = if (notes[i].velocity > 0) "${notes[i].pitch}" else "]",
-                    text = "${notes[i].id - Int.MIN_VALUE}",
-//                    text = "${playingNotes[60]}",
+                        text =
+                            when (seqUiState.debuggerViewSetting) {
+                                0 -> if (notes[i].velocity > 0) "${notes[i].pitch}" else "]"
+                                1 -> "$i"
+                                else-> "${notes[i].id - Int.MIN_VALUE}"
+                            }
+                        ,
                         color = if(notes[i].velocity > 0) Color(0xFFFFFFFF) else Color(0xFF999999),
                         modifier = Modifier.offset(
                             (notes[i].time.toFloat() / totalTime * maxWidth.value).dp,

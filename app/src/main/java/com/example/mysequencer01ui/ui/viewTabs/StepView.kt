@@ -201,7 +201,6 @@ fun NotesGrid(
                                         staticNoteOffTime = seqViewModel.staticNoteOffTime,
                                         seqIsPlaying = seqUiState.seqIsPlaying,
                                         isRepeating = seqUiState.isRepeating,
-                                        repeatLength = seqUiState.repeatLength,
                                         customTime = time,
                                         stepRecord = true,
                                     )
@@ -212,7 +211,6 @@ fun NotesGrid(
                                         staticNoteOffTime = seqViewModel.staticNoteOffTime,
                                         seqIsPlaying = seqUiState.seqIsPlaying,
                                         isRepeating = seqUiState.isRepeating,
-                                        repeatLength = seqUiState.repeatLength,
                                         customTime = noteOffTime,
                                         stepRecord = true,
                                     )
@@ -224,9 +222,7 @@ fun NotesGrid(
                     }
                     .pointerInput(seqUiState.seqIsPlaying, seqUiState.isQuantizing) {
                         var noteDetected = false
-//                        var pitch = 0
                         var pitch = -1
-//                        var time: Int
                         var time = -1
                         var dragDeltaTime: Int
                         var dragQuantizingDeltaTime = 0
@@ -321,7 +317,7 @@ fun NotesGrid(
                         ) { change, dragAmount ->
                             change.consume()
 
-                            // if note exists where we start dragging - move it, else scroll
+                            // if note exists where we start dragging - drag it, else scroll
                             if (noteDetected) {
                                 xOffset += dragAmount.x
                                 yOffset += dragAmount.y
