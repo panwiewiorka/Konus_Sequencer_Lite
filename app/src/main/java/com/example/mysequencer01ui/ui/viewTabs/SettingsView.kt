@@ -74,7 +74,6 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
 
             TextAndSwitch("Clock transmit", seqUiState.transmitClock) { seqViewModel.switchClockTransmitting() }
 
-            TextAndSwitch("LazyKeyboard", seqUiState.lazyKeyboard) { seqViewModel.switchLazyKeyboard() }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

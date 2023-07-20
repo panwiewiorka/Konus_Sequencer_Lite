@@ -22,10 +22,8 @@ class Sequence (
     var draggedNoteOffIndex: Int = -1,
 
     var stepViewYScroll: Int = 0, // TODO float?
-    var pianoViewHighKeyboardScroll: Float = 3000f,
-    var pianoViewLowKeyboardScroll: Float = 1500f,
-    var pianoViewHighPianoScroll: Int = 21,
-    var pianoViewLowPianoScroll: Int = 7,
+    var pianoViewOctaveHigh: Int = 4,
+    var pianoViewOctaveLow: Int = 2,
 
     var indexToPlay: Int = 0,
     var startTimeStamp: Long = 0,
@@ -43,9 +41,9 @@ class Sequence (
     var wrapDelta: Int = 0,
     var wrapTime: Int = 0,
     var wrapIndex: Int = 0,
+    var fullDeltaTimeRepeat: Double = 0.0,
     var tempNotesSize: Int = 0,
     ) {
-
 
     fun recordNote(
         pitch: Int,
@@ -59,9 +57,8 @@ class Sequence (
         noteHeight: Float = 60f
     ) {
         val customRecTime = if(customTime >= totalTime) customTime - totalTime else customTime
-        val fullDeltaTimeRepeat = deltaTimeRepeat + wrapDelta + wrapTime // TODO move into State ^^ to update & use everywhere?
         var localId = id
-        var recordTime = 0
+        var recordTime: Int
         if(customRecTime > -1) {
             recordTime = customRecTime
         } else {
@@ -79,15 +76,6 @@ class Sequence (
                  recordTime = if(velocity > 0) 0 else staticNoteOffTime
              }
         }
-
-//        var index = if(stepRecord) {
-//            val searchedIndex = notes.indexOfLast { it.time <= customRecTime } + 1
-//            // if noteOff has the same time as some other noteON -> place it before:
-//            if(searchedIndex != 0 && velocity == 0 && notes[searchedIndex - 1].time == customRecTime) searchedIndex - 1 else searchedIndex
-//        } else if(isRepeating) {
-//            val wrapIndex = if(deltaTimeRepeat + wrapDelta >= 0 && repeatStartTime > repeatEndTime) notes.size else 0
-//            indexToRepeat - wrapIndex
-//        } else indexToPlay
 
         var index = notes.indexOfLast { it.time < recordTime } + 1
         // if noteOff has the same time as some other noteON -> place it before:
@@ -137,11 +125,7 @@ class Sequence (
 
         // updating indices
         if(isRepeating) {
-            val tempDeltaTimeRepeat = if(deltaTimeRepeat + wrapDelta < 0)   // wrap-around
-                (deltaTimeRepeat + wrapDelta + totalTime).toInt()
-            else
-            (deltaTimeRepeat + wrapDelta).toInt()
-            if(!stepRecord || (customRecTime < tempDeltaTimeRepeat)) {
+            if(!stepRecord || (customRecTime < fullDeltaTimeRepeat)) {
                 indexToRepeat++
             }
             if(deltaTime >= recordTime && (!stepRecord || (customRecTime < deltaTime))) {
@@ -231,8 +215,6 @@ class Sequence (
         if (notes[index].velocity > 0) {
             Log.d("ryjtyj", "erasing index $index")
 
-            var breakFlag = false
-
             var pairedNoteOffIndex = returnPairedNoteOffIndexAndTime(index).first
 
             // stop note_to_be_erased if playing (StepView condition)
@@ -241,9 +223,9 @@ class Sequence (
             if(pairedNoteOffIndex > index) pairedNoteOffIndex -= 1
 
             // erasing noteON
-            breakFlag = eraseFromArray(index, false)
+            var breakFlag = eraseFromArray(index, false)
 
-            if(pairedNoteOffIndex != -1) Log.d("ryjtyj", "erasing noteOff at $pairedNoteOffIndex")
+            if(pairedNoteOffIndex != -1) Log.d("ryjtyj", "erasing paired noteOff at $pairedNoteOffIndex")
             // erasing paired noteOFF
             breakFlag = eraseFromArray(pairedNoteOffIndex, breakFlag)
 
@@ -312,7 +294,7 @@ class Sequence (
         if(noteOnIndex == -1 || noteOffIndex == -1) {
             Log.d("ryjtyj", "stopNoteIfPlaying() error: ${if(noteOnIndex == -1) "noteOnIndex" else "noteOffIndex"} out of bounds")
         }
-        val dt = if (isRepeating) deltaTimeRepeat else deltaTime
+        val dt = if (isRepeating) fullDeltaTimeRepeat else deltaTime
         val deltaTimeInRange = if (noteOnIndex < noteOffIndex) {
             dt in notes[noteOnIndex].time.toDouble()..notes[noteOffIndex].time.toDouble()
         } else {
@@ -329,12 +311,9 @@ class Sequence (
         stepViewYScroll = y
     }
 
-    fun changePianoViewKeyboardScroll(x: Float, lowKeyboard: Boolean) {
-        if(lowKeyboard) pianoViewLowKeyboardScroll = x else pianoViewHighKeyboardScroll = x
-    }
-
-    fun changePianoViewXScroll(x: Int, lowerPiano: Boolean = false) {
-        if(lowerPiano) pianoViewLowPianoScroll = x else pianoViewHighPianoScroll = x
+    fun changeKeyboardOctave(lowKeyboard: Boolean, increment: Int) {
+        if(lowKeyboard) pianoViewOctaveLow += increment
+        else pianoViewOctaveHigh += increment
     }
 
     fun returnPairedNoteOffIndexAndTime(index: Int): Pair<Int, Int> {

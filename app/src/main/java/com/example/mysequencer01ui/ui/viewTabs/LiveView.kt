@@ -37,6 +37,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -47,6 +48,8 @@ import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.buttonTextSize
 import com.example.mysequencer01ui.ui.buttonsPadding
 import com.example.mysequencer01ui.ui.nonScaledSp
+import com.example.mysequencer01ui.ui.playHeads
+import com.example.mysequencer01ui.ui.repeatBounds
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsColor
 import com.example.mysequencer01ui.ui.theme.dusk
@@ -122,53 +125,53 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move in
             val step = (maxWidth / 16).toPx()
             for (i in 0..15) {
                 drawLine(
-                    if((i + 4) % 4 == 0) buttonsColor else buttonsColor,
-                    Offset(i * step, if((i + 4) % 4 == 0) 0f else (size.height / 2 - size.height / 32)),
-                    Offset(i * step, if((i + 4) % 4 == 0) size.height else size.height / 2 + size.height / 32),
-                    2f
+                    color = if((i + 4) % 4 == 0) buttonsColor else buttonsColor,
+                    start = Offset(i * step, if((i + 4) % 4 == 0) 0f else (size.height / 2 - size.height / 32)),
+                    end = Offset(i * step, if((i + 4) % 4 == 0) size.height else size.height / 2 + size.height / 32),
+                    strokeWidth = 2f
                 )
             }
 
             for(c in 0..3) {
                 with(seqUiState.sequences[c]) {
-                    val playhead = (size.width * deltaTime / totalTime).toFloat()
-                    var playheadRepeat = (size.width * deltaTimeRepeat / totalTime).toFloat()
-                    playheadRepeat = if(playheadRepeat < 0) playheadRepeat + size.width else playheadRepeat
+                    val widthFactor = size.width / totalTime
+                    val playhead = (widthFactor * deltaTime).toFloat()
+                    val playheadRepeat = (widthFactor * fullDeltaTimeRepeat).toFloat()
 
                     // NOTES
                     for (i in notes.indices) {
                         if(notes[i].velocity > 0) {
-                            val noteStart = size.width * notes[i].time / totalTime
+                            val noteStart = widthFactor * notes[i].time
                             val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(i)
                             val noteOffIndex = noteOffIndexAndTime.first
                             val noteLength = noteOffIndexAndTime.second - notes[i].time
                             val noteWidth =
                                 if(noteOffIndex != -1) {
-                                    size.width * noteLength / totalTime   // TODO minimum visible length
+                                    widthFactor * noteLength   // TODO minimum visible length
                                 } else {
                                     if(seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
                                 }
 
                             if(noteWidth >= 0) { // normal note (not wrap-around)
                                 drawRect(
-                                    if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
-                                    Offset(noteStart, size.height - ((c + 1) * size.height / 4)),
-                                    Size(
+                                    color = if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
+                                    topLeft = Offset(noteStart, size.height - ((c + 1) * size.height / 4)),
+                                    size = Size(
                                         width = noteWidth,
                                         height = size.height / 4)
                                 )
                             } else {   // wrap-around note
                                 drawRect(
-                                    if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
-                                    Offset(noteStart,size.height - ((c + 1) * size.height / 4)),
-                                    Size(
+                                    color = if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
+                                    topLeft = Offset(noteStart,size.height - ((c + 1) * size.height / 4)),
+                                    size = Size(
                                         width = size.width - noteStart,
                                         height = size.height / 4)
                                 )
                                 drawRect(
-                                    if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
-                                    Offset(0f,size.height - ((c + 1) * size.height / 4)),
-                                    Size(
+                                    color = if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
+                                    topLeft = Offset(0f,size.height - ((c + 1) * size.height / 4)),
+                                    size = Size(
                                         width = noteWidth + noteStart,  // noteWidth is negative here
                                         height = size.height / 4)
                                 )
@@ -176,31 +179,9 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move in
                         }
                     }
 
-                    // playhead color
-                    val conditionalColor = when (seqUiState.padsMode) {
-                        PadsMode.MUTING -> violet
-                        PadsMode.ERASING -> warmRed
-                        PadsMode.CLEARING -> notWhite
-                        else -> {
-                            if (seqUiState.seqIsRecording) warmRed
-                            else playGreen
-                        }
-                    }
-                    // PLAYHEAD
-                    drawLine(
-                        color = conditionalColor,
-                        start = Offset(playhead, 0f),
-                        end = Offset(playhead, size.height)
-                    )
-                    // REPEAT PLAYHEAD
-                    if(seqUiState.isRepeating && seqUiState.seqIsPlaying) {
-                        drawLine(
-                            color = conditionalColor,
-                            start = Offset(playheadRepeat, 0f),
-                            end = Offset(playheadRepeat, size.height),
-                            4f,
-                        )
-                    }
+                    playHeads(seqUiState, playhead, playheadRepeat)
+
+                    if(seqUiState.isRepeating) repeatBounds(this, widthFactor, 0.3f)
                 }
             }
         }

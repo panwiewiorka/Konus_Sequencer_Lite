@@ -1,14 +1,9 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
 import android.util.Log
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
@@ -24,48 +19,30 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Slider
-import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.Sequence
+import com.example.mysequencer01ui.PianoKeysType
+import com.example.mysequencer01ui.PianoKeysType.BLACK
+import com.example.mysequencer01ui.PianoKeysType.WHITE
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
+import com.example.mysequencer01ui.ui.recomposeHighlighter
 import com.example.mysequencer01ui.ui.theme.BackGray
-import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.buttonsColor
 import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.playGreen
-import com.example.mysequencer01ui.ui.theme.violet
 import com.example.mysequencer01ui.ui.theme.warmRed
-import com.example.mysequencer01ui.ui.thickness
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 @Composable
 fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
@@ -81,106 +58,26 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 .fillMaxSize()
                 .padding(16.dp),
         ) {
-            val scrollStateLowWhite = rememberLazyListState()
-            val scrollStateLowBlack = rememberLazyListState()
-            val scrollStateHighWhite = rememberLazyListState()
-            val scrollStateHighBlack = rememberLazyListState()
-
-            LaunchedEffect(
-                key1 = scrollStateLowWhite, key2 = scrollStateHighWhite
-            ) {
-                CoroutineScope(Dispatchers.Main).launch {
-                    scrollStateLowWhite.scrollToItem(pianoViewLowPianoScroll)
-                    scrollStateLowBlack.scrollToItem(pianoViewLowPianoScroll)
-                    scrollStateHighWhite.scrollToItem(pianoViewHighPianoScroll)
-                    scrollStateHighBlack.scrollToItem(pianoViewHighPianoScroll)
-                }
-            }
-
-            //==============
-
-            val highKeyboardScrollState = rememberScrollState(pianoViewHighKeyboardScroll.toInt())
-            val lowKeyboardScrollState = rememberScrollState(pianoViewLowKeyboardScroll.toInt())
-
             val keyWidth = (maxWidth - notesPadding * 26) / 14
-
-            val maxScrollValue = keyWidth.value * LocalDensity.current.density * 65
-            val sliderWidth = (maxWidth - spaceBetweenSliders) / 2
-            val factor = maxScrollValue / sliderWidth.value / LocalDensity.current.density
-
-            val highSliderScrollState = rememberScrollState((pianoViewHighKeyboardScroll / factor).toInt())
-            val lowSliderScrollState = rememberScrollState((pianoViewLowKeyboardScroll / factor).toInt())
 
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                if(seqUiState.lazyKeyboard) {
-                    LazyPianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, scrollStateHighWhite, scrollStateHighBlack, seqViewModel::pressPad)
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    ) {
-                        val updatePianoViewXScroll = seqUiState.sequences[seqUiState.selectedChannel]::changePianoViewXScroll
-                        OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, true)
-                        OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, true, true)
-                        Spacer(modifier = Modifier.width(buttonsSize))
-                        OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, false)
-                        OctaveButton(buttonsSize, scrollStateLowWhite, scrollStateLowBlack, scrollStateHighWhite, scrollStateHighBlack, updatePianoViewXScroll, false, true)
-
-                    }
-                    LazyPianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, scrollStateLowWhite, scrollStateLowBlack, seqViewModel::pressPad)
-                } else {
-                    PianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, highKeyboardScrollState, seqViewModel::pressPad)
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    ) {
-                        CustomSlider(
-                            thumbWidth = 1.dp,
-                            thumbHeight = 20.dp,
-                            up = false,
-                            width = (sliderWidth.value * LocalDensity.current.density).toInt(),
-                            contourColor = violet,
-                            fillColor = buttonsBg,
-                            scrollState = lowKeyboardScrollState,
-                            sliderScrollState = lowSliderScrollState,
-                            factor = factor,
-                            sequence = this@with,
-                            updateSequencesUiState = seqViewModel::updateSequencesUiState,
-                            modifier = Modifier.width(sliderWidth)
-                        )
-//                    KeyboardSlider(sequence, true,
-//                        Modifier
-//                            .weight(1f)
-//                            .offset(0.dp, 7.dp), lowKeyboardScrollState, seqViewModel::updateSequencesUiState)
-                        Spacer(modifier = Modifier.width(spaceBetweenSliders))
-//                    KeyboardSlider(sequence, false,
-//                        Modifier
-//                            .weight(1f)
-//                            .offset(0.dp, (-7).dp), highKeyboardScrollState, seqViewModel::updateSequencesUiState)
-                        CustomSlider(
-                            thumbWidth = 1.dp,
-                            thumbHeight = 20.dp,
-                            up = true,
-                            width = (sliderWidth.value * LocalDensity.current.density).toInt(),
-                            contourColor = violet,
-                            fillColor = buttonsBg,
-                            scrollState = highKeyboardScrollState,
-                            sliderScrollState = highSliderScrollState,
-                            factor = factor,
-                            sequence = this@with,
-                            updateSequencesUiState = seqViewModel::updateSequencesUiState,
-                            modifier = Modifier.width(sliderWidth)
-                        )
-                    }
-                    PianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, notesPadding, lowKeyboardScrollState, seqViewModel::pressPad)
+                PianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, pianoViewOctaveHigh, notesPadding, seqViewModel::pressPad)
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    OctaveButton(buttonsSize = buttonsSize, lowerPiano = true, upButton = false, ::changeKeyboardOctave, seqViewModel::updateSequencesUiState)
+                    OctaveButton(buttonsSize = buttonsSize, lowerPiano = true, upButton = true, ::changeKeyboardOctave, seqViewModel::updateSequencesUiState)
+                    Spacer(modifier = Modifier.width(spaceBetweenSliders))
+                    OctaveButton(buttonsSize = buttonsSize, lowerPiano = false, upButton = false, ::changeKeyboardOctave, seqViewModel::updateSequencesUiState)
+                    OctaveButton(buttonsSize = buttonsSize, lowerPiano = false, upButton = true, ::changeKeyboardOctave, seqViewModel::updateSequencesUiState)
                 }
+                PianoKeyboard(seqUiState.selectedChannel, playingNotes, seqUiState.seqIsRecording, keyWidth, keyHeight, pianoViewOctaveLow, notesPadding, seqViewModel::pressPad)
             }
         }
     }
@@ -189,6 +86,144 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
 
 @Composable
 fun PianoKeyboard(
+    selectedChannel: Int,
+    playingNotes: Array<Int>,
+    seqIsRecording: Boolean,
+    keyWidth: Dp,
+    keyHeight: Dp,
+    octave: Int,
+    notesPadding: Dp,
+    pressPad: (Int, Int, Int) -> Unit,
+) {
+    val startPitch = 0
+    Column(
+        verticalArrangement = Arrangement.spacedBy(-keyHeight / 2),
+//        modifier = Modifier.horizontalScroll(keyboardScrollState),
+    ) {
+        Row() {
+            repeat(24) {
+                var key = chooseBlackOrWhiteKey(startPitch, it)
+//                LaunchedEffect(key1 = octave) {
+//                    key = chooseBlackOrWhiteKey(startPitch, it)
+//                }
+                val keyIsWhite = key.first.keyIsWhite
+                val pitch = key.second + (octave + 1) * 12 // TODO bounds
+                Log.d("ryjtyj", "${pitch}")
+                Box(
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    if(keyIsWhite) PianoKey(seqIsRecording, playingNotes[pitch] > 0, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, true)
+                    if (pitch % 12 == 0) Text("${(pitch / 12) - 1}")
+//                    Text("$pitch")
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.offset(-keyWidth / 2 - notesPadding, -keyHeight / 2)
+        ) {
+            repeat(24) {
+                val key = chooseBlackOrWhiteKey(startPitch, it)
+                val keyIsBlack = !key.first.keyIsWhite
+                val pitch = key.second + (octave + 1) * 12 // TODO bounds
+
+                if(keyIsBlack) PianoKey(seqIsRecording, playingNotes[pitch] > 0, pressPad, selectedChannel, pitch, keyWidth, keyHeight, notesPadding, false)
+                if(key.second % 12 == 5 || key.second % 12 == 0) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
+            }
+        }
+    }
+}
+
+fun chooseBlackOrWhiteKey(startPitch: Int, keyIndex: Int): Pair<PianoKeysType, Int> {
+    val blackAndWhiteKeysPattern = listOf(WHITE, BLACK, WHITE, BLACK, WHITE, WHITE, BLACK, WHITE, BLACK, WHITE, BLACK, WHITE)
+    return Pair(blackAndWhiteKeysPattern[(startPitch + keyIndex) % 12], startPitch + keyIndex)
+}
+
+
+@Composable
+fun PianoKey(
+    seqIsRecording: Boolean,
+    noteIsPlaying: Boolean,
+    pressPad: (Int, Int, Int) -> Unit,
+    selectedChannel: Int,
+    pitch: Int,
+    keyWidth: Dp,
+    keyHeight: Dp,
+    notesPadding: Dp,
+    whiteKey: Boolean,
+) {
+    val keyIsPressed = remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    LaunchedEffect(interactionSource, selectedChannel, pitch) {
+        interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> {
+                    pressPad(selectedChannel, pitch, 100)
+                    keyIsPressed.value = true
+                }
+                is PressInteraction.Release -> {
+                    pressPad(selectedChannel, pitch, 0)
+                    keyIsPressed.value = false
+                }
+                is PressInteraction.Cancel -> {
+                    pressPad(selectedChannel, pitch, 0)
+                    keyIsPressed.value = false
+                }
+            }
+        }
+    }
+    val color = if (seqIsRecording) warmRed else playGreen
+    Box(
+        modifier = Modifier
+            .padding(notesPadding, 0.dp)
+            .border(4.dp, if (noteIsPlaying) color else Color.Transparent)
+            .background(
+                if (keyIsPressed.value) {
+                    color
+                } else {
+                    if (whiteKey) notWhite else BackGray
+                }
+            )
+            .width(keyWidth)
+            .height(if (whiteKey) keyHeight else keyHeight / 2)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { }
+    ) { }
+}
+
+
+@Composable
+fun OctaveButton(
+    buttonsSize: Dp,
+    lowerPiano: Boolean,
+    upButton: Boolean,
+    changeKeyboardOctave: (Boolean, Int) -> Unit,
+    updateSeqUiState: () -> Unit
+) {
+    Button(
+        elevation = null,
+        onClick = {
+            changeKeyboardOctave(lowerPiano, if(upButton) 1 else -1)
+            updateSeqUiState()
+        },
+        shape = RoundedCornerShape(0f),
+        contentPadding = PaddingValues(0.dp),
+        modifier = Modifier
+            .width(buttonsSize)
+            .height(buttonsSize / 3),
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = buttonsColor
+        ),
+    ) {
+        Text(text = if(upButton) ">" else "<", color = notWhite)
+    }
+}
+
+
+/*
+@Composable
+fun PianoKeyboardOld(
     selectedChannel: Int,
     playingNotes: Array<Int>,
     seqIsRecording: Boolean,
@@ -311,7 +346,7 @@ fun LazyPianoKeyboard(
 
 
 @Composable
-fun PianoKey(
+fun PianoKeyOld(
     seqIsRecording: Boolean,
     noteIsPlaying: Boolean,
     pressPad: (Int, Int, Int) -> Unit,
@@ -424,14 +459,22 @@ fun CustomSlider(
                     detectHorizontalDragGestures { change, dragAmount ->
                         change.consume()
 
-                        sequence.changePianoViewKeyboardScroll(scrollState.value + dragAmount * factor, !up)
+                        sequence.changePianoViewKeyboardScroll(
+                            scrollState.value + dragAmount * factor,
+                            !up
+                        )
                         CoroutineScope(Dispatchers.Main).launch {
                             val tempScrollValue = scrollState.value
                             scrollState.scrollBy(dragAmount * factor)
 //                                scrollState.animateScrollBy(dragAmount * factor)
-                            if (scrollState.value == tempScrollValue) sequence.changePianoViewKeyboardScroll(scrollState.value.toFloat(), !up)
+                            if (scrollState.value == tempScrollValue) sequence.changePianoViewKeyboardScroll(
+                                scrollState.value.toFloat(),
+                                !up
+                            )
                             sliderScrollState.scrollBy(dragAmount)
-                            if(sliderScrollState.value > width - thumbWidth.toPx() * 2) sliderScrollState.scrollTo((width - thumbWidth.toPx() * 2).toInt())
+                            if (sliderScrollState.value > width - thumbWidth.toPx() * 2) sliderScrollState.scrollTo(
+                                (width - thumbWidth.toPx() * 2).toInt()
+                            )
                             updateSequencesUiState()
                         }
                     }
@@ -459,7 +502,7 @@ fun CustomSlider(
 
 
 @Composable
-fun OctaveButton(
+fun OctaveButtonOld(
     buttonsSize: Dp,
     scrollStateLowWhite: LazyListState,
     scrollStateLowBlack: LazyListState,
@@ -523,3 +566,5 @@ fun OctaveButton(
         Text(text = if(upButton) ">" else "<", color = notWhite)
     }
 }
+
+ */

@@ -15,7 +15,7 @@ data class SeqUiState (
 
     val transmitClock: Boolean = true,
     val lazyKeyboard: Boolean = false,
-    val visualDebugger: Boolean = true,
+    val visualDebugger: Boolean = false,
     val debuggerViewSetting: Int = 1,
 
     val seqIsPlaying: Boolean = false,

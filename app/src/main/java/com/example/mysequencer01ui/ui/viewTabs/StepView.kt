@@ -15,8 +15,11 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
@@ -25,8 +28,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode.*
+import com.example.mysequencer01ui.Sequence
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
+import com.example.mysequencer01ui.ui.playHeads
+import com.example.mysequencer01ui.ui.repeatBounds
 import com.example.mysequencer01ui.ui.theme.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,67 +49,63 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
             .fillMaxSize()
             .background(BackGray)
     ) {
-        val selectedChannel = seqUiState.sequences[seqUiState.selectedChannel]
-        val scrollState = rememberScrollState(selectedChannel.stepViewYScroll)
-        VerticalSlider(
-            value = selectedChannel.stepViewYScroll.toFloat(),
-            onValueChange = {
-                selectedChannel.changeStepViewYScroll(it.toInt())
-                CoroutineScope(Dispatchers.Main).launch {
-                    scrollState.scrollTo(selectedChannel.stepViewYScroll)
-                    seqViewModel.updateSequencesUiState()
-                } },
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .height(50.dp),
-            valueRange = 0f..scrollState.maxValue.toFloat() // TODO hardcode
-        )
-
-        BoxWithConstraints(
-            modifier = Modifier
-                .padding(top = 10.dp, end = 10.dp, bottom = 10.dp)
-                .fillMaxSize()
-                .border(0.5.dp, selectedButton)
-                .background(BackGray)
-        ){
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
+        with(seqUiState.sequences[seqUiState.selectedChannel]) {
+            val scrollState = rememberScrollState(stepViewYScroll)
+            VerticalSlider(
+                value = stepViewYScroll.toFloat(),
+                onValueChange = {
+                    changeStepViewYScroll(it.toInt())
+                    CoroutineScope(Dispatchers.Main).launch {
+                        scrollState.scrollTo(stepViewYScroll)
+                        seqViewModel.updateSequencesUiState()
+                    } },
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Transparent)
-            ){
-                for (i in 0..16) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(0.6.dp)
-                            .background(if ((i + 4) % 4 == 0) shadeOfGray else buttonsBg)
-                    )
-                }
-            }
-
-            NotesGrid(seqViewModel, seqUiState, kmmk, scrollState)
-
-            val sequence = seqUiState.sequences[seqUiState.selectedChannel]
-            val playheadOffset = (sequence.deltaTime / sequence.totalTime * maxWidth.value).dp
-
-            Playhead(
-                seqUiState = seqUiState,
-                modifier = Modifier
-                    .offset(playheadOffset, 0.dp)
-                    .width(0.6.dp)
+                    .fillMaxWidth(0.85f)
+                    .height(50.dp),
+                valueRange = 0f..scrollState.maxValue.toFloat(), // TODO hardcode
+            colors = SliderDefaults.colors(
+                thumbColor = violet,
+                activeTrackColor = darkViolet,
+                inactiveTrackColor = darkViolet
+            )
             )
 
-            var playheadRepeatOffset = (sequence.deltaTimeRepeat / sequence.totalTime * maxWidth.value).dp
-            playheadRepeatOffset = if(playheadRepeatOffset.value < 0) playheadRepeatOffset + maxWidth else playheadRepeatOffset
-
-            if(seqUiState.isRepeating) {
-                Playhead(
-                    seqUiState = seqUiState,
+            BoxWithConstraints(
+                modifier = Modifier
+                    .padding(top = 10.dp, end = 10.dp, bottom = 10.dp)
+                    .fillMaxSize()
+                    .border(0.5.dp, selectedButton)
+                    .background(BackGray)
+            ){
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
-                        .offset(playheadRepeatOffset, 0.dp)
-                        .width(2.dp)
-                )
+                        .fillMaxSize()
+                        .background(Color.Transparent)
+                ){
+                    for (i in 0..16) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(0.6.dp)
+                                .background(if ((i + 4) % 4 == 0) shadeOfGray else buttonsBg)
+                        )
+                    }
+                }
+
+                NotesGrid(seqViewModel, seqUiState, kmmk, scrollState)
+
+                Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val widthFactor = size.width / totalTime
+                    val playhead = widthFactor * deltaTime.toFloat()
+                    val playheadRepeat = widthFactor * fullDeltaTimeRepeat.toFloat()
+
+                    playHeads(seqUiState, playhead, playheadRepeat)
+
+                    if(seqUiState.isRepeating) repeatBounds(this@with, widthFactor, 0.4f)
+                }
             }
         }
     }
@@ -161,29 +163,32 @@ fun NotesGrid(
                                         noteOffIndex2
                                     ).first else -1
 
-
                                 // if note exists where we tap - erase it, else record new note
                                 if (
                                     (
                                         (noteOnIndex1 > -1 && noteOffIndex1 > -1) && (
                                             (
-                                                time in notes[noteOnIndex1].time..notes[noteOffIndex1].time)  // normal case (not wrap-around)
+                                                time in notes[noteOnIndex1].time..notes[noteOffIndex1].time)  // normal case (not wrap-around) [---]
                                                 ||
-                                                (noteOnIndex1 > noteOffIndex1) && (time in notes[noteOnIndex1].time until totalTime) // wrap-around case, searching right part
+                                                (noteOnIndex1 > noteOffIndex1) && (time in notes[noteOnIndex1].time until totalTime) // wrap-around case, searching right part [--
                                             )
                                         ) ||
                                     (
                                         noteOffIndex2 > -1 && noteOnIndex2 > -1) && (
-                                        (noteOnIndex1 > noteOffIndex1) && (time in 0..notes[noteOffIndex1].time) // wrap-around case, searching left part
+                                        (noteOnIndex1 > noteOffIndex1) && (time in 0..notes[noteOffIndex1].time) // wrap-around case, searching left part --]
                                         )
-//                                    (noteOnIndex > -1 && noteOffIndex > -1) &&
-//                                    (
-//                                            (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
-//                                                    || ((noteOnIndex > noteOffIndex) &&                                // wrap-around case
-//                                                    (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
-//                                            )
                                 ) {
                                     erasing(kmmk, seqUiState.isRepeating, noteOnIndex1, true)
+
+                                    if (seqUiState.isRepeating) {
+                                        indexToRepeat =
+                                            notes.indexOfLast { it.time < fullDeltaTimeRepeat } + 1
+                                        if (indexToRepeat == -1) indexToRepeat = 0
+                                    } else {
+                                        indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
+                                        if (indexToPlay == -1) indexToPlay = 0
+                                    }
+
                                 } else {
                                     time = seqViewModel.quantizeTime(time)
                                     val noteOffTime =
@@ -270,17 +275,7 @@ fun NotesGrid(
                                             true
                                         )
                                     }
-//                                    val dt = if(seqUiState.isRepeating) deltaTimeRepeat else deltaTime
-//                                    if(seqUiState.seqIsPlaying &&  // if we start dragging while note is playing - stop it in it's time
-//                                        (
-//                                            dt in notes[noteOnIndex].time.toDouble()..notes[noteOffIndex].time.toDouble() // normal case (not wrap-around)
-//                                                || noteOnIndex > noteOffIndex && (   // wrap-around case
-//                                                    dt in notes[noteOnIndex].time.toDouble()..totalTime.toDouble()
-//                                                        || dt in 0.0..notes[noteOffIndex].time.toDouble()
-//                                                )
-//                                        )
-//                                    )
-                                    // if we start dragging while note is playing - stop it in it's time
+
                                     val currentIndex =
                                         if (seqUiState.isRepeating) indexToRepeat else indexToPlay
                                     if (seqUiState.seqIsPlaying &&
@@ -294,7 +289,7 @@ fun NotesGrid(
                                         val tempPitch = pitch
                                         CoroutineScope(Dispatchers.Default).launch {
                                             val dt =
-                                                if (seqUiState.isRepeating) deltaTimeRepeat else deltaTime
+                                                if (seqUiState.isRepeating) fullDeltaTimeRepeat else deltaTime
                                             val delayTime = if (dt > notes[noteOffIndex].time) {
                                                 notes[noteOffIndex].time - dt + totalTime
                                             } else {
@@ -357,12 +352,13 @@ fun NotesGrid(
                                     noteOffIndex =
                                         returnPairedNoteOffIndexAndTime(noteOnIndex).first
 
-                                    if(seqUiState.isRepeating) {
-                                        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
-                                        if(indexToRepeat == -1) indexToRepeat = 0
+                                    if (seqUiState.isRepeating) {
+                                        indexToRepeat =
+                                            notes.indexOfLast { it.time < fullDeltaTimeRepeat } + 1
+                                        if (indexToRepeat == -1) indexToRepeat = 0
                                     } else {
                                         indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
-                                        if(indexToPlay == -1) indexToPlay = 0
+                                        if (indexToPlay == -1) indexToPlay = 0
                                     }
                                 }
                                 draggedNoteOnIndex = noteOnIndex

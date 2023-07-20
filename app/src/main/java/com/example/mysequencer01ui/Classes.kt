@@ -20,12 +20,7 @@ enum class SeqView{
     LIVE, STEP, PIANO, AUTOMATION, SETTINGS
 }
 
-
-//
-//class Converters {
-//    @TypeConverter
-//    fun listToJson(value: Array<Note>?) = Gson().toJson(value)
-//
-//    @TypeConverter
-//    fun jsonToList(value: String) = Gson().fromJson(value, Array<Note>::class.java)
-//}
+enum class PianoKeysType(val keyIsWhite: Boolean){
+    WHITE(true),
+    BLACK(false)
+}

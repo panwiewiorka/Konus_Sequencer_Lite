@@ -43,6 +43,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
@@ -63,6 +64,7 @@ import com.example.mysequencer01ui.PadsMode.SAVING
 import com.example.mysequencer01ui.PadsMode.SELECTING
 import com.example.mysequencer01ui.PadsMode.SOLOING
 import com.example.mysequencer01ui.SeqView
+import com.example.mysequencer01ui.Sequence
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.buttonsColor
@@ -714,6 +716,75 @@ fun TextButton(
     }
 }
 
+
+fun DrawScope.playHeads(
+    seqUiState: SeqUiState,
+    playhead: Float,
+    playheadRepeat: Float
+) {
+    // playhead color
+    val conditionalColor = when (seqUiState.padsMode) {
+        PadsMode.MUTING -> violet
+        PadsMode.ERASING -> warmRed
+        PadsMode.CLEARING -> notWhite
+        else -> {
+            if (seqUiState.seqIsRecording) warmRed
+            else playGreen
+        }
+    }
+    // PLAYHEAD
+    drawLine(
+        color = conditionalColor,
+        start = Offset(playhead, 0f),
+        end = Offset(playhead, size.height)
+    )
+    // REPEAT PLAYHEAD
+    if (seqUiState.isRepeating && seqUiState.seqIsPlaying) {
+        drawLine(
+            color = conditionalColor,
+            start = Offset(playheadRepeat, 0f),
+            end = Offset(playheadRepeat, size.height),
+            4f,
+        )
+    }
+}
+
+
+fun DrawScope.repeatBounds(
+    sequence: Sequence,
+    widthFactor: Float,
+    alpha: Float,
+) {
+    if (sequence.repeatStartTime < sequence.repeatEndTime) {
+        drawRect(
+            color = buttonsColor,
+            topLeft = Offset(0f, 0f),
+            size = Size(
+                width = widthFactor * sequence.repeatStartTime.toFloat(),
+                height = size.height
+            ),
+            alpha = alpha
+        )
+        drawRect(
+            color = buttonsColor,
+            topLeft = Offset(widthFactor * sequence.repeatEndTime.toFloat(), 0f),
+            size = Size(
+                width = widthFactor * (sequence.totalTime - sequence.repeatEndTime).toFloat(),
+                height = size.height
+            ),
+            alpha = alpha
+        )
+    } else
+        drawRect(
+            color = buttonsColor,
+            topLeft = Offset(widthFactor * sequence.repeatEndTime.toFloat(), 0f),
+            size = Size(
+                width = (widthFactor * (sequence.repeatStartTime - sequence.repeatEndTime)).toFloat(),
+                height = size.height
+            ),
+            alpha = alpha
+        )
+}
 
 
 @Composable

@@ -96,9 +96,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 startTimeStamp = System.currentTimeMillis()
                 deltaTime = 0.0
                 indexToPlay = 0
-                deltaTimeRepeat = 0.0
+//                deltaTimeRepeat = 0.0
                 indexToRepeat = 0
-                wrapIndex = 0
+                wrapDelta = 0
                 tempNotesSize = 0
             }
         }
@@ -182,13 +182,15 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                 wrapIndex = if(repeatStartTime > repeatEndTime) tempNotesSize else 0
                             }
 
+                            fullDeltaTimeRepeat = deltaTimeRepeat + wrapDelta + wrapTime
+
                             // start of the loop
                             if(repeatsCount != savedRepeatsCount) {
                                 for (p in 0..127) {
                                     // notesON if we start repeatLoop in the middle of the note
-                                    val hangingNoteOffIndex = notes.indexOfFirst { it.pitch == p && it.time > deltaTimeRepeat + wrapDelta + wrapTime }
+                                    val hangingNoteOffIndex = notes.indexOfFirst { it.pitch == p && it.time > fullDeltaTimeRepeat }
                                     if(hangingNoteOffIndex != -1 && notes[hangingNoteOffIndex].velocity == 0
-                                        && returnPairedNoteOnIndexAndTime(hangingNoteOffIndex).second.toDouble() !in repeatStartTime..(deltaTimeRepeat + wrapDelta + wrapTime)
+                                        && returnPairedNoteOnIndexAndTime(hangingNoteOffIndex).second.toDouble() !in repeatStartTime..fullDeltaTimeRepeat
                                     ) {
                                         kmmk.noteOn(c, p, 100)
                                         Log.d("ryjtyj", "hangingNoteOffIndex on the start of the loop = $hangingNoteOffIndex")
@@ -220,9 +222,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             while(
                                 notes.size > (indexToRepeat - wrapIndex)
                                 && (
-                                    (notes[indexToRepeat - wrapIndex].time.toDouble() in repeatStartTime .. (deltaTimeRepeat + wrapDelta + wrapTime))   // normal case, not-wrapAround: [---]
+                                    (notes[indexToRepeat - wrapIndex].time.toDouble() in repeatStartTime .. fullDeltaTimeRepeat)   // normal case, not-wrapAround: [---]
                                         || (repeatStartTime > repeatEndTime && (
-                                        wrapIndex > 0 && (notes[indexToRepeat - wrapIndex].time.toDouble() in 0.0 .. (deltaTimeRepeat + wrapDelta + wrapTime))
+                                        wrapIndex > 0 && (notes[indexToRepeat - wrapIndex].time.toDouble() in 0.0 .. fullDeltaTimeRepeat)
                                         )
                                     )
                                 )
@@ -268,7 +270,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             uiState.value.stopNotesOnChannel(c, mode)
             if(mode == STOPSEQ) {
                 uiState.value.sequences[c].deltaTime = 0.0
-                uiState.value.sequences[c].deltaTimeRepeat = 0.0
+                uiState.value.sequences[c].fullDeltaTimeRepeat = 0.0
             }
         }
     }
@@ -523,8 +525,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     notes = patterns[pattern][c]
                     indexToPlay = notes.indexOfLast { it.time < deltaTime / uiState.value.factorBpm } + 1
                     if(uiState.value.isRepeating) {
-                        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat / uiState.value.factorBpm } + 1
+                        indexToRepeat = notes.indexOfLast { it.time < fullDeltaTimeRepeat / uiState.value.factorBpm } + 1
                     }
+                    noteId = if(notes.isNotEmpty()) notes.maxOf { it.id } + 1 else Int.MIN_VALUE
                 }
             }
             _uiState.update { a -> a.copy(
@@ -631,12 +634,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     fun switchClockTransmitting() {
         _uiState.update { it.copy(
             transmitClock = !uiState.value.transmitClock
-        ) }
-    }
-
-    fun switchLazyKeyboard() {
-        _uiState.update { it.copy(
-            lazyKeyboard = !uiState.value.lazyKeyboard
         ) }
     }
 
