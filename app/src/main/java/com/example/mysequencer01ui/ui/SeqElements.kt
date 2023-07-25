@@ -12,6 +12,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,7 +31,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -90,46 +91,47 @@ const val buttonTextSize = 12
 
 @Composable
 fun PadButton(
+    interactionSource: MutableInteractionSource,
     channel: Int,
     pitch: Int,
     seqViewModel: SeqViewModel,
     seqUiState: SeqUiState,
     padsSize: Dp,
 ){
-    val interactionSource = remember { MutableInteractionSource() }
+//    val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
-    var buttonIsPressed by remember { mutableStateOf(false) }
-    LaunchedEffect(interactionSource) {
+    val buttonIsPressed by interactionSource.collectIsPressedAsState()
+    LaunchedEffect(interactionSource, pitch) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     seqViewModel.pressPad(channel, pitch, 100)
                     elapsedTime = System.currentTimeMillis()
-                    buttonIsPressed = true
+                    seqUiState.sequences[seqUiState.selectedChannel].rememberInteraction(interaction, pitch)
                 }
                 is PressInteraction.Release -> {
                     seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
-                    buttonIsPressed = false
                 }
                 is PressInteraction.Cancel -> {
                     seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
-                    buttonIsPressed = false
                 }
             }
         }
     }
     val color = when (seqUiState.padsMode) {
         MUTING -> violet
-        ERASING -> warmRed
-        CLEARING -> notWhite
+        ERASING -> Color.Transparent
+        CLEARING -> Color.Transparent
         else -> {
             if (seqUiState.seqIsRecording) warmRed
             else if (seqUiState.seqIsPlaying) playGreen
             else Color.Transparent
         }
     }
-//    Log.d("ryjtyj", "${}")
-    Box(modifier = Modifier.padding(buttonsPadding)){
+    Box(modifier = Modifier
+        .padding(buttonsPadding)
+        .alpha(if(seqUiState.sequences[channel].isMuted) 0.25f else 1f)
+    ){
         Button(
             interactionSource = interactionSource,
             onClick = {},
@@ -142,24 +144,8 @@ fun PadButton(
                 .size(padsSize - 1.dp)
                 .border(
                     width = 4.dp,
-                    color = if (seqUiState.sequences[channel].channelIsPlayingNotes) color else Color.Transparent
+                    color = if (seqUiState.sequences[channel].channelIsPlayingNotes > 0) color else Color.Transparent
                 )
-//                .border(width = 4.dp, brush = Brush.radialGradient(
-//                    if (seqUiState.sequences[channel].channelIsPlayingNotes) {
-//                        when (seqUiState.seqMode) {
-//                            MUTING -> listOf(violet, violet, Color.Transparent)
-//                            ERASING -> listOf(warmRed, warmRed, Color.Transparent)
-//                            CLEARING -> listOf(Color.White, Color.White, Color.Transparent)
-//                            else -> {
-//                                if (seqUiState.seqIsRecording) listOf(warmRed, warmRed, Color.Transparent)
-//                                else if (seqUiState.seqIsPlaying) listOf(Color(0xFF008800), Color(0xFF008800), Color.Transparent)
-//                                else listOf(Color.Transparent, Color.Transparent)
-//                            }
-//                        }
-//                    } else listOf(Color.Transparent, Color.Transparent), radius = 250f
-//                ),
-//                    shape = RoundedCornerShape(0.dp)
-//                )
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -167,13 +153,34 @@ fun PadButton(
                     .fillMaxSize()
                     .background(if (buttonIsPressed) color else Color.Transparent)
             ) {
-                if(seqUiState.sequences[channel].isMuted) {
-                    Canvas(modifier = Modifier.fillMaxSize()){
-                        muteSymbol(DEFAULT)
-                    }
+                if (seqUiState.sequences[channel].channelIsPlayingNotes > 0) {
+                    DashedBorder(
+                        when (seqUiState.padsMode) {
+                            ERASING -> warmRed
+                            CLEARING -> notWhite
+                            else -> Color.Transparent
+                        },
+                    )
                 }
-//                Text("MUTED", fontSize = buttonTextSize.nonScaledSp, color = notWhite)
             }
+        }
+    }
+}
+
+@Composable
+fun DashedBorder(color: Color) {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()){
+            drawRect(
+                color = color,
+                topLeft = Offset(0f, 0f),
+                size = size,
+                style = Stroke(
+                    width = 8.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(size.width / 2, size.width / 2), size.width / 4)
+                )
+            )
         }
     }
 }
@@ -190,7 +197,15 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
                 Row {
                     for(x in 0..3) {
                         Box {
-                            PadButton(x + (3 - y) * 4, 60, seqViewModel, seqUiState, padsSize)
+                            val pitch = 60
+                            PadButton(
+                                seqUiState.sequences[x + (3 - y) * 4].interactionSources[pitch].first,
+                                x + (3 - y) * 4,
+                                pitch,
+                                seqViewModel,
+                                seqUiState,
+                                padsSize
+                            )
 //                            Text("${x + (3 - y) * 4}")
                         }
                     }
@@ -205,14 +220,13 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
 fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
-    var buttonPressed by remember { mutableStateOf(false) }
+    val buttonPressed by interactionSource.collectIsPressedAsState()
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 100, allButton = true)
-                        buttonPressed = true
                     }
                     seqViewModel.updateSequencesUiState()
                     elapsedTime = System.currentTimeMillis()
@@ -221,14 +235,12 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
                     }
-                    buttonPressed = false
                     seqViewModel.updateSequencesUiState()
                 }
                 is PressInteraction.Cancel -> {
                     for(i in 0..15){
                         seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
                     }
-                    buttonPressed = false
                     seqViewModel.updateSequencesUiState()
                 }
             }
@@ -642,6 +654,7 @@ fun StopButton(seqViewModel: SeqViewModel, buttonsSize: Dp) {
 @Composable
 fun SeqViewButton(
     seqViewModel: SeqViewModel,
+    cancelInteractionWhenSwitchingViews: () -> Unit,
     seqView: SeqView,
     buttonSeqView: SeqView,
     buttonsSize: Dp,
@@ -657,10 +670,14 @@ fun SeqViewButton(
             .clickable(
                 interactionSource = buttonInteraction(
                     seqViewModel.toggleTime,
-                    { seqViewModel.changeSeqViewState(buttonSeqView) }
+                    {
+                        cancelInteractionWhenSwitchingViews()
+                        seqViewModel.changeSeqViewState(buttonSeqView)
+                    },
+                    { },
                 ),
                 indication = null
-            ) {},
+            ) { },
         contentAlignment = Alignment.Center
     ) {
         if (seqView != buttonSeqView) {
@@ -805,6 +822,7 @@ fun buttonInteraction(
                     if ((System.currentTimeMillis() - elapsedTime) > toggleTime) function2()
                 }
                 is PressInteraction.Cancel -> {
+                    Log.d("ryjtyj", "PressInteraction.Cancel")
                     if ((System.currentTimeMillis() - elapsedTime) > toggleTime) function2()
                 }
             }

@@ -13,7 +13,7 @@ enum class PadsMode{
 }
 
 enum class StopNotesMode{
-    STOPSEQ, MUTE, END_OF_REPEAT
+    STOPSEQ, MUTE, END_OF_REPEAT, SWITCHING_VIEW
 }
 
 enum class SeqView{

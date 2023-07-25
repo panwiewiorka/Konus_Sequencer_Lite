@@ -14,5 +14,4 @@ data class Patterns(
     val pitch: Int,
     val velocity: Int,
     val noteId: Int,
-//    val length: Int
 )

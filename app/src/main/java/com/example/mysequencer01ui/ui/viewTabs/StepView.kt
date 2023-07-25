@@ -298,7 +298,6 @@ fun NotesGrid(
                                             delay((delayTime / seqUiState.factorBpm).toLong())
                                             kmmk.noteOn(channel, tempPitch, 0)
                                             changePlayingNotes(tempPitch, 0)
-                                            channelIsPlayingNotes = false // TODO !!!
                                         }
                                     }
                                 }
@@ -465,7 +464,7 @@ fun NoteBox(
             .background(buttonsBg)
             .border(BorderStroke(0.6.dp, playGreen), RoundedCornerShape(0.dp))
     ) {
-        Text(text = "$indexNoteOn")
+//        Text(text = "$indexNoteOn")
     }
 }
 

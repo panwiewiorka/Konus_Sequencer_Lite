@@ -1,6 +1,13 @@
 package com.example.mysequencer01ui
 
 import android.util.Log
+import androidx.compose.foundation.interaction.Interaction
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -12,10 +19,12 @@ class Sequence (
 
     var isMuted: Boolean = false,
     var isErasing: Boolean = false,
-    var channelIsPlayingNotes: Boolean = false,  // TODO will not work in polyphony, change
+    var channelIsPlayingNotes: Int = 0,
     var playingNotes: Array<Int> = Array(128){ 0 },
     var pressedNotes: Array<Pair<Boolean, Int>> = Array(128){Pair(false, Int.MAX_VALUE)}, // manually pressed notes (and IDs) that are muting same ones played by sequencer
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
+//    val interactionSource: MutableInteractionSource = MutableInteractionSource(),
+//    var interaction: Interaction = PressInteraction.Press( Offset(0f,0f) ),
     var noteId: Int = Int.MIN_VALUE,
 
     var draggedNoteOnIndex: Int = -1,
@@ -44,6 +53,8 @@ class Sequence (
     var fullDeltaTimeRepeat: Double = 0.0,
     var tempNotesSize: Int = 0,
     ) {
+
+    val interactionSources = Array(128){ Pair(MutableInteractionSource(), PressInteraction.Press( Offset(0f,0f) ) ) }
 
     fun recordNote(
         pitch: Int,
@@ -137,7 +148,6 @@ class Sequence (
         } else if(!stepRecord || (customRecTime < deltaTime)) {
             indexToPlay++
         }
-        channelIsPlayingNotes = velocity > 0  // TODO
 //        }
 
         if(!stepRecord) {
@@ -174,20 +184,14 @@ class Sequence (
 
 
     fun playing(kmmk: KmmkComponentContext, index: Int) {
-        // play note (if it's not being manually played, or if channel isn't muted)
-        // remember which notes are playing
-        // update channelIsPlayingNotes for visual info
-
         if (!pressedNotes[notes[index].pitch].first && (!isMuted || notes[index].velocity == 0)) {
             kmmk.noteOn(
                 channel,
                 notes[index].pitch,
                 notes[index].velocity
             )
-            changePlayingNotes(notes[index].pitch, notes[index].velocity)
         }
-        channelIsPlayingNotes = notes[index].velocity > 0
-        // TODO polyphony: channelIsPlayingNotes += if(notes[index].velocity > 0) 1 else -1; if(channelIsPlayingNotes < 0) channelIsPlayingNotes = 0; update when stop() etc..
+        changePlayingNotes(notes[index].pitch, notes[index].velocity)
     }
 
 
@@ -206,7 +210,6 @@ class Sequence (
             delay((delayTime / factorBpm).toLong())
             kmmk.noteOn(channel, pitchTemp, 0)
             changePlayingNotes(pitchTemp, 0)
-            channelIsPlayingNotes = false // TODO !!!
         }
     }
 
@@ -303,7 +306,6 @@ class Sequence (
         while (!pressedNotes[notes[noteOnIndex].pitch].first && playingNotes[notes[noteOnIndex].pitch] > 0 && deltaTimeInRange) {
             kmmk.noteOn(channel, notes[noteOnIndex].pitch, 0)
             changePlayingNotes(notes[noteOnIndex].pitch, 0)
-            channelIsPlayingNotes = false // TODO !!!
         }
     }
 
@@ -312,8 +314,10 @@ class Sequence (
     }
 
     fun changeKeyboardOctave(lowKeyboard: Boolean, increment: Int) {
-        if(lowKeyboard) pianoViewOctaveLow += increment
-        else pianoViewOctaveHigh += increment
+        var newValue = (if(lowKeyboard) pianoViewOctaveLow else pianoViewOctaveHigh) + increment
+        if(newValue < -1) newValue = -1
+        if(newValue > 7) newValue = 7
+        if(lowKeyboard) pianoViewOctaveLow = newValue else pianoViewOctaveHigh = newValue
     }
 
     fun returnPairedNoteOffIndexAndTime(index: Int): Pair<Int, Int> {
@@ -352,11 +356,21 @@ class Sequence (
     }
 
     fun changePlayingNotes(pitch: Int, velocity: Int) {
-        if(velocity > 0) playingNotes[pitch]++ else playingNotes[pitch]--
+        if(velocity > 0) {
+            playingNotes[pitch]++
+            channelIsPlayingNotes++
+        } else {
+            playingNotes[pitch]--
+            channelIsPlayingNotes--
+        }
 //        Log.d("ryjtyj", "playingNotes[$pitch] = ${playingNotes[pitch]}")
         if(playingNotes[pitch] < 0) {
             Log.d("ryjtyj", "playingNotes[$pitch] = ${playingNotes[pitch]}, fixing to 0")
             playingNotes[pitch] = 0
+        }
+        if(channelIsPlayingNotes < 0) {
+            Log.d("ryjtyj", "channelIsPlayingNotes = $channelIsPlayingNotes, fixing to 0")
+            channelIsPlayingNotes = 0
         }
     }
 
@@ -371,5 +385,20 @@ class Sequence (
             index = if(repeatStartTime > repeatEndTime) notes.size else indexToPlay
         }
         return index
+    }
+
+
+    fun rememberInteraction(interaction: PressInteraction.Press, pitch: Int) {
+        interactionSources[pitch] = Pair(interactionSources[pitch].first, interaction)
+    }
+
+    fun cancelInteractionWhenSwitchingViews() {
+        CoroutineScope(Dispatchers.IO).launch {
+            for (p in 0..127) {
+                if(pressedNotes[p].first) {
+                    interactionSources[p].first.emit(PressInteraction.Cancel (interactionSources[p].second))
+                }
+            }
+        }
     }
 }

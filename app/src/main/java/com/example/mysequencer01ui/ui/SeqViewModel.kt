@@ -1,6 +1,10 @@
 package com.example.mysequencer01ui.ui
 
 import android.util.Log
+import androidx.compose.foundation.interaction.Interaction
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.ViewModel
 import com.example.mysequencer01ui.KmmkComponentContext
@@ -20,6 +24,7 @@ import com.example.mysequencer01ui.StopNotesMode
 import com.example.mysequencer01ui.StopNotesMode.END_OF_REPEAT
 import com.example.mysequencer01ui.StopNotesMode.MUTE
 import com.example.mysequencer01ui.StopNotesMode.STOPSEQ
+import com.example.mysequencer01ui.StopNotesMode.SWITCHING_VIEW
 import com.example.mysequencer01ui.data.Patterns
 import com.example.mysequencer01ui.data.SeqDao
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.EmptyCoroutineContext
@@ -60,8 +66,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             time = note.time
                             pitch = note.pitch
                             velocity = note.velocity
-//                            length = note.length
+                            id = note.noteId
                         }
+//                        Log.d("ryjtyj", "index = ${note.noteIndex}, id = ${note.noteId}")
 //                        _uiState.value.sequences[c].recordNote(
 //                            note.pitch,
 //                            note.velocity,
@@ -292,10 +299,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     isRepeating = isRepeating,
                     customTime = if (mode == END_OF_REPEAT) sequences[c].repeatEndTime.toInt() else -1
                 )
-                sequences[c].pressedNotes[p] = Pair(true, sequences[c].noteId)
+                if (mode == END_OF_REPEAT) sequences[c].pressedNotes[p] = Pair(true, sequences[c].noteId) // updating noteID for new note in beatRepeat (wrapAround case)
             }
         }
-        sequences[c].channelIsPlayingNotes = false // TODO
     }
 
     fun stopAllNotes() {
@@ -361,7 +367,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     private fun enableEraseOnChannel(channel: Int, velocity: Int) {
         uiState.value.sequences[channel].isErasing = velocity > 0
-        uiState.value.sequences[channel].channelIsPlayingNotes = velocity > 0
     }
 
 
@@ -414,8 +419,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 MUTING -> muteChannel(channel, velocity, elapsedTime, allButton)
                 ERASING -> enableEraseOnChannel(channel, velocity)
                 CLEARING -> {
-                    if(velocity > 0) clearChannel(channel, kmmk)
-                    else channelIsPlayingNotes = false // TODO implement UNDO CLEAR, move {channelIsPlayingNotes = false} into IF?
+                    if(velocity > 0) clearChannel(channel, kmmk) // TODO implement UNDO CLEAR
                 }
                 SAVING -> {
                     if(velocity > 0) savePattern(pattern = channel, sequences = uiState.value.sequences)
@@ -630,6 +634,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
         Log.d("emptyTag", " ") // to hold in imports
     }
+
 
     fun switchClockTransmitting() {
         _uiState.update { it.copy(

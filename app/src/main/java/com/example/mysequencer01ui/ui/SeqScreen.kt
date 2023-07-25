@@ -24,20 +24,20 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
     val seqUiState by seqViewModel.uiState.collectAsState()
     KeepScreenOn()
 
-    BoxWithConstraints(Modifier.fillMaxHeight()) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxHeight()
+            .background(buttonsBg)
+    ) {
         val buttonsSize = maxHeight / 5
 
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(buttonsBg)
+            modifier = Modifier.fillMaxSize()
         ) {
 
             // ----==== LEFT BUTTONS
             Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .background(buttonsBg)
+                modifier = Modifier.fillMaxHeight()
             ) {
 //                SymbolButton(seqViewModel, buttonsSize, seqUiState.padsMode, SELECTING, dusk)
                 if(seqUiState.padsMode != DEFAULT && seqUiState.padsMode != SELECTING && seqUiState.padsMode != LOADING)
@@ -49,9 +49,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 RecButton(seqViewModel, seqUiState.padsMode, seqUiState.seqIsRecording, buttonsSize)
             }
             Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .background(buttonsBg)
+                modifier = Modifier.fillMaxHeight()
             ) {
                 QuantizeButton(seqViewModel, seqUiState.padsMode, buttonsSize, seqUiState.isQuantizing, seqUiState.quantizeModeTimer)
                 LoadButton(seqViewModel, seqUiState.padsMode, buttonsSize)
@@ -86,13 +84,12 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .background(buttonsBg)
             ) {
-                SeqViewButton(seqViewModel, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
-                SeqViewButton(seqViewModel, seqUiState.seqView, STEP, buttonsSize, "ʭ")
-                SeqViewButton(seqViewModel, seqUiState.seqView, PIANO, buttonsSize, "ϡ")
-                SeqViewButton(seqViewModel, seqUiState.seqView, AUTOMATION, buttonsSize, "֎")
-                SeqViewButton(seqViewModel, seqUiState.seqView, SETTINGS, buttonsSize, "╪")
+                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
+                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, STEP, buttonsSize, "ʭ")
+                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, PIANO, buttonsSize, "ϡ")
+                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, AUTOMATION, buttonsSize, "֎")
+                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, SETTINGS, buttonsSize, "╪")
             }
         }
     }
