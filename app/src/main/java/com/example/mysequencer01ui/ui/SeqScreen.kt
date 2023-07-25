@@ -85,11 +85,11 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 modifier = Modifier
                     .fillMaxHeight()
             ) {
-                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
-                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, STEP, buttonsSize, "ʭ")
-                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, PIANO, buttonsSize, "ϡ")
-                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, AUTOMATION, buttonsSize, "֎")
-                SeqViewButton(seqViewModel, seqUiState.sequences[seqUiState.selectedChannel]::cancelInteractionWhenSwitchingViews, seqUiState.seqView, SETTINGS, buttonsSize, "╪")
+                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
+                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, STEP, buttonsSize, "ʭ")
+                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, PIANO, buttonsSize, "ϡ")
+                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, AUTOMATION, buttonsSize, "֎")
+                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, SETTINGS, buttonsSize, "╪")
             }
         }
     }

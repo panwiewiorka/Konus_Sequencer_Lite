@@ -78,8 +78,8 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 modifier = Modifier.fillMaxSize()
             ) {
                 PianoKeyboard(
-                    seqUiState.sequences[seqUiState.selectedChannel].interactionSources,
-                    seqUiState.sequences[seqUiState.selectedChannel]::rememberInteraction,
+                    seqViewModel.interactionSources[seqUiState.selectedChannel],
+                    seqViewModel::rememberInteraction,
                     seqUiState.selectedChannel,
                     playingNotes,
                     seqUiState.seqIsRecording,
@@ -142,8 +142,8 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     }
                 }
                 PianoKeyboard(
-                    seqUiState.sequences[seqUiState.selectedChannel].interactionSources,
-                    seqUiState.sequences[seqUiState.selectedChannel]::rememberInteraction,
+                    seqViewModel.interactionSources[seqUiState.selectedChannel],
+                    seqViewModel::rememberInteraction,
                     seqUiState.selectedChannel,
                     playingNotes,
                     seqUiState.seqIsRecording,
@@ -162,7 +162,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
 @Composable
 fun PianoKeyboard(
     interactionSources: Array<Pair<MutableInteractionSource, PressInteraction.Press>>,
-    rememberInteraction: (PressInteraction.Press, Int) -> Unit,
+    rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
     selectedChannel: Int,
     playingNotes: Array<Int>,
     seqIsRecording: Boolean,
@@ -238,7 +238,7 @@ fun chooseBlackOrWhiteKey(startPitch: Int, keyIndex: Int): Pair<PianoKeysType, I
 @Composable
 fun PianoKey(
     interactionSource: MutableInteractionSource,
-    rememberInteraction: (PressInteraction.Press, Int) -> Unit,
+    rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
     seqIsRecording: Boolean,
     noteIsPlaying: Boolean,
     pressPad: (Int, Int, Int) -> Unit,
@@ -256,7 +256,7 @@ fun PianoKey(
             when (interaction) {
                 is PressInteraction.Press -> {
                     pressPad(selectedChannel, pitch, 100)
-                    rememberInteraction(interaction, pitch)
+                    rememberInteraction(selectedChannel, pitch, interaction)
                 }
                 is PressInteraction.Release -> {
                     pressPad(selectedChannel, pitch, 0)

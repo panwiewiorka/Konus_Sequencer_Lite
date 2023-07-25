@@ -107,7 +107,7 @@ fun PadButton(
                 is PressInteraction.Press -> {
                     seqViewModel.pressPad(channel, pitch, 100)
                     elapsedTime = System.currentTimeMillis()
-                    seqUiState.sequences[seqUiState.selectedChannel].rememberInteraction(interaction, pitch)
+                    seqViewModel.rememberInteraction(channel, pitch, interaction)
                 }
                 is PressInteraction.Release -> {
                     seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
@@ -199,7 +199,7 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
                         Box {
                             val pitch = 60
                             PadButton(
-                                seqUiState.sequences[x + (3 - y) * 4].interactionSources[pitch].first,
+                                seqViewModel.interactionSources[x + (3 - y) * 4][pitch].first,
                                 x + (3 - y) * 4,
                                 pitch,
                                 seqViewModel,
@@ -671,8 +671,8 @@ fun SeqViewButton(
                 interactionSource = buttonInteraction(
                     seqViewModel.toggleTime,
                     {
-                        cancelInteractionWhenSwitchingViews()
                         seqViewModel.changeSeqViewState(buttonSeqView)
+                        cancelInteractionWhenSwitchingViews()
                     },
                     { },
                 ),

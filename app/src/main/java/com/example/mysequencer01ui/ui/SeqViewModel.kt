@@ -2,9 +2,11 @@ package com.example.mysequencer01ui.ui
 
 import android.util.Log
 import androidx.compose.foundation.interaction.Interaction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.ViewModel
 import com.example.mysequencer01ui.KmmkComponentContext
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.nanoseconds
 
@@ -53,6 +56,15 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     private var patterns: Array<Array<Array<Note>>> = Array(16){ Array(16) { emptyArray() } }
     private var job = CoroutineScope(EmptyCoroutineContext).launch {  }
+
+    val interactionSources = Array(16) {
+        Array(128) {
+            Pair(
+                MutableInteractionSource(),
+                PressInteraction.Press( Offset(0f,0f) )
+            )
+        }
+    }
 
     init {
         CoroutineScope(Dispatchers.Main).launch {
@@ -144,7 +156,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         }
 
                         // CLOCK
-                        if(uiState.value.transmitClock && c == 0) {
+                        if(c == 0 && uiState.value.transmitClock) {
                             if(deltaTime >= uiState.value.timingClock * clockTicks) {
                                 kmmk.sendTimingClock()
                                 clockTicks++
@@ -155,7 +167,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         if (deltaTime >= totalTime) {
                             startTimeStamp = System.currentTimeMillis() - (deltaTime - totalTime).toLong()
                             indexToPlay = 0
-                            clockTicks = 0
+                            if(c == 0 && uiState.value.transmitClock) clockTicks = 0
                         }
 
 
@@ -633,6 +645,26 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         ) }
 
         Log.d("emptyTag", " ") // to hold in imports
+    }
+
+
+    fun rememberInteraction(channel: Int, pitch: Int, interaction: PressInteraction.Press) {
+//        Log.d("ryjtyj", "rememberInteraction: channel = $channel, pitch = $pitch, interaction = $interaction")
+        interactionSources[channel][pitch] = Pair(interactionSources[channel][pitch].first, interaction)
+    }
+
+    fun cancelInteractionWhenSwitchingViews() {
+//        CoroutineScope(Dispatchers.Main).launch {
+        runBlocking {
+            for(c in 0..15) {
+                for (p in 0..127) {
+                    if(uiState.value.sequences[c].pressedNotes[p].first) {
+//                        Log.d("ryjtyj", "cancelInteraction: channel = $c, pitch = $p, interaction = ${interactionSources[c][p].second}")
+                        interactionSources[c][p].first.emit(PressInteraction.Cancel (interactionSources[c][p].second))
+                    }
+                }
+            }
+        }
     }
 
 

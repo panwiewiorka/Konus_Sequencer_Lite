@@ -23,8 +23,6 @@ class Sequence (
     var playingNotes: Array<Int> = Array(128){ 0 },
     var pressedNotes: Array<Pair<Boolean, Int>> = Array(128){Pair(false, Int.MAX_VALUE)}, // manually pressed notes (and IDs) that are muting same ones played by sequencer
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
-//    val interactionSource: MutableInteractionSource = MutableInteractionSource(),
-//    var interaction: Interaction = PressInteraction.Press( Offset(0f,0f) ),
     var noteId: Int = Int.MIN_VALUE,
 
     var draggedNoteOnIndex: Int = -1,
@@ -53,9 +51,6 @@ class Sequence (
     var fullDeltaTimeRepeat: Double = 0.0,
     var tempNotesSize: Int = 0,
     ) {
-
-    val interactionSources = Array(128){ Pair(MutableInteractionSource(), PressInteraction.Press( Offset(0f,0f) ) ) }
-
     fun recordNote(
         pitch: Int,
         velocity: Int,
@@ -385,20 +380,5 @@ class Sequence (
             index = if(repeatStartTime > repeatEndTime) notes.size else indexToPlay
         }
         return index
-    }
-
-
-    fun rememberInteraction(interaction: PressInteraction.Press, pitch: Int) {
-        interactionSources[pitch] = Pair(interactionSources[pitch].first, interaction)
-    }
-
-    fun cancelInteractionWhenSwitchingViews() {
-        CoroutineScope(Dispatchers.IO).launch {
-            for (p in 0..127) {
-                if(pressedNotes[p].first) {
-                    interactionSources[p].first.emit(PressInteraction.Cancel (interactionSources[p].second))
-                }
-            }
-        }
     }
 }
