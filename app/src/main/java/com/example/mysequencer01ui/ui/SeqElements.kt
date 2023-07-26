@@ -128,49 +128,54 @@ fun PadButton(
             else Color.Transparent
         }
     }
-    Box(modifier = Modifier
-        .padding(buttonsPadding)
-        .alpha(if (seqUiState.sequences[channel].isMuted && channel != seqUiState.selectedChannel) 0.25f else 1f)
-    ){
-        Button(
-            interactionSource = interactionSource,
-            onClick = {},
-            shape = RoundedCornerShape(0.dp),
-            colors = ButtonDefaults.buttonColors(
-                backgroundColor = if(seqUiState.selectedChannel == channel) selectedButton else buttonsColor
-            ),
-            contentPadding = PaddingValues(0.dp),
-            modifier = Modifier
-                .size(padsSize - 1.dp)
-                .border(
-                    width = 4.dp,
-                    color = if (seqUiState.sequences[channel].channelIsPlayingNotes > 0) color else Color.Transparent
-                )
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
+    Box{
+        Box(modifier = Modifier
+            .padding(buttonsPadding)
+            .alpha(if (seqUiState.sequences[channel].isMuted && channel != seqUiState.selectedChannel) 0.25f else 1f)
+        ){
+            Button(
+                interactionSource = interactionSource,
+                onClick = {},
+                shape = RoundedCornerShape(0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = if(seqUiState.selectedChannel == channel) selectedButton else buttonsColor
+                ),
+                contentPadding = PaddingValues(0.dp),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(if (buttonIsPressed) color else Color.Transparent)
-            ) {
-                if (seqUiState.sequences[channel].channelIsPlayingNotes > 0) {
-                    DashedBorder(
-                        when (seqUiState.padsMode) {
-                            ERASING -> warmRed
-                            CLEARING -> notWhite
-                            else -> Color.Transparent
-                        },
+                    .size(padsSize - 1.dp)
+                    .border(
+                        width = 4.dp,
+                        color = if (seqUiState.sequences[channel].channelIsPlayingNotes > 0) color else Color.Transparent
                     )
-                }
-                if(seqUiState.sequences[channel].isSoloed) {
-                    Canvas(modifier = Modifier.fillMaxSize().rotate(24f)) {
-                        soloSymbol(false)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(if (buttonIsPressed) color else Color.Transparent)
+                ) {
+                    if (seqUiState.sequences[channel].channelIsPlayingNotes > 0) {
+                        DashedBorder(
+                            when (seqUiState.padsMode) {
+                                ERASING -> warmRed
+                                CLEARING -> notWhite
+                                else -> Color.Transparent
+                            }
+                        )
                     }
-                } else if(seqUiState.sequences[channel].isMuted) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        muteSymbol(false)
+                    if(seqUiState.sequences[channel].isMuted && !seqUiState.sequences[channel].isSoloed) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            muteSymbol(false)
+                        }
                     }
                 }
+            }
+        }
+        if(seqUiState.sequences[channel].isSoloed) {
+            Canvas(modifier = Modifier
+                .size(padsSize - 1.dp)
+                .rotate(24f)) {
+                soloSymbol(false)
             }
         }
     }
