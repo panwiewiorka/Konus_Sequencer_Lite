@@ -1,32 +1,19 @@
 package com.example.mysequencer01ui.ui
 
 import android.util.Log
-import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.ViewModel
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.Note
 import com.example.mysequencer01ui.PadsMode
-import com.example.mysequencer01ui.PadsMode.CLEARING
-import com.example.mysequencer01ui.PadsMode.DEFAULT
-import com.example.mysequencer01ui.PadsMode.ERASING
-import com.example.mysequencer01ui.PadsMode.LOADING
-import com.example.mysequencer01ui.PadsMode.MUTING
-import com.example.mysequencer01ui.PadsMode.QUANTIZING
-import com.example.mysequencer01ui.PadsMode.SAVING
-import com.example.mysequencer01ui.PadsMode.SELECTING
+import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.Sequence
 import com.example.mysequencer01ui.StopNotesMode
-import com.example.mysequencer01ui.StopNotesMode.END_OF_REPEAT
-import com.example.mysequencer01ui.StopNotesMode.MUTE
-import com.example.mysequencer01ui.StopNotesMode.STOPSEQ
-import com.example.mysequencer01ui.StopNotesMode.SWITCHING_VIEW
+import com.example.mysequencer01ui.StopNotesMode.*
 import com.example.mysequencer01ui.data.Patterns
 import com.example.mysequencer01ui.data.SeqDao
 import kotlinx.coroutines.CoroutineScope
@@ -35,7 +22,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -51,7 +37,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     var toggleTime = 150
     var staticNoteOffTime = 100 // TODO replace with quantization time?
     var quantizationTime = 240000 / uiState.value.bpm / uiState.value.quantizationValue * uiState.value.factorBpm
-    private var allChannelsMuted = false
+    private var anyChannelIsMuted = false
+    private var anyChannelIsSoloed = false
     private var previousPadsMode: PadsMode = DEFAULT
 
     private var patterns: Array<Array<Array<Note>>> = Array(16){ Array(16) { emptyArray() } }
@@ -145,7 +132,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                 if (!erasing(kmmk,false, indexToPlay, false)) break
                             } else {
                                 if(!uiState.value.isRepeating && indexToPlay != draggedNoteOffIndex) {
-                                    playing(kmmk, indexToPlay)
+                                    playing(kmmk, indexToPlay, !anyChannelIsSoloed)
                                     // StepView case:
                                     if (indexToPlay == draggedNoteOnIndex) {
                                         playingDraggedNoteOffInTime(uiState.value.factorBpm, kmmk)
@@ -253,7 +240,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                     if (!erasing(kmmk,true, indexToRepeat - wrapIndex, false)) break
                                 } else {
                                     if(indexToRepeat != draggedNoteOffIndex) {
-                                        playing(kmmk, indexToRepeat - wrapIndex)
+                                        playing(kmmk, indexToRepeat - wrapIndex, !anyChannelIsSoloed)
                                         // StepView case:
                                         if (indexToRepeat == draggedNoteOnIndex) {
                                             playingDraggedNoteOffInTime(uiState.value.factorBpm, kmmk)
@@ -350,29 +337,46 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
+    private fun soloChannel(channel: Int, velocity: Int, elapsedTime: Long, allButton: Boolean) {
+        with(uiState.value.sequences[channel]) {
+            val pressOrLongRelease = velocity > 0 || (System.currentTimeMillis() - elapsedTime) > toggleTime
+
+            if(pressOrLongRelease) {
+                if(allButton) {
+                    if(channel == 0) {
+                        anyChannelIsSoloed = (uiState.value.sequences.any{ it.isSoloed })
+                    }
+                    isSoloed = !anyChannelIsSoloed
+                    if(channel == 15) anyChannelIsSoloed = !anyChannelIsSoloed
+                } else {   // single Pad
+                    isSoloed = !isSoloed
+                    if(isSoloed) {
+                        anyChannelIsSoloed = true
+                        for (c in 0..15) {
+                            if (!uiState.value.sequences[c].isSoloed) uiState.value.stopNotesOnChannel(c, MUTE)
+                        }
+                    } else anyChannelIsSoloed = (uiState.value.sequences.any{ it.isSoloed })
+                }
+            }
+        }
+    }
+
+
     private fun muteChannel(channel: Int, velocity: Int, elapsedTime: Long, allButton: Boolean) {
         with(uiState.value.sequences[channel]) {
             val pressOrLongRelease = velocity > 0 || (System.currentTimeMillis() - elapsedTime) > toggleTime
-            if(allButton) {
-                if(channel == 0) {
-                    allChannelsMuted = (uiState.value.sequences.find{ !it.isMuted } == null)
-                }
-                isMuted = if(allChannelsMuted){
-                    when{
-                        pressOrLongRelease -> false
-                        else -> return
+
+            if(pressOrLongRelease) {
+                if(allButton) {
+                    if(channel == 0) {
+                        anyChannelIsMuted = (uiState.value.sequences.find{ it.isMuted } != null)
                     }
-                } else {
-                    when {
-                        pressOrLongRelease -> {stopNotes(MUTE); true}
-                        else -> return
-                    }
-                }
-            } else   // single Pad
-                if(pressOrLongRelease) {
-                    if(!isMuted) uiState.value.stopNotesOnChannel(channel, MUTE)
+                    isMuted = !anyChannelIsMuted
+                } else {   // single Pad
                     isMuted = !isMuted
-                } else return
+                    if (isMuted) uiState.value.stopNotesOnChannel(channel, MUTE)
+                }
+            }
         }
     }
 
@@ -428,10 +432,18 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             } else padsModeOnPress = onPressedMode
 
             when(padsModeOnPress) {
-                MUTING -> muteChannel(channel, velocity, elapsedTime, allButton)
-                ERASING -> enableEraseOnChannel(channel, velocity)
-                CLEARING -> {
-                    if(velocity > 0) clearChannel(channel, kmmk) // TODO implement UNDO CLEAR
+                SELECTING -> {
+                    if(!allButton && velocity > 0) {
+                        _uiState.update { a -> a.copy(selectedChannel = channel) }
+                    }
+                }
+                QUANTIZING -> {
+                    if(velocity > 0) {
+                        val tempIsQuantizing = uiState.value.isQuantizing
+                        _uiState.update { a -> a.copy(isQuantizing = true) }
+                        quantizeChannel(channel)
+                        _uiState.update { a -> a.copy(isQuantizing = tempIsQuantizing) }
+                    }
                 }
                 SAVING -> {
                     if(velocity > 0) savePattern(pattern = channel, sequences = uiState.value.sequences)
@@ -444,18 +456,11 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         loadPattern(pattern = channel)
                     }
                 }
-                QUANTIZING -> {
-                    if(velocity > 0) {
-                        val tempIsQuantizing = uiState.value.isQuantizing
-                        _uiState.update { a -> a.copy(isQuantizing = true) }
-                        quantizeChannel(channel)
-                        _uiState.update { a -> a.copy(isQuantizing = tempIsQuantizing) }
-                    }
-                }
-                SELECTING -> {
-                    if(!allButton && velocity > 0) {
-                        _uiState.update { a -> a.copy(selectedChannel = channel) }
-                    }
+                SOLOING -> soloChannel(channel, velocity, elapsedTime, allButton)
+                MUTING -> muteChannel(channel, velocity, elapsedTime, allButton)
+                ERASING -> enableEraseOnChannel(channel, velocity)
+                CLEARING -> {
+                    if(velocity > 0) clearChannel(channel, kmmk) // TODO implement UNDO CLEAR
                 }
                 // PLAYING & RECORDING
                 else -> {
@@ -594,27 +599,34 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         _uiState.update { it.copy(quantizeModeTimer = uiState.value.quantizeModeTimer + (System.currentTimeMillis() - time).toInt()) }
                     }
                     _uiState.update { it.copy(quantizeModeTimer = 0) }
-                    editCurrentPadsMode(QUANTIZING)
+                    editCurrentPadsMode(QUANTIZING, true)
                 }
-            } else editCurrentPadsMode(QUANTIZING)
+            } else editCurrentPadsMode(QUANTIZING, true)
         } else {
             if(job.isActive) job.cancel()
             if(uiState.value.quantizeModeTimer == 0) {
-                editCurrentPadsMode(QUANTIZING)
+                editCurrentPadsMode(QUANTIZING, false)
             }
             _uiState.update { it.copy(quantizeModeTimer = 0) }
         }
     }
 
 
-    fun editCurrentPadsMode(mode: PadsMode, momentary: Boolean = false){
-        if(mode != uiState.value.padsMode) {
-            previousPadsMode = uiState.value.padsMode
-            _uiState.update { a -> a.copy(padsMode = mode) }
+    fun editCurrentPadsMode(mode: PadsMode, switchOn: Boolean, momentary: Boolean = false){
+        if(switchOn) {
+            if(mode != uiState.value.padsMode) {
+                previousPadsMode = uiState.value.padsMode
+                _uiState.update { it.copy(padsMode = mode) }
+            } else _uiState.update { it.copy(padsMode = DEFAULT) }
         } else if(momentary) {
-            _uiState.update { a -> a.copy(padsMode = previousPadsMode) }
+            if(previousPadsMode == mode) {
+                previousPadsMode = uiState.value.padsMode
+            }
+            if(mode != uiState.value.padsMode) return else {
+                _uiState.update { it.copy(padsMode = if(previousPadsMode != uiState.value.padsMode && previousPadsMode != mode) previousPadsMode else DEFAULT) }
+            }
         } else {
-            _uiState.update { a -> a.copy(padsMode = DEFAULT) }
+            _uiState.update { it.copy(padsMode = DEFAULT) }
         }
     }
 

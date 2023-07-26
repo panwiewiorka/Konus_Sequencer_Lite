@@ -1,13 +1,6 @@
 package com.example.mysequencer01ui
 
 import android.util.Log
-import androidx.compose.foundation.interaction.Interaction
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -18,6 +11,7 @@ class Sequence (
     var notes: Array<Note> = emptyArray(),
 
     var isMuted: Boolean = false,
+    var isSoloed: Boolean = false,
     var isErasing: Boolean = false,
     var channelIsPlayingNotes: Int = 0,
     var playingNotes: Array<Int> = Array(128){ 0 },
@@ -178,8 +172,9 @@ class Sequence (
     }
 
 
-    fun playing(kmmk: KmmkComponentContext, index: Int) {
-        if (!pressedNotes[notes[index].pitch].first && (!isMuted || notes[index].velocity == 0)) {
+    fun playing(kmmk: KmmkComponentContext, index: Int, soloIsOff: Boolean) {
+        // if note isn't being manually played   AND   channel is soloed  OR  no soloing occurs and channel isn't muted
+        if (!pressedNotes[notes[index].pitch].first && (isSoloed || (soloIsOff && !isMuted))) {
             kmmk.noteOn(
                 channel,
                 notes[index].pitch,

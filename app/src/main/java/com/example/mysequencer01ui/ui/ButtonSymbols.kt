@@ -12,46 +12,39 @@ import com.example.mysequencer01ui.ui.theme.*
 
 const val thickness = 4f
 
-fun DrawScope.recSymbol(padsMode: PadsMode, seqIsRecording: Boolean) {
-    drawCircle(
-        color = if (seqIsRecording && padsMode == DEFAULT) buttonsColor else warmRed,
-        radius = size.height / 6.67f,
-        center = center,
-        style = if(padsMode != DEFAULT && seqIsRecording) Fill else Stroke(width = thickness),
-    )
-}
 
-
-fun DrawScope.playSymbol(seqIsPlaying: Boolean) {
-    val first = size.height / 2.7f
-    val second = first + size.height / 23
-    val third = size.height - first
+fun DrawScope.shiftSymbol(selecting: Boolean) {
+    val l = size.height / 22f
+    val m = size.height / 80f
+    val s = size.height / 220f
     val path = Path()
-    path.moveTo(second, first)
-    path.lineTo(second, third)
-    path.lineTo(third, center.y)
-    path.lineTo(second, first)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x, center.y - l)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x + l, center.y - m)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x - l, center.y - m)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x + m + m, center.y + l - s)
+    path.moveTo(center.x, center.y)
+    path.lineTo(center.x - m - m, center.y + l - s)
 
-    if (seqIsPlaying) {
-        drawPath(
-            path = path,
-            color = notWhite,
-            style = Fill
-        )
-    }
     drawPath(
         path = path,
-        color = notWhite,
-        style = Stroke( width = thickness, cap = StrokeCap.Round, join = StrokeJoin.Round )
+        color = if (selecting) buttonsColor else dusk,
+        style = Stroke(
+            width = thickness,
+            cap = StrokeCap.Round
+        )
     )
 }
 
 
-fun DrawScope.stopSymbol() {
+fun DrawScope.allSymbol(buttonPressed: Boolean) {
     val m = size.height / 8f
     val l = m * 2
     drawRect(
-        color =  notWhite,
+        color = if (buttonPressed) buttonsColor else dusk,
         topLeft = Offset(center.x - m, center.y - m),
         size = Size(l, l),
         style = Stroke(
@@ -60,90 +53,14 @@ fun DrawScope.stopSymbol() {
             join = StrokeJoin.Round
         )
     )
-}
-
-
-fun DrawScope.eraseSymbol(padsMode: PadsMode) {
-
-    val r = size.height / 24
-    val r3 = r * 3
-    val pathX = Path()
-    pathX.moveTo(center.x, center.y)
-    pathX.lineTo(center.x + r, center.y + r)
-    pathX.moveTo(center.x, center.y)
-    pathX.lineTo(center.x - r, center.y + r)
-    pathX.moveTo(center.x, center.y)
-    pathX.lineTo(center.x + r, center.y - r)
-    pathX.moveTo(center.x, center.y)
-    pathX.lineTo(center.x - r, center.y - r)
-    pathX.translate(Offset(- r * 2f, 0f))
-
-    drawPath(
-        path = pathX,
-        color = warmRed,
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round
-        )
-    )
-
-    val pathV = Path()
-    pathV.moveTo(center.x + r3, center.y)
-    pathV.lineTo(center.x, center.y + r3)
-    pathV.moveTo(center.x + r3, center.y)
-    pathV.lineTo(center.x, center.y - r3)
-
-    drawPath(
-        path = pathV,
-        color = if (padsMode == ERASING) warmRed else notWhite,
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round
-        )
-    )
-}
-
-
-fun DrawScope.muteSymbol(padsMode: PadsMode) {
-    val l = size.height / 8
-    val m = size.height / 12
-    val s = size.height / 16
     val path = Path()
-    path.moveTo(center.x + s, center.y + l)
-    path.lineTo(center.x + m, center.y - l)
-    path.lineTo(center.x, center.y + s)
-    path.lineTo(center.x - s, center.y - l)
-    path.lineTo(center.x - m, center.y + l)
-
+    path.moveTo(center.x, center.y - m)
+    path.lineTo(center.x, center.y + m)
+    path.moveTo(center.x - m, center.y)
+    path.lineTo(center.x + m, center.y)
     drawPath(
         path = path,
-        color = if (padsMode == MUTING) buttonsColor else violet,
-        style = Stroke( width = thickness, join = StrokeJoin.Round )
-    )
-}
-
-
-fun DrawScope.soloSymbol(padsMode: PadsMode) {
-    // TODO offset to the center before rotation to avoid messy constants
-    val m = size.height / 20f
-    val s = size.height / 46f
-    drawArc(if(padsMode == SOLOING) buttonsColor else violet, -90f, 180f, false, Offset(center.x - m, center.y - s), size = size / 8f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(if(padsMode == SOLOING) buttonsColor else violet, 90f, 180f, false, Offset(center.x - m, center.y - size.height / 8f - s), size = size / 8f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-}
-
-
-fun DrawScope.clearSymbol(padsMode: PadsMode) {
-    val first = size.height / 2.6f
-    val second = size.height - first
-    val path = Path()
-    path.moveTo(first, first)
-    path.lineTo(second, second)
-    path.moveTo(first, second)
-    path.lineTo(second, first)
-
-    drawPath(
-        path = path,
-        color = if (padsMode == CLEARING) buttonsColor else notWhite,
+        color = if (buttonPressed) buttonsColor else dusk,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round
@@ -193,8 +110,13 @@ fun DrawScope.quantizeSymbol(quantizingPadsMode: Boolean, isQuantizing: Boolean)
 
     val color = if(isQuantizing) notWhite else selectedButton
 
-    drawArc(if (quantizingPadsMode) buttonsColor else color, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(if (quantizingPadsMode) buttonsColor else color, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(
+        color = if (quantizingPadsMode) buttonsColor else color,
+        startAngle = 0f,
+        sweepAngle = 180f,
+        useCenter = false,
+        topLeft = Offset(center.x - m, center.y - m),
+        size = size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
 
     val path = Path()
     path.moveTo(center.x + m, center.y - s - xs)
@@ -218,7 +140,7 @@ fun DrawScope.quantizeLineCounter(progress: Float) {
 }
 
 
-fun DrawScope.saveArrow(padsMode: PadsMode) {
+fun DrawScope.saveArrow(saving: Boolean) {
     val l = size.height / 8
     val m = size.height / 16
     val s = size.height / 32
@@ -232,7 +154,7 @@ fun DrawScope.saveArrow(padsMode: PadsMode) {
 
     drawPath(
         path = path,
-        color = if(padsMode == SAVING) buttonsColor else dusk,
+        color = if(saving) buttonsColor else dusk,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round,
@@ -242,7 +164,7 @@ fun DrawScope.saveArrow(padsMode: PadsMode) {
     saveLoadSymbol()
 }
 
-fun DrawScope.loadArrow(padsMode: PadsMode) {
+fun DrawScope.loadArrow(loading: Boolean) {
     val l = size.height / 8
     val m = size.height / 16
     val s = size.height / 32
@@ -256,7 +178,7 @@ fun DrawScope.loadArrow(padsMode: PadsMode) {
 
     drawPath(
         path = path,
-        color = if(padsMode == LOADING) buttonsColor else dusk,
+        color = if(loading) buttonsColor else dusk,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round,
@@ -279,27 +201,110 @@ fun DrawScope.saveLoadSymbol() {
 }
 
 
-fun DrawScope.allSymbol(buttonPressed: Boolean) {
+fun DrawScope.soloSymbol(soloing: Boolean) {
     val m = size.height / 8f
-    val l = m * 2
-    drawRect(
-        color = if (buttonPressed) buttonsColor else dusk,
-        topLeft = Offset(center.x - m, center.y - m),
-        size = Size(l, l),
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round
-        )
-    )
+    val s = size.height / 16f
+    drawArc(
+        color = if(soloing) buttonsColor else violet,
+        startAngle = 90f,
+        sweepAngle = 180f,
+        useCenter = false,
+        topLeft = Offset(center.x - s, center.y - m),
+        size = size / 8f,
+        style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(
+        color = if(soloing) buttonsColor else violet,
+        startAngle = -90f,
+        sweepAngle = 180f,
+        useCenter = false,
+        topLeft = Offset(center.x - s, center.y),
+        size = size / 8f,
+        style = Stroke(width = thickness, cap = StrokeCap.Round))
+}
+
+fun DrawScope.soloSymbolOld(soloing: Boolean) {
+    // TODO offset to the center before rotation to avoid messy constants
+    val m = size.height / 20f
+    val s = size.height / 46f
+    drawArc(if(soloing) buttonsColor else violet, -90f, 180f, false, Offset(center.x - m, center.y - s), size = size / 8f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+    drawArc(if(soloing) buttonsColor else violet, 90f, 180f, false, Offset(center.x - m, center.y - size.height / 8f - s), size = size / 8f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+}
+
+
+fun DrawScope.muteSymbol(muting: Boolean) {
+    val l = size.height / 8
+    val m = size.height / 12
+    val s = size.height / 16
     val path = Path()
-    path.moveTo(center.x, center.y - m)
-    path.lineTo(center.x, center.y + m)
-    path.moveTo(center.x - m, center.y)
-    path.lineTo(center.x + m, center.y)
+    path.moveTo(center.x + s, center.y + l)
+    path.lineTo(center.x + m, center.y - l)
+    path.lineTo(center.x, center.y + s)
+    path.lineTo(center.x - s, center.y - l)
+    path.lineTo(center.x - m, center.y + l)
+
     drawPath(
         path = path,
-        color = if (buttonPressed) buttonsColor else dusk,
+        color = if (muting) buttonsColor else violet,
+        style = Stroke( width = thickness, join = StrokeJoin.Round, cap = StrokeCap.Round )
+    )
+}
+
+
+fun DrawScope.eraseSymbol(erasing: Boolean) {
+
+    val r = size.height / 24
+    val r3 = r * 3
+    val pathX = Path()
+    pathX.moveTo(center.x, center.y)
+    pathX.lineTo(center.x + r, center.y + r)
+    pathX.moveTo(center.x, center.y)
+    pathX.lineTo(center.x - r, center.y + r)
+    pathX.moveTo(center.x, center.y)
+    pathX.lineTo(center.x + r, center.y - r)
+    pathX.moveTo(center.x, center.y)
+    pathX.lineTo(center.x - r, center.y - r)
+    pathX.translate(Offset(- r * 2f, 0f))
+
+    drawPath(
+        path = pathX,
+        color = warmRed,
+        style = Stroke(
+            width = thickness,
+            join = StrokeJoin.Round,
+            cap = StrokeCap.Round
+        )
+    )
+
+    val pathV = Path()
+    pathV.moveTo(center.x + r3, center.y)
+    pathV.lineTo(center.x, center.y + r3)
+    pathV.moveTo(center.x + r3, center.y)
+    pathV.lineTo(center.x, center.y - r3)
+
+    drawPath(
+        path = pathV,
+        color = if (erasing) warmRed else notWhite,
+        style = Stroke(
+            width = thickness,
+            join = StrokeJoin.Round,
+            cap = StrokeCap.Round
+        )
+    )
+}
+
+
+fun DrawScope.clearSymbol(clearing: Boolean) {
+    val first = size.height / 2.6f
+    val second = size.height - first
+    val path = Path()
+    path.moveTo(first, first)
+    path.lineTo(second, second)
+    path.moveTo(first, second)
+    path.lineTo(second, first)
+
+    drawPath(
+        path = path,
+        color = if (clearing) buttonsColor else notWhite,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round
@@ -308,28 +313,51 @@ fun DrawScope.allSymbol(buttonPressed: Boolean) {
 }
 
 
-fun DrawScope.shiftSymbol(padsMode: PadsMode) {
-    val l = size.height / 22f
-    val m = size.height / 80f
-    val s = size.height / 220f
-    val path = Path()
-    path.moveTo(center.x, center.y)
-    path.lineTo(center.x, center.y - l)
-    path.moveTo(center.x, center.y)
-    path.lineTo(center.x + l, center.y - m)
-    path.moveTo(center.x, center.y)
-    path.lineTo(center.x - l, center.y - m)
-    path.moveTo(center.x, center.y)
-    path.lineTo(center.x + m + m, center.y + l - s)
-    path.moveTo(center.x, center.y)
-    path.lineTo(center.x - m - m, center.y + l - s)
+fun DrawScope.recSymbol(padsMode: PadsMode, seqIsRecording: Boolean) {
+    drawCircle(
+        color = if (seqIsRecording && padsMode == DEFAULT) buttonsColor else warmRed,
+        radius = size.height / 6.67f,
+        center = center,
+        style = if(padsMode != DEFAULT && seqIsRecording) Fill else Stroke(width = thickness),
+    )
+}
 
+
+fun DrawScope.playSymbol(seqIsPlaying: Boolean) {
+    val first = size.height / 2.7f
+    val second = first + size.height / 23
+    val third = size.height - first
+    val path = Path()
+    path.moveTo(second, first)
+    path.lineTo(second, third)
+    path.lineTo(third, center.y)
+    path.lineTo(second, first)
+
+    if (seqIsPlaying) {
+        drawPath(
+            path = path,
+            color = notWhite,
+            style = Fill
+        )
+    }
     drawPath(
         path = path,
-        color = if (padsMode == SELECTING) buttonsColor else dusk,
+        color = notWhite,
+        style = Stroke( width = thickness, cap = StrokeCap.Round, join = StrokeJoin.Round )
+    )
+}
+
+fun DrawScope.stopSymbol() {
+    val m = size.height / 8f
+    val l = m * 2
+    drawRect(
+        color =  notWhite,
+        topLeft = Offset(center.x - m, center.y - m),
+        size = Size(l, l),
         style = Stroke(
             width = thickness,
-            cap = StrokeCap.Round
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
         )
     )
 }

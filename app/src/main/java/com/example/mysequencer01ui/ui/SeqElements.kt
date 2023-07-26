@@ -130,7 +130,7 @@ fun PadButton(
     }
     Box(modifier = Modifier
         .padding(buttonsPadding)
-        .alpha(if(seqUiState.sequences[channel].isMuted) 0.25f else 1f)
+        .alpha(if (seqUiState.sequences[channel].isMuted && channel != seqUiState.selectedChannel) 0.25f else 1f)
     ){
         Button(
             interactionSource = interactionSource,
@@ -161,6 +161,15 @@ fun PadButton(
                             else -> Color.Transparent
                         },
                     )
+                }
+                if(seqUiState.sequences[channel].isSoloed) {
+                    Canvas(modifier = Modifier.fillMaxSize().rotate(24f)) {
+                        soloSymbol(false)
+                    }
+                } else if(seqUiState.sequences[channel].isMuted) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        muteSymbol(false)
+                    }
                 }
             }
         }
@@ -217,6 +226,58 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
 
 
 @Composable
+fun PadsModeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonType: PadsMode, buttonsSize: Dp, color: Color, toggleTime: Int){
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(buttonsPadding)
+            .background(if (padsMode == buttonType) color else buttonsColor)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    toggleTime,
+                    { seqViewModel.editCurrentPadsMode(buttonType, true) },
+                    { seqViewModel.editCurrentPadsMode(buttonType, false, true) }
+                ),
+                indication = null
+            ) { }
+    ){
+        if (padsMode != buttonType) {
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(6.dp)
+                .alpha(0.6f)
+                .rotate(if(buttonType == SOLOING) 24f else 0f)
+            ){
+                when(buttonType) {
+                    SELECTING -> shiftSymbol(false)
+                    SAVING -> saveArrow(false)
+                    LOADING -> loadArrow(false)
+                    SOLOING -> soloSymbol(false)
+                    MUTING -> muteSymbol(false)
+                    ERASING -> eraseSymbol(false)
+                    else -> clearSymbol(false)
+                }
+            }
+        }
+        Canvas(modifier = Modifier
+            .fillMaxSize()
+            .rotate(if(buttonType == SOLOING) 24f else 0f)
+        ){
+            when(buttonType) {
+                SELECTING -> shiftSymbol(padsMode == SELECTING)
+                SAVING -> saveArrow(padsMode == SAVING)
+                LOADING -> loadArrow(padsMode == LOADING)
+                SOLOING -> soloSymbol(padsMode == SOLOING)
+                MUTING -> muteSymbol(padsMode == MUTING)
+                ERASING -> eraseSymbol(padsMode == ERASING)
+                else -> clearSymbol(padsMode == CLEARING)
+            }
+        }
+    }
+}
+
+
+@Composable
 fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
@@ -246,90 +307,27 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
             }
         }
     }
-        Box(
-            modifier = Modifier
-                .size(buttonsSize)
-                .padding(buttonsPadding)
-                .background(if (buttonPressed) dusk else buttonsColor)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null
-                ) {}
-        ) {
-            Canvas(modifier = Modifier
-                .fillMaxSize()
-                .blur(if (buttonPressed) 0.dp else 6.dp)
-                .alpha(0.6f)){
-                allSymbol(buttonPressed)
-            }
-            Canvas(modifier = Modifier.fillMaxSize()){
-                allSymbol(buttonPressed)
-            }
-        }
-//    }
-}
-
-
-/*
-@Composable
-fun SymbolButton(seqViewModel: SeqViewModel, buttonsSize: Dp, padsMode: PadsMode, buttonType: PadsMode, bgColor: Color){
-    val symbol = when(buttonType) {
-        SELECTING -> DrawScope.shiftSymbol(padsMode)
-    }
     Box(
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if(padsMode == buttonType) bgColor else buttonsColor)
-            .clickable (
-                interactionSource = buttonInteraction(
-                    0,
-                    { seqViewModel.editCurrentMode(SELECTING) },
-                    { seqViewModel.editCurrentMode(SELECTING, true) }
-                ),
-                indication = null
-            ) { }
-    ){
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .blur(if (padsMode == buttonType) 0.dp else 6.dp)
-            .alpha(0.6f)){
-            symbol(padsMode, buttonType, bgColor)
-        }
-        Canvas(modifier = Modifier.fillMaxSize()){
-            symbol(padsMode, buttonType, bgColor)
-        }
-    }
-}
- */
-
-
-@Composable
-fun ShiftButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp, ){
-    Box(
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-            .background(if (padsMode == SELECTING) dusk else buttonsColor)
+            .background(if (buttonPressed) dusk else buttonsColor)
             .clickable(
-                interactionSource = buttonInteraction(
-                    0,
-                    { seqViewModel.editCurrentPadsMode(SELECTING) },
-                    { seqViewModel.editCurrentPadsMode(SELECTING, true) }
-                ),
+                interactionSource = interactionSource,
                 indication = null
-            ) { }
-    ){
+            ) {}
+    ) {
         Canvas(modifier = Modifier
             .fillMaxSize()
-            .blur(if (padsMode == SELECTING) 0.dp else 6.dp)
+            .blur(if (buttonPressed) 0.dp else 6.dp)
             .alpha(0.6f)){
-            shiftSymbol(padsMode)
+            allSymbol(buttonPressed)
         }
         Canvas(modifier = Modifier.fillMaxSize()){
-            shiftSymbol(padsMode)
+            allSymbol(buttonPressed)
         }
     }
+//    }
 }
 
 
@@ -383,183 +381,6 @@ fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: 
 //            if(isQuantizing) quantizeSymbolColor(padsMode == QUANTIZING) else quantizeSymbol(padsMode == QUANTIZING)
             quantizeSymbol(padsMode == QUANTIZING, isQuantizing)
             quantizeLineCounter(progress)
-        }
-    }
-}
-
-
-@Composable
-fun SaveButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){  // similar to ClearButton, same as LoadButton
-    Box(
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-            .background(if (padsMode == SAVING) dusk else buttonsColor)
-            .clickable(
-                interactionSource = buttonInteraction(
-                    0,
-                    { seqViewModel.editCurrentPadsMode(SAVING) },
-                    { seqViewModel.editCurrentPadsMode(SAVING, true) }
-                ),
-                indication = null
-            ) { }
-    ){
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .blur(if (padsMode == SAVING) 0.dp else 6.dp) // TODO move IF up from blur to Canvas (in all Composables)
-            .alpha(0.6f)){
-            saveArrow(padsMode)
-        }
-        Canvas(modifier = Modifier
-            .fillMaxSize()){
-            saveArrow(padsMode)
-        }
-    }
-}
-
-
-@Composable
-fun LoadButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Box(
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-            .background(if (padsMode == LOADING) dusk else buttonsColor)
-            .clickable(
-                interactionSource = buttonInteraction(
-                    0,
-                    { seqViewModel.editCurrentPadsMode(LOADING) },
-                    { seqViewModel.editCurrentPadsMode(LOADING, true) }
-                ),
-                indication = null
-            ) { }
-    ){
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .blur(if (padsMode == LOADING) 0.dp else 6.dp) // TODO move IF up from blur to Canvas (in all Composables)
-            .alpha(0.6f)){
-            loadArrow(padsMode)
-        }
-        Canvas(modifier = Modifier
-            .fillMaxSize()){
-            loadArrow(padsMode)
-        }
-    }
-}
-
-
-@Composable
-fun SoloButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Box(
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-            .background(if (padsMode == SOLOING) violet else buttonsColor)
-            .rotate(24f)
-            .clickable(
-                interactionSource = buttonInteraction(
-                    seqViewModel.toggleTime,
-                    { seqViewModel.editCurrentPadsMode(SOLOING) },
-                    { seqViewModel.editCurrentPadsMode(SOLOING, true) }
-                ),
-                indication = null
-            ) { }
-    ){
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .blur(if (padsMode == SOLOING) 0.dp else 6.dp)
-            .alpha(0.6f)){
-            soloSymbol(padsMode)
-        }
-        Canvas(modifier = Modifier.fillMaxSize()){
-            soloSymbol(padsMode)  // TODO offset to the left
-        }
-    }
-}
-
-
-@Composable
-fun MuteButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Box(
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-            .background(if (padsMode == MUTING) violet else buttonsColor)
-            .clickable(
-                interactionSource = buttonInteraction(
-                    seqViewModel.toggleTime,
-                    { seqViewModel.editCurrentPadsMode(MUTING) },
-                    { seqViewModel.editCurrentPadsMode(MUTING, true) }
-                ),
-                indication = null
-            ) { }
-    ){
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .blur(if (padsMode == MUTING) 0.dp else 6.dp)
-            .alpha(0.6f)){
-            muteSymbol(padsMode)
-        }
-        Canvas(modifier = Modifier.fillMaxSize()){
-            muteSymbol(padsMode)
-        }
-    }
-}
-
-
-@Composable
-fun EraseButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Box(
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-            .background(if (padsMode == ERASING) notWhite else buttonsColor)
-            .clickable(
-                interactionSource = buttonInteraction(
-                    seqViewModel.toggleTime,
-                    { seqViewModel.editCurrentPadsMode(ERASING) },
-                    { seqViewModel.editCurrentPadsMode(ERASING, true) }
-                ),
-                indication = null
-            ) { }
-    ){
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .alpha(0.6f)
-            .blur(if (padsMode == ERASING) 0.dp else 5.dp)){
-            eraseSymbol(padsMode)
-        }
-        Canvas(modifier = Modifier.fillMaxSize()){
-            eraseSymbol(padsMode)
-        }
-    }
-}
-
-
-@Composable
-fun ClearButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp){
-    Box(
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding)
-            .background(if (padsMode == CLEARING) notWhite else buttonsColor)
-            .clickable(
-                interactionSource = buttonInteraction(
-                    0,
-                    { seqViewModel.editCurrentPadsMode(CLEARING) },
-                    { seqViewModel.editCurrentPadsMode(CLEARING, true) }
-                ),
-                indication = null
-            ) { }
-    ){
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .blur(if (padsMode == CLEARING) 0.dp else 6.dp)
-            .alpha(0.6f)){
-            clearSymbol(padsMode)
-        }
-        Canvas(modifier = Modifier.fillMaxSize()){
-            clearSymbol(padsMode)
         }
     }
 }
@@ -830,7 +651,6 @@ fun buttonInteraction(
     }
     Log.d("emptyTag", " ") // to hold in imports
     return interactionSource
-
 }
 
 

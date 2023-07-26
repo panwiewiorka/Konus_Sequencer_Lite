@@ -5,7 +5,6 @@ data class Note (
     var pitch: Int,
     var velocity: Int,
     var id: Int,
-//    var length: Int = 0,
 )
 
 enum class PadsMode{
@@ -13,7 +12,7 @@ enum class PadsMode{
 }
 
 enum class StopNotesMode{
-    STOPSEQ, MUTE, END_OF_REPEAT, SWITCHING_VIEW
+    STOPSEQ, MUTE, END_OF_REPEAT
 }
 
 enum class SeqView{

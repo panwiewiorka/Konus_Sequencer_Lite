@@ -39,22 +39,21 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             Column(
                 modifier = Modifier.fillMaxHeight()
             ) {
-//                SymbolButton(seqViewModel, buttonsSize, seqUiState.padsMode, SELECTING, dusk)
                 if(seqUiState.padsMode != DEFAULT && seqUiState.padsMode != SELECTING && seqUiState.padsMode != LOADING)
                     AllButton(seqViewModel, buttonsSize)
-                else ShiftButton(seqViewModel, seqUiState.padsMode, buttonsSize)
-                SaveButton(seqViewModel, seqUiState.padsMode, buttonsSize)
-                SoloButton(seqViewModel, seqUiState.padsMode, buttonsSize)
-                EraseButton(seqViewModel, seqUiState.padsMode, buttonsSize)
+                else PadsModeButton(seqViewModel, seqUiState.padsMode, SELECTING, buttonsSize, dusk, 0)
+                PadsModeButton(seqViewModel, seqUiState.padsMode, SAVING, buttonsSize, dusk, 0)
+                PadsModeButton(seqViewModel, seqUiState.padsMode, SOLOING, buttonsSize, violet, seqViewModel.toggleTime)
+                PadsModeButton(seqViewModel, seqUiState.padsMode, ERASING, buttonsSize, notWhite, seqViewModel.toggleTime)
                 RecButton(seqViewModel, seqUiState.padsMode, seqUiState.seqIsRecording, buttonsSize)
             }
             Column(
                 modifier = Modifier.fillMaxHeight()
             ) {
                 QuantizeButton(seqViewModel, seqUiState.padsMode, buttonsSize, seqUiState.isQuantizing, seqUiState.quantizeModeTimer)
-                LoadButton(seqViewModel, seqUiState.padsMode, buttonsSize)
-                MuteButton(seqViewModel, seqUiState.padsMode, buttonsSize)
-                ClearButton(seqViewModel, seqUiState.padsMode, buttonsSize)
+                PadsModeButton(seqViewModel, seqUiState.padsMode, LOADING, buttonsSize, dusk, 0)
+                PadsModeButton(seqViewModel, seqUiState.padsMode, MUTING, buttonsSize, violet, seqViewModel.toggleTime)
+                PadsModeButton(seqViewModel, seqUiState.padsMode, CLEARING, buttonsSize, notWhite, 0)
                 if(!seqUiState.seqIsPlaying && seqUiState.padsMode == SELECTING)
                     StopButton(seqViewModel, buttonsSize)
                 else PlayButton(seqViewModel, seqUiState.seqIsPlaying, buttonsSize)
