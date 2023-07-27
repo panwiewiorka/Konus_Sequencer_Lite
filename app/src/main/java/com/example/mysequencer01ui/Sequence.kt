@@ -28,6 +28,7 @@ class Sequence (
 
     var indexToPlay: Int = 0,
     var startTimeStamp: Long = 0,
+    var bpmDelta: Double = 0.0,
     var seqLength: Int = 4,
     var totalTime: Int = 2000, // TODO how are totalTime & seqLength correlated? Replace totalTime with relative one?
     var deltaTime: Double = 0.0,

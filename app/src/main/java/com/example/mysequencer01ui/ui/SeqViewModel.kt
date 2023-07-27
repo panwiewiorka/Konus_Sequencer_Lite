@@ -9,11 +9,21 @@ import androidx.lifecycle.ViewModel
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.Note
 import com.example.mysequencer01ui.PadsMode
-import com.example.mysequencer01ui.PadsMode.*
+import com.example.mysequencer01ui.PadsMode.CLEARING
+import com.example.mysequencer01ui.PadsMode.DEFAULT
+import com.example.mysequencer01ui.PadsMode.ERASING
+import com.example.mysequencer01ui.PadsMode.LOADING
+import com.example.mysequencer01ui.PadsMode.MUTING
+import com.example.mysequencer01ui.PadsMode.QUANTIZING
+import com.example.mysequencer01ui.PadsMode.SAVING
+import com.example.mysequencer01ui.PadsMode.SELECTING
+import com.example.mysequencer01ui.PadsMode.SOLOING
 import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.Sequence
 import com.example.mysequencer01ui.StopNotesMode
-import com.example.mysequencer01ui.StopNotesMode.*
+import com.example.mysequencer01ui.StopNotesMode.END_OF_REPEAT
+import com.example.mysequencer01ui.StopNotesMode.MUTE
+import com.example.mysequencer01ui.StopNotesMode.STOPSEQ
 import com.example.mysequencer01ui.data.Patterns
 import com.example.mysequencer01ui.data.SeqDao
 import kotlinx.coroutines.CoroutineScope
@@ -124,7 +134,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     with(uiState.value.sequences[c]){
 
                         // UPDATE DELTATIME
-                        deltaTime = (System.currentTimeMillis() - startTimeStamp) * uiState.value.factorBpm
+                        deltaTime = (System.currentTimeMillis() - startTimeStamp) * uiState.value.factorBpm + bpmDelta
 
                         // NORMAL ERASING or PLAYING
                         while(notes.size > indexToPlay && notes[indexToPlay].time <= deltaTime) {
@@ -150,9 +160,13 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             }
                         }
 
+                        if(c == 0)Log.d("ryjtyj", "$deltaTime, $bpmDelta")
+
                         // END OF SEQUENCE
                         if (deltaTime >= totalTime) {
+                            if(c == 0)Log.d("ryjtyj", "END OF SEQUENCE")
                             startTimeStamp = System.currentTimeMillis() - (deltaTime - totalTime).toLong()
+                            bpmDelta = 0.0
                             indexToPlay = 0
                             if(c == 0 && uiState.value.transmitClock) clockTicks = 0
                         }
@@ -262,7 +276,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
 
     fun stopSeq() {
-        stopNotes(STOPSEQ)
+        stopChannels(STOPSEQ)
         kmmk.stopClock()
         _uiState.update { it.copy(
                 sequences = uiState.value.sequences, // TODO needed?
@@ -271,11 +285,12 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         }
     }
 
-    private fun stopNotes(mode: StopNotesMode) {
+    private fun stopChannels(mode: StopNotesMode) {
         for (c in 0..15) {
             uiState.value.stopNotesOnChannel(c, mode)
             if(mode == STOPSEQ) {
                 uiState.value.sequences[c].deltaTime = 0.0
+                uiState.value.sequences[c].bpmDelta = 0.0
                 uiState.value.sequences[c].fullDeltaTimeRepeat = 0.0
             }
         }
@@ -387,7 +402,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
 
     fun repeat(divisor: Int) {
-        stopNotes(MUTE)
+        stopChannels(MUTE)
         if(divisor != uiState.value.divisorState && divisor != 0) {
             val repeatLength = 2000.0 / divisor
             for(c in 0..15) {
@@ -650,10 +665,19 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     fun changeBPM(bpm: Float) {
         val bpmPointOne = (bpm * 10 + 0.5).toInt() / 10f
+
+        if(uiState.value.seqIsPlaying) {
+            for(c in 0..15) {
+                with(uiState.value.sequences[c]) {
+                    bpmDelta += (System.currentTimeMillis() - startTimeStamp) * (uiState.value.factorBpm - bpmPointOne / 120.0)
+                }
+            }
+        }
+
         _uiState.update { a -> a.copy (
             bpm = bpmPointOne,
             factorBpm = bpmPointOne / 120.0,
-            timingClock = 500.0 / 24.0 * bpmPointOne / 120.0
+            timingClock = 500.0 / 24.0 * bpmPointOne / 120.0,
         ) }
 
         Log.d("emptyTag", " ") // to hold in imports

@@ -84,7 +84,14 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
         ) {
             PatternsScreen(seqUiState, buttonsSize)
             Spacer(modifier = Modifier.weight(1f))
-            PadsGrid(seqViewModel, seqUiState, buttonsSize)
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Knob(buttonsSize, seqUiState.bpm, seqViewModel::changeBPM)
+                PadsGrid(seqViewModel, seqUiState, buttonsSize)
+            }
         }
         Spacer(modifier = Modifier.width(spacerSize))
         Row(horizontalArrangement = Arrangement.spacedBy(columnsOffset.dp)){

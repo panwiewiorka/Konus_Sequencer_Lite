@@ -38,6 +38,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 
 @Composable
@@ -276,6 +277,7 @@ fun NotesGrid(
                                         )
                                     }
 
+                                    // if dragging note that is playing -> fire noteOff on time
                                     val currentIndex =
                                         if (seqUiState.isRepeating) indexToRepeat else indexToPlay
                                     if (seqUiState.seqIsPlaying &&
@@ -318,7 +320,7 @@ fun NotesGrid(
 
                                 if (seqUiState.isQuantizing) {
                                     dragQuantizingDeltaTime += (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
-                                    if (dragQuantizingDeltaTime > seqViewModel.quantizationTime || dragQuantizingDeltaTime < -seqViewModel.quantizationTime) {
+                                    if (abs(dragQuantizingDeltaTime) > seqViewModel.quantizationTime) {
                                         val tempTime = dragQuantizingDeltaTime
                                         dragQuantizingDeltaTime =
                                             seqViewModel.quantizeTime(dragQuantizingDeltaTime)

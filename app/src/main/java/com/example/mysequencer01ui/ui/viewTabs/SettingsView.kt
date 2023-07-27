@@ -1,7 +1,10 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.Card
@@ -26,14 +30,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.center
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
+import com.example.mysequencer01ui.ui.nonScaledSp
+import com.example.mysequencer01ui.ui.theme.buttonsBg
+import com.example.mysequencer01ui.ui.theme.buttonsColor
 import com.example.mysequencer01ui.ui.theme.notWhite
+import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.warmRed
+import com.example.mysequencer01ui.ui.thickness
+import kotlin.math.abs
+import kotlin.math.atan2
 
 @Composable
 fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp, kmmk: KmmkComponentContext) {
@@ -48,29 +66,7 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
         ) {
             MidiSelector(kmmk)
 
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier  = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "${seqUiState.bpm} BPM",
-                    color = Color.Gray,
-                    modifier = Modifier.padding(end = 10.dp)
-                )
-
-                var sizeSliderPosition by remember { mutableStateOf(120f) }
-                Slider(
-                    value = sizeSliderPosition,
-                    onValueChange = {
-                        sizeSliderPosition = it
-                        seqViewModel.changeBPM(it)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    valueRange = 40f..280f,
-                    onValueChangeFinished = {  }
-                )
-            }
+            Knob(buttonsSize, seqUiState.bpm, seqViewModel::changeBPM)
 
             TextAndSwitch("Clock transmit", seqUiState.transmitClock) { seqViewModel.switchClockTransmitting() }
 
@@ -110,6 +106,99 @@ fun TextAndSwitch(text: String, switchState: Boolean, toDo: () -> Unit) {
     }
 }
 
+
+@Composable
+fun Knob(buttonsSize: Dp, bpm: Float, changeBPM: (Float) -> Unit) {
+    var angle by remember { mutableStateOf(0f) }
+    var dragStartedAngle by remember { mutableStateOf(0f) }
+    var oldAngle by remember { mutableStateOf(angle) }
+    var rotationAngle by remember { mutableStateOf(bpm - 40 * 270 / 240) }
+
+    Box(
+//        contentAlignment = Alignment.BottomCenter,
+        modifier = Modifier
+            .size(buttonsSize)
+            .pointerInput(true) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        dragStartedAngle = -atan2(
+                            y = size.center.x - offset.x,
+                            x = size.center.y - offset.y
+                        ) * (180f / Math.PI.toFloat())
+                    },
+                    onDragEnd = {
+                        oldAngle = angle
+                    }
+                ) { change, _ ->
+                    change.consume()
+
+                    val tempAngle = angle
+
+                    angle = -atan2(
+                        y = size.center.x - change.position.x,
+                        x = size.center.y - change.position.y
+                    ) * (180f / Math.PI.toFloat()) - dragStartedAngle + oldAngle
+
+                    var deltaAngle = angle - tempAngle
+
+                    if(deltaAngle < -180) deltaAngle += 360
+                    else if(deltaAngle > 180) deltaAngle -= 360
+
+                    val tempRotationAngle = rotationAngle
+
+                    rotationAngle = (rotationAngle + deltaAngle / 4).coerceIn(0f..270f)
+
+                    if(tempRotationAngle != rotationAngle) {
+                        changeBPM(rotationAngle * 240 / 270 + 40)
+                    }
+                }
+            }
+    ){
+        Canvas(modifier = Modifier
+            .size(buttonsSize / 1.5f)
+            .align(Alignment.TopCenter)
+        ) {
+//            drawCircle(buttonsColor, size.height / 2)
+            drawArc(
+                color = selectedButton,
+                startAngle = 135f,
+                sweepAngle = 270f,
+                useCenter = false,
+                topLeft = Offset(0f, 0f),
+                size = size,
+                style = Stroke(width = thickness, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = buttonsColor,
+                startAngle = 135f,
+                sweepAngle = -90f,
+                useCenter = false,
+                topLeft = Offset(0f, 0f),
+                size = size,
+                style = Stroke(width = thickness, cap = StrokeCap.Round)
+            )
+        }
+        Canvas(modifier = Modifier
+            .size(buttonsSize / 1.5f)
+            .rotate(135f + rotationAngle)
+            .align(Alignment.TopCenter)
+        ) {
+            drawLine(
+                color = notWhite,
+                start = Offset(center.x * 1.4f, center.y),
+                end = Offset(size.width, center.y),
+                strokeWidth = 4f,
+                cap = StrokeCap.Round
+            )
+        }
+        Text(
+            text = "$bpm BPM",
+            color = notWhite,
+            fontSize = 12.nonScaledSp,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
 
 
 @Composable
