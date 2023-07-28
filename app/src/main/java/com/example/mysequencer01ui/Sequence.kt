@@ -16,6 +16,7 @@ class Sequence (
     var channelIsPlayingNotes: Int = 0,
     var playingNotes: Array<Int> = Array(128){ 0 },
     var pressedNotes: Array<Pair<Boolean, Int>> = Array(128){Pair(false, Int.MAX_VALUE)}, // manually pressed notes (and IDs) that are muting same ones played by sequencer
+    var dePressedNotesOnRepeat: Array<Boolean> = Array(128){ false }, // remembering notes that shouldn't play on release/cancel
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
     var noteId: Int = Int.MIN_VALUE,
 
@@ -53,28 +54,28 @@ class Sequence (
         staticNoteOffTime: Int,
         seqIsPlaying: Boolean,
         isRepeating: Boolean,
-        customTime: Int = -1,
+        customTime: Double = -1.0,
         stepRecord: Boolean = false,
         noteHeight: Float = 60f
     ) {
         val customRecTime = if(customTime >= totalTime) customTime - totalTime else customTime
         var localId = id
-        var recordTime: Int
+        var recordTime: Double
         if(customRecTime > -1) {
             recordTime = customRecTime
         } else {
              if(seqIsPlaying){
                  recordTime = if(isRepeating) {
                      if((deltaTimeRepeat + wrapDelta >= 0 && repeatStartTime > repeatEndTime) || repeatStartTime < repeatEndTime) {
-                         if(fullDeltaTimeRepeat > repeatEndTime) repeatEndTime.toInt() else fullDeltaTimeRepeat.toInt()
+                         if(fullDeltaTimeRepeat > repeatEndTime) repeatEndTime else fullDeltaTimeRepeat
                      } else if((deltaTimeRepeat + wrapDelta < 0 && repeatStartTime > repeatEndTime) || repeatStartTime < repeatEndTime) {
-                         if(fullDeltaTimeRepeat < repeatStartTime) repeatStartTime.toInt() else fullDeltaTimeRepeat.toInt()
-                     } else fullDeltaTimeRepeat.toInt()
-                 } else deltaTime.toInt()
-                 if(recordTime > totalTime) recordTime = totalTime
-                 if(recordTime < 0) recordTime = 0
+                         if(fullDeltaTimeRepeat < repeatStartTime) repeatStartTime else fullDeltaTimeRepeat
+                     } else fullDeltaTimeRepeat
+                 } else deltaTime
+                 if(recordTime > totalTime) recordTime = totalTime.toDouble()
+                 if(recordTime < 0) recordTime = 0.0
              } else {     // Recording to beginning if Seq is stopped
-                 recordTime = if(velocity > 0) 0 else staticNoteOffTime
+                 recordTime = if(velocity > 0) 0.0 else staticNoteOffTime.toDouble()
              }
         }
 
@@ -83,7 +84,7 @@ class Sequence (
         if(index != 0 && velocity == 0 && notes[index - 1].time == recordTime) {
             index--
         }
-        Log.d("ryjtyj", "index to record: $index")
+        Log.d("ryjtyj", "index to record: $index, record time = $recordTime")
 
         // if same note is already playing -> find and erase it's paired noteOFF, and record noteOFF in current recordTime
         if (!stepRecord && playingNotes[pitch] > 0 && velocity > 0) {
@@ -117,11 +118,12 @@ class Sequence (
             recIntoArray(index, recordTime, pitch, 0, retrigId)
             if(isRepeating) indexToRepeat++ else indexToPlay++
             index++
-            Log.d("ryjtyj", "finished rec")
+            Log.d("ryjtyj", "finished noteOff rec ")
         }
 
         // RECORDING
 //        if(!(!playingNotes[pitch] && velocity == 0)) {  // to disable writing second NoteOFF when note is already off // TODO  redo (uncomment)?
+        Log.d("ryjtyj", "RECORDING index = $index, localId = ${localId - Int.MIN_VALUE}")
         recIntoArray(index, recordTime, pitch, velocity, localId)
 
         // updating indices
@@ -148,7 +150,7 @@ class Sequence (
 
     private fun recIntoArray(
         index: Int,
-        recordTime: Int,
+        recordTime: Double,
         pitch: Int,
         velocity: Int,
         id: Int,
@@ -173,20 +175,24 @@ class Sequence (
     }
 
 
-    fun playing(kmmk: KmmkComponentContext, index: Int, soloIsOff: Boolean) {
+    fun playing(kmmk: KmmkComponentContext, index: Int, soloIsOff: Boolean, stepView: Boolean) {
         // if note isn't being manually played   AND   channel is soloed  OR  no soloing occurs and channel isn't muted
         if (!pressedNotes[notes[index].pitch].first && (isSoloed || (soloIsOff && !isMuted))) {
-            kmmk.noteOn(
-                channel,
-                notes[index].pitch,
-                notes[index].velocity
-            )
+            if(!(dePressedNotesOnRepeat[notes[index].pitch] && stepView && notes[index].velocity == 0)) { // fix for playingNotes == -1 when releasing dragged note that was playing
+                kmmk.noteOn(
+                    channel,
+                    notes[index].pitch,
+                    notes[index].velocity
+                )
+            } else {
+                changePlayingNotes(notes[index].pitch, 1)
+                dePressedNotesOnRepeat[notes[index].pitch] = false
+            }
         }
         changePlayingNotes(notes[index].pitch, notes[index].velocity)
     }
 
-
-    var draggedNoteOffJob = CoroutineScope(Dispatchers.IO).launch { }
+    private var draggedNoteOffJob = CoroutineScope(Dispatchers.IO).launch { }
 
     fun playingDraggedNoteOffInTime(factorBpm: Double, kmmk: KmmkComponentContext) {
         Log.d("ryjtyj", "playingDraggedNoteOffInTime()")
@@ -311,21 +317,21 @@ class Sequence (
         if(lowKeyboard) pianoViewOctaveLow = newValue else pianoViewOctaveHigh = newValue
     }
 
-    fun returnPairedNoteOffIndexAndTime(index: Int): Pair<Int, Int> {
+    fun returnPairedNoteOffIndexAndTime(index: Int): Pair<Int, Double> {
         val pairedNoteOffIndex = notes.indexOfFirst { it.id == notes[index].id && it.velocity == 0 }
-        return if(pairedNoteOffIndex > -1) Pair(pairedNoteOffIndex, notes[pairedNoteOffIndex].time) else Pair(-1, Int.MIN_VALUE)
+        return if(pairedNoteOffIndex > -1) Pair(pairedNoteOffIndex, notes[pairedNoteOffIndex].time) else Pair(-1, Double.MIN_VALUE)
     }
 
-    fun returnPairedNoteOnIndexAndTime(index: Int): Pair<Int, Int> {
+    fun returnPairedNoteOnIndexAndTime(index: Int): Pair<Int, Double> {
         val pairedNoteOnIndex = notes.indexOfFirst { it.id == notes[index].id && it.velocity > 0 }
-        return if(pairedNoteOnIndex > -1) Pair(pairedNoteOnIndex, notes[pairedNoteOnIndex].time) else Pair(-1, Int.MIN_VALUE)
+        return if(pairedNoteOnIndex > -1) Pair(pairedNoteOnIndex, notes[pairedNoteOnIndex].time) else Pair(-1, Double.MIN_VALUE)
     }
 
     fun changeNotePitch(index: Int, pitch: Int) {
         notes[index].pitch = pitch
     }
 
-    fun changeNoteTime(index: Int, time: Int, isDeltaTime: Boolean = false) {
+    fun changeNoteTime(index: Int, time: Double, isDeltaTime: Boolean = false) {
         notes[index].time = if(isDeltaTime) {
             notes[index].time + time
         } else {

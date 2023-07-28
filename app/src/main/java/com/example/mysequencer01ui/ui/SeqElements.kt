@@ -213,7 +213,7 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
                         Box {
                             val pitch = 60
                             PadButton(
-                                seqViewModel.interactionSources[x + (3 - y) * 4][pitch].first,
+                                seqUiState.interactionSources[x + (3 - y) * 4][pitch].first,
                                 x + (3 - y) * 4,
                                 pitch,
                                 seqViewModel,

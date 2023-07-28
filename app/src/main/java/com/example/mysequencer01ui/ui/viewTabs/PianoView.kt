@@ -78,7 +78,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 modifier = Modifier.fillMaxSize()
             ) {
                 PianoKeyboard(
-                    seqViewModel.interactionSources[seqUiState.selectedChannel],
+                    seqUiState.interactionSources[seqUiState.selectedChannel],
                     seqViewModel::rememberInteraction,
                     seqUiState.selectedChannel,
                     playingNotes,
@@ -142,7 +142,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     }
                 }
                 PianoKeyboard(
-                    seqViewModel.interactionSources[seqUiState.selectedChannel],
+                    seqUiState.interactionSources[seqUiState.selectedChannel],
                     seqViewModel::rememberInteraction,
                     seqUiState.selectedChannel,
                     playingNotes,

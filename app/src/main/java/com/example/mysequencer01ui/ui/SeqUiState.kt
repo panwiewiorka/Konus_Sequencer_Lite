@@ -1,5 +1,8 @@
 package com.example.mysequencer01ui.ui
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.PadsMode
@@ -31,5 +34,14 @@ data class SeqUiState (
     val repeatLength: Double = 0.0,
     val muteIsOn: Boolean = false,
     val soloIsOn: Boolean = false,
+    val repeatStartFlag: Boolean = false,
+    val interactionSources: Array<Array<Pair<MutableInteractionSource, PressInteraction.Press>>> = Array(16) {
+        Array(128) {
+            Pair(
+                MutableInteractionSource(),
+                PressInteraction.Press( Offset(0f,0f) )
+            )
+        }
+    },
     val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it) },
     )

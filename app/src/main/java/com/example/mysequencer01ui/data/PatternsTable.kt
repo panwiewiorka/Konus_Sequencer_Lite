@@ -10,7 +10,7 @@ data class Patterns(
     val pattern: Int,
     val channel: Int,
     val noteIndex: Int,
-    val time: Int,
+    val time: Double,
     val pitch: Int,
     val velocity: Int,
     val noteId: Int,

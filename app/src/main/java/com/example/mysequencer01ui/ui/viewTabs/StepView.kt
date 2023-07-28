@@ -137,7 +137,7 @@ fun NotesGrid(
                             onTap = { offset ->
                                 val pitch = 127 - (offset.y / noteHeight.toPx()).toInt()
                                 var time =
-                                    ((offset.x.toDp().value / maxWidth.value) * totalTime).toInt()
+                                    ((offset.x.toDp().value / maxWidth.value) * totalTime).toDouble()
 
                                 val noteOnIndex1 = notes.indexOfLast {
                                     it.pitch == pitch && it.velocity > 0 && it.time < time
@@ -165,12 +165,12 @@ fun NotesGrid(
                                             (
                                                 time in notes[noteOnIndex1].time..notes[noteOffIndex1].time)  // normal case (not wrap-around) [---]
                                                 ||
-                                                (noteOnIndex1 > noteOffIndex1) && (time in notes[noteOnIndex1].time until totalTime) // wrap-around case, searching right part [--
+                                                (noteOnIndex1 > noteOffIndex1) && (time in notes[noteOnIndex1].time..totalTime.toDouble()) // wrap-around case, searching right part [--
                                             )
                                         ) ||
                                     (
                                         noteOffIndex2 > -1 && noteOnIndex2 > -1) && (
-                                        (noteOnIndex1 > noteOffIndex1) && (time in 0..notes[noteOffIndex1].time) // wrap-around case, searching left part --]
+                                        (noteOnIndex1 > noteOffIndex1) && (time in 0.0..notes[noteOffIndex1].time) // wrap-around case, searching left part --]
                                         )
                                 ) {
                                     erasing(kmmk, seqUiState.isRepeating, noteOnIndex1, true)
@@ -189,7 +189,7 @@ fun NotesGrid(
                                     val noteOffTime =
                                         time + totalTime / seqUiState.quantizationValue
                                     val noteOffInTheMiddle =
-                                        notes.indexOfFirst { it.pitch == pitch && it.velocity == 0 && it.time in time until noteOffTime }
+                                        notes.indexOfFirst { it.pitch == pitch && it.velocity == 0 && it.time in time..noteOffTime }
                                     if (noteOffInTheMiddle != -1) changeNoteTime(
                                         noteOffInTheMiddle,
                                         time
@@ -223,10 +223,10 @@ fun NotesGrid(
                     .pointerInput(seqUiState.seqIsPlaying, seqUiState.isQuantizing) {
                         var noteDetected = false
                         var pitch = -1
-                        var time = -1
-                        var timeQuantized = -1
-                        var noteDeltaTime = -1
-                        var dragDeltaTime: Int
+                        var time = -1.0
+                        var timeQuantized = -1.0
+                        var noteDeltaTime = -1.0
+                        var dragDeltaTime: Double
                         var noteOnIndex = -1
                         var noteOffIndex = -1
 
@@ -235,7 +235,7 @@ fun NotesGrid(
                                 xOffset = offset.x
                                 yOffset = offset.y
                                 pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
-                                time = ((xOffset / maxWidth.toPx()) * totalTime).toInt()
+                                time = ((xOffset / maxWidth.toPx()) * totalTime).toDouble()
 
                                 noteOnIndex = notes.indexOfLast {
                                     it.pitch == pitch && it.velocity > 0 && it.time < time
@@ -254,7 +254,7 @@ fun NotesGrid(
                                         (
                                             (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
                                                 || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
-                                                (time in notes[noteOnIndex].time until totalTime) || (time in 0..notes[noteOffIndex].time))
+                                                (time in notes[noteOnIndex].time..totalTime.toDouble()) || (time in 0.0..notes[noteOffIndex].time))
                                             )
 
                                 if (noteDetected) {
@@ -304,6 +304,7 @@ fun NotesGrid(
                             onDragEnd = {
                                 draggedNoteOnIndex = -1
                                 draggedNoteOffIndex = -1
+                                if(noteDetected) dePressedNotesOnRepeat[pitch] = true
                                 //offsetY = noteHeight * (127 - note.pitch)
                             }
                         ) { change, dragAmount ->
@@ -323,7 +324,7 @@ fun NotesGrid(
                                         timeQuantized = seqViewModel.quantizeTime(time)
                                     }
                                 } else {
-                                    dragDeltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
+                                    dragDeltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toDouble()
                                     changeNoteTime(noteOnIndex, dragDeltaTime, true)
                                     changeNoteTime(noteOffIndex, dragDeltaTime, true)
                                 }
@@ -391,7 +392,7 @@ fun NotesGrid(
                 for(i in notes.indices) {
                     if(notes[i].velocity > 0) {
 
-                        val offsetX = maxWidth * notes[i].time / 2000
+                        val offsetX = maxWidth * notes[i].time.toInt() / 2000
                         val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(i)
                         val noteOffIndex = noteOffIndexAndTime.first
                         val noteLength = noteOffIndexAndTime.second - notes[i].time
@@ -401,11 +402,11 @@ fun NotesGrid(
                             offsetY = noteHeight * (127 - notes[i].pitch),
                             noteLength = if (i > noteOffIndex)
                                 maxWidth - offsetX
-                            else maxWidth * noteLength / 2000,
+                            else maxWidth * noteLength.toInt() / 2000,
                             indexNoteOn = i,
                             noteHeight = noteHeight,
                             wrapAround = i > noteOffIndex,
-                            wrapAroundNoteLength = offsetX + maxWidth * noteLength / 2000,
+                            wrapAroundNoteLength = offsetX + maxWidth * noteLength.toInt() / 2000,
                         )
                     }
                 }

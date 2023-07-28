@@ -1,7 +1,7 @@
 package com.example.mysequencer01ui
 
 data class Note (
-    var time: Int,
+    var time: Double,
     var pitch: Int,
     var velocity: Int,
     var id: Int,

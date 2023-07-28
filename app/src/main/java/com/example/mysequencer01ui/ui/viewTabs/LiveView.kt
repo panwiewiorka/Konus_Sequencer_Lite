@@ -4,7 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -25,10 +24,7 @@ import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
@@ -39,9 +35,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.StopNotesMode
 import com.example.mysequencer01ui.ui.PadsGrid
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -96,18 +90,67 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.fillMaxHeight()
             ) {
-                RepeatButton(seqViewModel::repeat, {seqViewModel.stopChannels(StopNotesMode.END_OF_REPEAT)}, buttonsSize, 2, seqUiState.divisorState)
-                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 4, seqUiState.divisorState)
-                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 8, seqUiState.divisorState)
-                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 16, seqUiState.divisorState)
-                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 32, seqUiState.divisorState)
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    2,
+                    seqUiState.divisorState
+                )
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    4,
+                    seqUiState.divisorState
+                )
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    8,
+                    seqUiState.divisorState
+                )
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    16,
+                    seqUiState.divisorState
+                )
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    32,
+                    seqUiState.divisorState
+                )
             }
             Column(){
                 Spacer(modifier = Modifier.height(buttonsSize / 2))
-                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 3, seqUiState.divisorState, true)
-                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 6, seqUiState.divisorState, true)
-                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 12, seqUiState.divisorState, true)
-                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 24, seqUiState.divisorState, true)
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    3,
+                    seqUiState.divisorState,
+                    true
+                )
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    6,
+                    seqUiState.divisorState,
+                    true
+                )
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    12,
+                    seqUiState.divisorState,
+                    true
+                )
+                RepeatButton(
+                    seqViewModel::repeat,
+                    buttonsSize,
+                    24,
+                    seqUiState.divisorState,
+                    true
+                )
             }
         }
     }
@@ -115,7 +158,7 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
 
 
 @Composable
-fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move into LiveView
+fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -145,13 +188,13 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {    // TODO move in
                     // NOTES
                     for (i in notes.indices) {
                         if(notes[i].velocity > 0) {
-                            val noteStart = widthFactor * notes[i].time
+                            val noteStart = (widthFactor * notes[i].time).toFloat()
                             val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(i)
                             val noteOffIndex = noteOffIndexAndTime.first
                             val noteLength = noteOffIndexAndTime.second - notes[i].time
                             val noteWidth =
                                 if(noteOffIndex != -1) {
-                                    widthFactor * noteLength   // TODO minimum visible length
+                                    widthFactor * noteLength.toFloat()   // TODO minimum visible length
                                 } else {
                                     if(seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
                                 }
@@ -222,14 +265,7 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {    // TODO move into Li
                     color = selectedButton)
             }
         }
-//        val playhead = ((seqUiState.sequences[0].deltaTime) / seqUiState.sequences[0].totalTime * maxWidth.value).dp  // TODO replace hardcoded channel
         Canvas(modifier = Modifier.fillMaxSize()) {
-//            drawLine(
-////                if (seqUiState.seqIsRecording || seqUiState.padsMode == PadsMode.ERASING) warmRed else if(seqUiState.padsMode == PadsMode.CLEARING) Color.White else violet,
-//                Color.Transparent,
-//                Offset(playhead.toPx(), 0.dp.toPx()),
-//                Offset(playhead.toPx(), (height - 2.dp).toPx())
-//            )
             if(seqUiState.visualArrayRefresh) drawPoints(List(1){ Offset(0f,0f) }, PointMode.Points, violet)
         }
         for(c in 0..3){
@@ -259,7 +295,6 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {    // TODO move into Li
 @Composable
 fun RepeatButton(
     repeat: (Int) -> Unit,
-    cancelPadInteraction: () -> Unit,
     width: Dp,
     divisor: Int,
     divisorState: Int,
@@ -310,7 +345,6 @@ fun RepeatButton(
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
-//                    cancelPadInteraction()
                     repeat(divisor)
                 }
                 is PressInteraction.Release -> {
