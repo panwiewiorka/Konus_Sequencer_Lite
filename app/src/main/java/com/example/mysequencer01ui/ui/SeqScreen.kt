@@ -40,7 +40,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 modifier = Modifier.fillMaxHeight()
             ) {
                 if(seqUiState.padsMode != DEFAULT && seqUiState.padsMode != SELECTING && seqUiState.padsMode != LOADING)
-                    AllButton(seqViewModel, buttonsSize)
+                    AllButton(seqViewModel, buttonsSize, seqUiState.soloIsOn || seqUiState.muteIsOn)
                 else PadsModeButton(seqViewModel, seqUiState.padsMode, SELECTING, buttonsSize, dusk, 0)
                 PadsModeButton(seqViewModel, seqUiState.padsMode, SAVING, buttonsSize, dusk, 0)
                 PadsModeButton(seqViewModel, seqUiState.padsMode, SOLOING, buttonsSize, violet, seqViewModel.toggleTime)
@@ -84,11 +84,11 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 modifier = Modifier
                     .fillMaxHeight()
             ) {
-                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
-                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, STEP, buttonsSize, "ʭ")
-                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, PIANO, buttonsSize, "ϡ")
-                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, AUTOMATION, buttonsSize, "֎")
-                SeqViewButton(seqViewModel, seqViewModel::cancelInteractionWhenSwitchingViews, seqUiState.seqView, SETTINGS, buttonsSize, "╪")
+                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
+                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, STEP, buttonsSize, "ʭ")
+                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, PIANO, buttonsSize, "ϡ")
+                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, AUTOMATION, buttonsSize, "֎")
+                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, SETTINGS, buttonsSize, "╪")
             }
         }
     }

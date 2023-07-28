@@ -29,5 +29,7 @@ data class SeqUiState (
     val isRepeating: Boolean = false,
     val divisorState: Int = 0,
     val repeatLength: Double = 0.0,
+    val muteIsOn: Boolean = false,
+    val soloIsOn: Boolean = false,
     val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it) },
     )

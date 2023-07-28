@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,11 +38,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PointMode
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.PadsMode
+import com.example.mysequencer01ui.StopNotesMode
 import com.example.mysequencer01ui.ui.PadsGrid
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -54,14 +54,11 @@ import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsColor
 import com.example.mysequencer01ui.ui.theme.dusk
 import com.example.mysequencer01ui.ui.theme.night
-import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.noteSquare
-import com.example.mysequencer01ui.ui.theme.playGreen
 import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.selectedNoteSquare
 import com.example.mysequencer01ui.ui.theme.seqBg
 import com.example.mysequencer01ui.ui.theme.violet
-import com.example.mysequencer01ui.ui.theme.warmRed
 import kotlin.math.sqrt
 
 @Composable
@@ -99,18 +96,18 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.fillMaxHeight()
             ) {
-                RepeatButton(seqViewModel, buttonsSize, 2, seqUiState.divisorState)
-                RepeatButton(seqViewModel, buttonsSize, 4, seqUiState.divisorState)
-                RepeatButton(seqViewModel, buttonsSize, 8, seqUiState.divisorState)
-                RepeatButton(seqViewModel, buttonsSize, 16, seqUiState.divisorState)
-                RepeatButton(seqViewModel, buttonsSize, 32, seqUiState.divisorState)
+                RepeatButton(seqViewModel::repeat, {seqViewModel.stopChannels(StopNotesMode.END_OF_REPEAT)}, buttonsSize, 2, seqUiState.divisorState)
+                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 4, seqUiState.divisorState)
+                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 8, seqUiState.divisorState)
+                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 16, seqUiState.divisorState)
+                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 32, seqUiState.divisorState)
             }
             Column(){
                 Spacer(modifier = Modifier.height(buttonsSize / 2))
-                RepeatButton(seqViewModel, buttonsSize, 3, seqUiState.divisorState, true)
-                RepeatButton(seqViewModel, buttonsSize, 6, seqUiState.divisorState, true)
-                RepeatButton(seqViewModel, buttonsSize, 12, seqUiState.divisorState, true)
-                RepeatButton(seqViewModel, buttonsSize, 24, seqUiState.divisorState, true)
+                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 3, seqUiState.divisorState, true)
+                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 6, seqUiState.divisorState, true)
+                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 12, seqUiState.divisorState, true)
+                RepeatButton(seqViewModel::repeat, seqViewModel::cancelPadInteraction, buttonsSize, 24, seqUiState.divisorState, true)
             }
         }
     }
@@ -261,13 +258,14 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {    // TODO move into Li
 
 @Composable
 fun RepeatButton(
-    seqViewModel: SeqViewModel,
+    repeat: (Int) -> Unit,
+    cancelPadInteraction: () -> Unit,
     width: Dp,
     divisor: Int,
     divisorState: Int,
     triplet: Boolean = false,
 ){
-    val leftToHexShape = GenericShape { size: Size, layoutDirection: LayoutDirection ->
+    val leftToHexShape = GenericShape { size, _ ->
         val c = size.height / sqrt(3f)
         val y = size.height / 2
         val x = sqrt(c * c - y * y)
@@ -280,7 +278,7 @@ fun RepeatButton(
         close()
     }
     val offset = if(triplet) width / 16 else width / -16
-    val hexagonShape = GenericShape { size: Size, layoutDirection: LayoutDirection ->
+    val hexagonShape = GenericShape { size, _ ->
         val c = size.height / sqrt(3f)
         val y = size.height / 2
         val x = sqrt(c * c - y * y)
@@ -293,7 +291,7 @@ fun RepeatButton(
         lineTo(x, 0f)
         close()
     }
-    val rightToHexShape = GenericShape { size: Size, layoutDirection: LayoutDirection ->
+    val rightToHexShape = GenericShape { size, _ ->
         val c = size.height / sqrt(3f)
         val y  = size.height / 2
         val x = sqrt(c * c - y * y)
@@ -308,17 +306,15 @@ fun RepeatButton(
     }
 
     val interactionSource = remember { MutableInteractionSource() }
-    var buttonIsPressed by remember { mutableStateOf(false) }
     LaunchedEffect(interactionSource) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
-                    seqViewModel.repeat(divisor)
-                    buttonIsPressed = true
+//                    cancelPadInteraction()
+                    repeat(divisor)
                 }
                 is PressInteraction.Release -> {
-                    seqViewModel.repeat(0)
-                    buttonIsPressed = false
+                    repeat(0)
                 }
                 is PressInteraction.Cancel -> { }
             }

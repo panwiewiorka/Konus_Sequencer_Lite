@@ -11,15 +11,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderColors
 import androidx.compose.material.SliderDefaults
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
@@ -28,7 +24,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode.*
-import com.example.mysequencer01ui.Sequence
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.playHeads
@@ -38,7 +33,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 
 @Composable
@@ -230,8 +224,9 @@ fun NotesGrid(
                         var noteDetected = false
                         var pitch = -1
                         var time = -1
+                        var timeQuantized = -1
+                        var noteDeltaTime = -1
                         var dragDeltaTime: Int
-                        var dragQuantizingDeltaTime = 0
                         var noteOnIndex = -1
                         var noteOffIndex = -1
 
@@ -263,18 +258,20 @@ fun NotesGrid(
                                             )
 
                                 if (noteDetected) {
+
                                     if (seqUiState.isQuantizing) {
-                                        dragQuantizingDeltaTime = 0
                                         val tempTime = notes[noteOnIndex].time
                                         changeNoteTime(
                                             noteOnIndex,
                                             seqViewModel.quantizeTime(tempTime)
                                         )
+                                        noteDeltaTime = notes[noteOnIndex].time - tempTime
                                         changeNoteTime(
                                             noteOffIndex,
-                                            notes[noteOnIndex].time - tempTime,
+                                            noteDeltaTime,
                                             true
                                         )
+                                        timeQuantized = seqViewModel.quantizeTime(time + noteDeltaTime)
                                     }
 
                                     // if dragging note that is playing -> fire noteOff on time
@@ -307,26 +304,23 @@ fun NotesGrid(
                             onDragEnd = {
                                 draggedNoteOnIndex = -1
                                 draggedNoteOffIndex = -1
-                                dragQuantizingDeltaTime = 0
                                 //offsetY = noteHeight * (127 - note.pitch)
                             }
                         ) { change, dragAmount ->
                             change.consume()
 
-                            // if note exists where we start dragging - drag it, else scroll
+                            // if note exists where we drag -> move it, else scroll the grid
                             if (noteDetected) {
                                 xOffset += dragAmount.x
                                 yOffset += dragAmount.y
+                                time = ((xOffset * totalTime / maxWidth.toPx())).toInt() + noteDeltaTime
 
                                 if (seqUiState.isQuantizing) {
-                                    dragQuantizingDeltaTime += (dragAmount.x.toDp() * 2000 / maxWidth).toInt()
-                                    if (abs(dragQuantizingDeltaTime) > seqViewModel.quantizationTime) {
-                                        val tempTime = dragQuantizingDeltaTime
-                                        dragQuantizingDeltaTime =
-                                            seqViewModel.quantizeTime(dragQuantizingDeltaTime)
-                                        changeNoteTime(noteOnIndex, dragQuantizingDeltaTime, true)
-                                        changeNoteTime(noteOffIndex, dragQuantizingDeltaTime, true)
-                                        dragQuantizingDeltaTime = tempTime - dragQuantizingDeltaTime
+                                    if(seqViewModel.quantizeTime(time) != timeQuantized) {
+                                        val deltaQuantized = seqViewModel.quantizeTime(time) - timeQuantized
+                                        changeNoteTime(noteOnIndex, deltaQuantized, true)
+                                        changeNoteTime(noteOffIndex, deltaQuantized, true)
+                                        timeQuantized = seqViewModel.quantizeTime(time)
                                     }
                                 } else {
                                     dragDeltaTime = (dragAmount.x.toDp() * 2000 / maxWidth).toInt()

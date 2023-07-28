@@ -222,12 +222,22 @@ fun DrawScope.soloSymbol(soloing: Boolean) {
         style = Stroke(width = thickness, cap = StrokeCap.Round))
 }
 
-fun DrawScope.soloSymbolOld(soloing: Boolean) {
-    // TODO offset to the center before rotation to avoid messy constants
-    val m = size.height / 20f
-    val s = size.height / 46f
-    drawArc(if(soloing) buttonsColor else violet, -90f, 180f, false, Offset(center.x - m, center.y - s), size = size / 8f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(if(soloing) buttonsColor else violet, 90f, 180f, false, Offset(center.x - m, center.y - size.height / 8f - s), size = size / 8f, style = Stroke(width = thickness, cap = StrokeCap.Round))
+fun DrawScope.strikeStrip() {
+    val m = size.height / 5.5f
+    drawLine(
+        color = buttonsColor,
+        start = Offset(center.x - m, center.y + m / 3),
+        end = Offset(center.x + m, center.y - m / 3),
+        strokeWidth = thickness * 2,
+        cap = StrokeCap.Round
+    )
+    drawLine(
+        color = notWhite,
+        start = Offset(center.x - m, center.y + m / 3),
+        end = Offset(center.x + m, center.y - m / 3),
+        strokeWidth = thickness,
+        cap = StrokeCap.Round
+    )
 }
 
 

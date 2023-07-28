@@ -50,6 +50,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private var anyChannelIsMuted = false
     private var anyChannelIsSoloed = false
     private var previousPadsMode: PadsMode = DEFAULT
+    private var listOfMutedChannels = emptyList<Int>()
+    private var listOfSoloedChannels = emptyList<Int>()
 
     private var patterns: Array<Array<Array<Note>>> = Array(16){ Array(16) { emptyArray() } }
     private var job = CoroutineScope(EmptyCoroutineContext).launch {  }
@@ -142,7 +144,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                 if (!erasing(kmmk,false, indexToPlay, false)) break
                             } else {
                                 if(!uiState.value.isRepeating && indexToPlay != draggedNoteOffIndex) {
-                                    playing(kmmk, indexToPlay, !anyChannelIsSoloed)
+                                    playing(kmmk, indexToPlay, !uiState.value.soloIsOn)
                                     // StepView case:
                                     if (indexToPlay == draggedNoteOnIndex) {
                                         playingDraggedNoteOffInTime(uiState.value.factorBpm, kmmk)
@@ -254,7 +256,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                     if (!erasing(kmmk,true, indexToRepeat - wrapIndex, false)) break
                                 } else {
                                     if(indexToRepeat != draggedNoteOffIndex) {
-                                        playing(kmmk, indexToRepeat - wrapIndex, !anyChannelIsSoloed)
+                                        playing(kmmk, indexToRepeat - wrapIndex, !uiState.value.soloIsOn)
                                         // StepView case:
                                         if (indexToRepeat == draggedNoteOnIndex) {
                                             playingDraggedNoteOffInTime(uiState.value.factorBpm, kmmk)
@@ -285,7 +287,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         }
     }
 
-    private fun stopChannels(mode: StopNotesMode) {
+    fun stopChannels(mode: StopNotesMode) {
         for (c in 0..15) {
             uiState.value.stopNotesOnChannel(c, mode)
             if(mode == STOPSEQ) {
@@ -358,19 +360,28 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
             if(pressOrLongRelease) {
                 if(allButton) {
-                    if(channel == 0) {
-                        anyChannelIsSoloed = (uiState.value.sequences.any{ it.isSoloed })
+                    if(velocity > 0) {
+                        if(channel == 0) {
+                            listOfSoloedChannels = uiState.value.sequences.filter { it.isSoloed }.map { it.channel }
+                            anyChannelIsSoloed = listOfSoloedChannels.isNotEmpty()
+                        }
+                        isSoloed = !anyChannelIsSoloed
+                    } else {
+                        if(!anyChannelIsSoloed) {
+                            isSoloed = false
+                        } else if(listOfSoloedChannels.contains(channel)) {
+                            isSoloed = true
+                        }
                     }
-                    isSoloed = !anyChannelIsSoloed
-                    if(channel == 15) anyChannelIsSoloed = !anyChannelIsSoloed
+                    if(channel == 15) _uiState.update { it.copy(soloIsOn = uiState.value.sequences.any{ sequence -> sequence.isSoloed }) }
                 } else {   // single Pad
                     isSoloed = !isSoloed
                     if(isSoloed) {
-                        anyChannelIsSoloed = true
+                        _uiState.update { it.copy(soloIsOn = true) }
                         for (c in 0..15) {
                             if (!uiState.value.sequences[c].isSoloed) uiState.value.stopNotesOnChannel(c, MUTE)
                         }
-                    } else anyChannelIsSoloed = (uiState.value.sequences.any{ it.isSoloed })
+                    } else _uiState.update { it.copy(soloIsOn = uiState.value.sequences.any{ sequence -> sequence.isSoloed }) }
                 }
             }
         }
@@ -383,13 +394,26 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
             if(pressOrLongRelease) {
                 if(allButton) {
-                    if(channel == 0) {
-                        anyChannelIsMuted = (uiState.value.sequences.find{ it.isMuted } != null)
+                    if(velocity > 0) {
+                        if(channel == 0) {
+                            listOfMutedChannels = uiState.value.sequences.filter { it.isMuted }.map { it.channel }
+                            anyChannelIsMuted = listOfMutedChannels.isNotEmpty()
+                        }
+                        isMuted = !anyChannelIsMuted
+                    } else {
+                        if(!anyChannelIsMuted) {
+                            isMuted = false
+                        } else if(listOfMutedChannels.contains(channel)) {
+                            isMuted = true
+                        }
                     }
-                    isMuted = !anyChannelIsMuted
+                    if(channel == 15) _uiState.update { it.copy(muteIsOn = uiState.value.sequences.any{ sequence -> sequence.isMuted }) }
                 } else {   // single Pad
                     isMuted = !isMuted
-                    if (isMuted) uiState.value.stopNotesOnChannel(channel, MUTE)
+                    if (isMuted) {
+                        _uiState.update { it.copy(muteIsOn = true) }
+                        uiState.value.stopNotesOnChannel(channel, MUTE) // TODO when allButton?
+                    } else _uiState.update { it.copy(muteIsOn = uiState.value.sequences.any{ sequence -> sequence.isMuted }) }
                 }
             }
         }
@@ -575,12 +599,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     fun quantizeTime(time: Int): Int {
         return if(uiState.value.isQuantizing) {
-            val remainder = time % quantizationTime
-//            if(remainder > quantizationTime / 2)
-//                (time - remainder + quantizationTime).toInt()
-//            else
-//                (time - remainder).toInt()
-            (time - remainder).toInt()
+            val remainder = (time + quantizationTime / 2) % quantizationTime
+            (time + quantizationTime / 2 - remainder).toInt()
         } else time
     }
 
@@ -589,7 +609,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             for(i in notes.indices) {
                 if(notes[i].velocity > 0) {
                     val tempTime = notes[i].time
-                    val time = quantizeTime((notes[i].time + quantizationTime / 2).toInt())
+                    val time = quantizeTime(tempTime)
                     changeNoteTime(i, time)
                     changeNoteTime(returnPairedNoteOffIndexAndTime(i).first, time - tempTime, true)
                     sortNotesByTime()
@@ -689,7 +709,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         interactionSources[channel][pitch] = Pair(interactionSources[channel][pitch].first, interaction)
     }
 
-    fun cancelInteractionWhenSwitchingViews() {
+    fun cancelPadInteraction() {
 //        CoroutineScope(Dispatchers.Main).launch {
         runBlocking {
             for(c in 0..15) {

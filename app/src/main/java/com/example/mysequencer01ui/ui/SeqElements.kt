@@ -283,7 +283,7 @@ fun PadsModeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonType: P
 
 
 @Composable
-fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
+fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp, showStrikeStripe: Boolean){
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
     val buttonPressed by interactionSource.collectIsPressedAsState()
@@ -327,12 +327,13 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp){
             .blur(if (buttonPressed) 0.dp else 6.dp)
             .alpha(0.6f)){
             allSymbol(buttonPressed)
+            if(showStrikeStripe) strikeStrip()
         }
         Canvas(modifier = Modifier.fillMaxSize()){
             allSymbol(buttonPressed)
+            if(showStrikeStripe) strikeStrip()
         }
     }
-//    }
 }
 
 
@@ -480,7 +481,7 @@ fun StopButton(seqViewModel: SeqViewModel, buttonsSize: Dp) {
 @Composable
 fun SeqViewButton(
     seqViewModel: SeqViewModel,
-    cancelInteractionWhenSwitchingViews: () -> Unit,
+    cancelPadInteraction: () -> Unit,
     seqView: SeqView,
     buttonSeqView: SeqView,
     buttonsSize: Dp,
@@ -498,7 +499,7 @@ fun SeqViewButton(
                     seqViewModel.toggleTime,
                     {
                         seqViewModel.changeSeqViewState(buttonSeqView)
-                        cancelInteractionWhenSwitchingViews()
+                        cancelPadInteraction()
                     },
                     { },
                 ),
