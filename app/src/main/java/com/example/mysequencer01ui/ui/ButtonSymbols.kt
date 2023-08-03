@@ -131,7 +131,7 @@ fun DrawScope.quantizeSymbol(quantizingPadsMode: Boolean, isQuantizing: Boolean)
     drawPath(
         path = path,
         color = if (quantizingPadsMode) buttonsColor else color,
-        style = Stroke( width = thickness, join = StrokeJoin.Round )
+        style = Stroke( width = thickness, join = StrokeJoin.Round)
     )
 }
 
@@ -326,7 +326,7 @@ fun DrawScope.clearSymbol(clearing: Boolean) {
 fun DrawScope.recSymbol(padsMode: PadsMode, seqIsRecording: Boolean) {
     drawCircle(
         color = if (seqIsRecording && padsMode == DEFAULT) buttonsColor else warmRed,
-        radius = size.height / 6.67f,
+        radius = size.height / 7f,
         center = center,
         style = if(padsMode != DEFAULT && seqIsRecording) Fill else Stroke(width = thickness),
     )

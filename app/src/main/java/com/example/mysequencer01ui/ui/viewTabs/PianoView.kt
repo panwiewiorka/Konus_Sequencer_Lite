@@ -29,8 +29,6 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -44,9 +42,11 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.mysequencer01ui.KeyColorAndNumber
 import com.example.mysequencer01ui.PianoKeysType
 import com.example.mysequencer01ui.PianoKeysType.BLACK
 import com.example.mysequencer01ui.PianoKeysType.WHITE
+import com.example.mysequencer01ui.RememberedPressInteraction
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.theme.BackGray
@@ -78,7 +78,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 modifier = Modifier.fillMaxSize()
             ) {
                 PianoKeyboard(
-                    seqUiState.interactionSources[seqUiState.selectedChannel],
+                    seqViewModel.interactionSources[seqUiState.selectedChannel],
                     seqViewModel::rememberInteraction,
                     seqUiState.selectedChannel,
                     playingNotes,
@@ -142,7 +142,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     }
                 }
                 PianoKeyboard(
-                    seqUiState.interactionSources[seqUiState.selectedChannel],
+                    seqViewModel.interactionSources[seqUiState.selectedChannel],
                     seqViewModel::rememberInteraction,
                     seqUiState.selectedChannel,
                     playingNotes,
@@ -161,7 +161,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
 
 @Composable
 fun PianoKeyboard(
-    interactionSources: Array<Pair<MutableInteractionSource, PressInteraction.Press>>,
+    interactionSources: Array<RememberedPressInteraction>,
     rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
     selectedChannel: Int,
     playingNotes: Array<Int>,
@@ -179,14 +179,14 @@ fun PianoKeyboard(
     ) {
         Row() {
             repeat(24) {
-                val key = chooseBlackOrWhiteKey(startPitch, it)
-                val keyIsWhite = key.first.keyIsWhite
-                val pitch = key.second + (octave + 1) * 12 // TODO bounds
+                val key = getKeyColorAndNumber(startPitch, it)
+                val keyIsWhite = !key.isBlack
+                val pitch = key.number + (octave + 1) * 12 // TODO bounds
                 Box(
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     if(keyIsWhite) PianoKey(
-                        interactionSource = interactionSources[pitch].first,
+                        interactionSource = interactionSources[pitch].interactionSource,
                         rememberInteraction = rememberInteraction,
                         seqIsRecording = seqIsRecording,
                         noteIsPlaying = playingNotes[pitch] > 0,
@@ -206,12 +206,12 @@ fun PianoKeyboard(
             modifier = Modifier.offset(-keyWidth / 2 - notesPadding, -keyHeight / 2)
         ) {
             repeat(24) {
-                val key = chooseBlackOrWhiteKey(startPitch, it)
-                val keyIsBlack = !key.first.keyIsWhite
-                val pitch = key.second + (octave + 1) * 12 // TODO bounds
+                val key = getKeyColorAndNumber(startPitch, it)
+                val keyIsBlack = key.isBlack
+                val pitch = key.number + (octave + 1) * 12 // TODO bounds
 
                 if(keyIsBlack) PianoKey(
-                    interactionSource = interactionSources[pitch].first,
+                    interactionSource = interactionSources[pitch].interactionSource,
                     rememberInteraction = rememberInteraction,
                     seqIsRecording = seqIsRecording,
                     noteIsPlaying = playingNotes[pitch] > 0,
@@ -223,15 +223,15 @@ fun PianoKeyboard(
                     notesPadding = notesPadding,
                     whiteKey = false
                 )
-                if(key.second % 12 == 5 || key.second % 12 == 0) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
+                if(key.number % 12 == 5 || key.number % 12 == 0) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
             }
         }
     }
 }
 
-fun chooseBlackOrWhiteKey(startPitch: Int, keyIndex: Int): Pair<PianoKeysType, Int> {
+fun getKeyColorAndNumber(startPitch: Int, keyIndex: Int): KeyColorAndNumber {
     val blackAndWhiteKeysPattern = listOf(WHITE, BLACK, WHITE, BLACK, WHITE, WHITE, BLACK, WHITE, BLACK, WHITE, BLACK, WHITE)
-    return Pair(blackAndWhiteKeysPattern[(startPitch + keyIndex) % 12], startPitch + keyIndex)
+    return KeyColorAndNumber(blackAndWhiteKeysPattern[(startPitch + keyIndex) % 12] == BLACK, startPitch + keyIndex)
 }
 
 

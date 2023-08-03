@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.Card
@@ -72,25 +74,21 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextAndSwitch("VisualDebugger", seqUiState.visualDebugger) { seqViewModel.switchVisualDebugger() }
+                Spacer(modifier = Modifier.width(20.dp))
                 if(seqUiState.visualDebugger) {
-                    Text("pitch", color = notWhite, modifier = Modifier.padding(start = 10.dp))
+                    Text("index", color = notWhite)
                     RadioButton(
                         selected = seqUiState.debuggerViewSetting == 0,
                         onClick = { seqViewModel.selectDebuggerSetting(0) },
                         modifier = Modifier.padding(end = 10.dp))
-                    Text("index", color = notWhite)
+                    Text("noteId", color = notWhite)
                     RadioButton(
                         selected = seqUiState.debuggerViewSetting == 1,
                         onClick = { seqViewModel.selectDebuggerSetting(1) },
-                        modifier = Modifier.padding(end = 10.dp))
-                    Text("noteId", color = notWhite)
-                    RadioButton(
-                        selected = seqUiState.debuggerViewSetting == 2,
-                        onClick = { seqViewModel.selectDebuggerSetting(2) },
                         modifier = Modifier.padding(end = 10.dp))
                 }
             }
@@ -141,14 +139,14 @@ fun Knob(buttonsSize: Dp, bpm: Float, changeBPM: (Float) -> Unit) {
 
                     var deltaAngle = angle - tempAngle
 
-                    if(deltaAngle < -180) deltaAngle += 360
-                    else if(deltaAngle > 180) deltaAngle -= 360
+                    if (deltaAngle < -180) deltaAngle += 360
+                    else if (deltaAngle > 180) deltaAngle -= 360
 
                     val tempRotationAngle = rotationAngle
 
                     rotationAngle = (rotationAngle + deltaAngle / 4).coerceIn(0f..270f)
 
-                    if(tempRotationAngle != rotationAngle) {
+                    if (tempRotationAngle != rotationAngle) {
                         changeBPM(rotationAngle * 240 / 270 + 40)
                     }
                 }

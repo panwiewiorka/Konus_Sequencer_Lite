@@ -92,18 +92,6 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             }
         }
     }
-    
-
-    /*
-Canvas(modifier = Modifier.size(40.dp)){
-drawCircle(Color.White, style = Stroke(
-width = 3f,
-    pathEffect = PathEffect.dashPathEffect(FloatArray(2){((1 - it) + 0.44f) * 20f}, 0f)
-)
-)
-//drawOval(Color.White, Offset(0f, 0f), Offset(30f, 20f), )
-}
-*/
 
     Log.d("emptyTag", " ") // to hold in imports
 }

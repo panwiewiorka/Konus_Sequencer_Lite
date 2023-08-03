@@ -53,6 +53,7 @@ import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.selectedNoteSquare
 import com.example.mysequencer01ui.ui.theme.seqBg
 import com.example.mysequencer01ui.ui.theme.violet
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 @Composable
@@ -90,67 +91,26 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.fillMaxHeight()
             ) {
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    2,
-                    seqUiState.divisorState
-                )
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    4,
-                    seqUiState.divisorState
-                )
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    8,
-                    seqUiState.divisorState
-                )
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    16,
-                    seqUiState.divisorState
-                )
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    32,
-                    seqUiState.divisorState
-                )
+                repeat(5) {
+                    RepeatButton(
+                        seqViewModel::changeRepeatDivisor,
+                        buttonsSize,
+                        2f.pow(it + 1).toInt(),
+                        seqUiState.divisorState
+                    )
+                }
             }
             Column(){
                 Spacer(modifier = Modifier.height(buttonsSize / 2))
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    3,
-                    seqUiState.divisorState,
-                    true
-                )
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    6,
-                    seqUiState.divisorState,
-                    true
-                )
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    12,
-                    seqUiState.divisorState,
-                    true
-                )
-                RepeatButton(
-                    seqViewModel::repeat,
-                    buttonsSize,
-                    24,
-                    seqUiState.divisorState,
-                    true
-                )
+                repeat(4) {
+                    RepeatButton(
+                        seqViewModel::changeRepeatDivisor,
+                        buttonsSize,
+                        3 * 2f.pow(it).toInt(),
+                        seqUiState.divisorState,
+                        true
+                    )
+                }
             }
         }
     }
@@ -189,19 +149,19 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                     for (i in notes.indices) {
                         if(notes[i].velocity > 0) {
                             val noteStart = (widthFactor * notes[i].time).toFloat()
-                            val noteOffIndexAndTime = returnPairedNoteOffIndexAndTime(i)
-                            val noteOffIndex = noteOffIndexAndTime.first
-                            val noteLength = noteOffIndexAndTime.second - notes[i].time
+                            val noteOffIndexAndTime = getPairedNoteOffIndexAndTime(i)
+                            val noteOffIndex = noteOffIndexAndTime.index
+                            val noteLength = noteOffIndexAndTime.time - notes[i].time
                             val noteWidth =
-                                if(noteOffIndex != -1) {
-                                    widthFactor * noteLength.toFloat()   // TODO minimum visible length
+                                if (noteOffIndex != -1) {
+                                    widthFactor * noteLength.toFloat()
                                 } else {
-                                    if(seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
+                                    if (seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
                                 }
 
-                            if(noteWidth >= 0) { // normal note (not wrap-around)
+                            if (noteWidth >= 0 || noteOffIndex == -1) { // normal note (not wrap-around)
                                 drawRect(
-                                    color = if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
+                                    color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     topLeft = Offset(noteStart, size.height - ((c + 1) * size.height / 4)),
                                     size = Size(
                                         width = noteWidth,
@@ -209,14 +169,14 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                                 )
                             } else {   // wrap-around note
                                 drawRect(
-                                    color = if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
+                                    color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     topLeft = Offset(noteStart,size.height - ((c + 1) * size.height / 4)),
                                     size = Size(
                                         width = size.width - noteStart,
                                         height = size.height / 4)
                                 )
                                 drawRect(
-                                    color = if(seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
+                                    color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     topLeft = Offset(0f,size.height - ((c + 1) * size.height / 4)),
                                     size = Size(
                                         width = noteWidth + noteStart,  // noteWidth is negative here
@@ -228,11 +188,11 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
 
                     playHeads(seqUiState, playhead, playheadRepeat)
 
-                    if(seqUiState.isRepeating) repeatBounds(this, widthFactor, 0.3f)
+                    if (seqUiState.isRepeating) repeatBounds(this, widthFactor, 0.3f)
                 }
             }
         }
-        if(seqUiState.visualDebugger) {
+        if (seqUiState.visualDebugger) {
             VisualDebugger(seqUiState, buttonsSize)
         }
     }
@@ -274,8 +234,7 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {    // TODO move into Li
                     Text(
                         text =
                             when (seqUiState.debuggerViewSetting) {
-                                0 -> if (notes[i].velocity > 0) "${notes[i].pitch}" else "]"
-                                1 -> "$i"
+                                0 -> "$i"
                                 else-> "${notes[i].id - Int.MIN_VALUE}"
                             }
                         ,
@@ -294,7 +253,7 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {    // TODO move into Li
 
 @Composable
 fun RepeatButton(
-    repeat: (Int) -> Unit,
+    changeRepeatDivisor: (Int) -> Unit,
     width: Dp,
     divisor: Int,
     divisorState: Int,
@@ -345,10 +304,10 @@ fun RepeatButton(
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
-                    repeat(divisor)
+                    changeRepeatDivisor(divisor)
                 }
                 is PressInteraction.Release -> {
-                    repeat(0)
+                    changeRepeatDivisor(0)
                 }
                 is PressInteraction.Cancel -> { }
             }

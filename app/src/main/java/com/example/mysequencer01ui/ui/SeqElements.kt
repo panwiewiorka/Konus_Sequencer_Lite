@@ -213,7 +213,7 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
                         Box {
                             val pitch = 60
                             PadButton(
-                                seqUiState.interactionSources[x + (3 - y) * 4][pitch].first,
+                                seqViewModel.interactionSources[x + (3 - y) * 4][pitch].interactionSource,
                                 x + (3 - y) * 4,
                                 pitch,
                                 seqViewModel,
@@ -481,7 +481,7 @@ fun StopButton(seqViewModel: SeqViewModel, buttonsSize: Dp) {
 @Composable
 fun SeqViewButton(
     seqViewModel: SeqViewModel,
-    cancelPadInteraction: () -> Unit,
+    cancelPadInteraction: () -> Unit, // TODO remove, use seqViewModel.cancelPadInteraction() instead
     seqView: SeqView,
     buttonSeqView: SeqView,
     buttonsSize: Dp,
