@@ -27,6 +27,7 @@ data class SeqUiState (
 
     val isQuantizing: Boolean = true,
     val quantizationValue: Int = 16,
+    val quantizationTime: Double = BARTIME.toDouble() / quantizationValue,
     val quantizeModeTimer: Int = 0,
 
     val isRepeating: Boolean = false,

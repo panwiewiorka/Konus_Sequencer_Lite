@@ -53,6 +53,7 @@ import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.selectedNoteSquare
 import com.example.mysequencer01ui.ui.theme.seqBg
 import com.example.mysequencer01ui.ui.theme.violet
+import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -143,7 +144,7 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                 with(seqUiState.sequences[c]) {
                     val widthFactor = size.width / totalTime
                     val playhead = (widthFactor * deltaTime).toFloat()
-                    val playheadRepeat = (widthFactor * fullDeltaTimeRepeat).toFloat()
+                    val playheadRepeat = (widthFactor * deltaTimeRepeat).toFloat()
 
                     // NOTES
                     for (i in notes.indices) {
@@ -159,7 +160,8 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                                     if (seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
                                 }
 
-                            if (noteWidth >= 0 || noteOffIndex == -1) { // normal note (not wrap-around)
+                            val fasterThanHalfOfQuantize = System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= seqUiState.quantizationTime / seqUiState.factorBpm / 2
+                            if (noteWidth > 0  || (noteOffIndex == -1 && fasterThanHalfOfQuantize && abs(noteWidth) >= 0)) { // normal note (not wrap-around) [...]
                                 drawRect(
                                     color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     topLeft = Offset(noteStart, size.height - ((c + 1) * size.height / 4)),
@@ -168,14 +170,14 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                                         height = size.height / 4)
                                 )
                             } else {   // wrap-around note
-                                drawRect(
+                                drawRect(   // [..
                                     color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     topLeft = Offset(noteStart,size.height - ((c + 1) * size.height / 4)),
                                     size = Size(
                                         width = size.width - noteStart,
                                         height = size.height / 4)
                                 )
-                                drawRect(
+                                drawRect(   // ..]
                                     color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) selectedNoteSquare else noteSquare,
                                     topLeft = Offset(0f,size.height - ((c + 1) * size.height / 4)),
                                     size = Size(

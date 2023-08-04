@@ -18,6 +18,7 @@ data class NoteIndexAndTime (
 data class PressedNote (
     var isPressed: Boolean,
     var id: Int,
+    var noteOnTimestamp: Long
 )
 
 data class RememberedPressInteraction (

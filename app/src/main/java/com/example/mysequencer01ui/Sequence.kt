@@ -1,6 +1,7 @@
 package com.example.mysequencer01ui
 
 import android.util.Log
+import com.example.mysequencer01ui.ui.BARTIME
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -17,8 +18,8 @@ class Sequence(
     var isErasing: Boolean = false,
     var channelIsPlayingNotes: Int = 0,
     var playingNotes: Array<Int> = Array(128){ 0 },
-    var pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE) }, // manually pressed notes that are muting same ones played by sequencer
-    var dePressedNotesOnRepeat: Array<Boolean> = Array(128){ false }, // remembering notes that shouldn't play on release/cancel
+    var pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, Long.MIN_VALUE) }, // manually pressed notes that are muting same ones played by sequencer
+    var dePressedNotesOnRepeat: Array<Boolean> = Array(128){ false }, // remembering notes that shouldn't play on release/cancel // TODO rename (notesToIgnore?)
     private var idOfQuantizedNotesToIgnore: MutableList<Int> = mutableListOf(),
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
     var noteId: Int = Int.MIN_VALUE,
@@ -34,7 +35,7 @@ class Sequence(
     var startTimeStamp: Long = 0,
     var bpmDelta: Double = 0.0,
     var seqLength: Int = 4, // future feature
-    var totalTime: Int = 2000, // TODO how are totalTime & seqLength correlated? Replace totalTime with relative one?
+    var totalTime: Int = BARTIME, // TODO how are totalTime & seqLength correlated? Replace totalTime with relative one?
     var deltaTime: Double = 0.0,
 
     var indexToStartRepeating: Int = 0,
@@ -46,7 +47,6 @@ class Sequence(
     var repeatsCount: Int = 0,
     var savedRepeatsCount: Int = 0,
     var wrapIndex: Int = 0,
-    var fullDeltaTimeRepeat: Double = 0.0,
     var tempNotesSize: Int = 0,
     ) {
     fun recordNote(
@@ -54,6 +54,7 @@ class Sequence(
         velocity: Int,
         id: Int,
         quantizationTime: Double,
+        factorBpm: Double,
         staticNoteOffTime: Int,
         seqIsPlaying: Boolean,
         isRepeating: Boolean,
@@ -68,6 +69,7 @@ class Sequence(
             quantizeTime,
             id,
             quantizationTime,
+            factorBpm,
             pitch,
             customRecTime,
             seqIsPlaying,
@@ -106,6 +108,7 @@ class Sequence(
         quantizeTime: (Double) -> Double,
         id: Int,
         quantizationTime: Double,
+        factorBpm: Double,
         pitch: Int,
         customRecTime: Double,
         seqIsPlaying: Boolean,
@@ -117,7 +120,7 @@ class Sequence(
             (customRecTime > -1) -> customRecTime
             !seqIsPlaying -> if (velocity > 0) 0.0 else staticNoteOffTime.toDouble()
             !isRepeating -> deltaTime
-            else -> fullDeltaTimeRepeat
+            else -> deltaTimeRepeat
         }
 
         if (velocity > 0 && seqIsPlaying) time = quantizeTime(time)
@@ -125,7 +128,10 @@ class Sequence(
             idOfQuantizedNotesToIgnore.add(id)
         } else {
             val indexOfQuantizedNoteOn = notes.indexOfFirst { it.id ==  pressedNotes[pitch].id }
-            if (indexOfQuantizedNoteOn != -1 && abs(time - notes[indexOfQuantizedNoteOn].time) < quantizationTime) {  // TODO wrapAround!!!)
+            val noteIsShorterThanQuantization = (indexOfQuantizedNoteOn != -1) && (abs(time - notes[indexOfQuantizedNoteOn].time) < quantizationTime)
+            val notBigWrapAround = System.currentTimeMillis() - pressedNotes[pitch].noteOnTimestamp <= quantizationTime / factorBpm * 1.5  // rare case of almost self-tied note  ...][...
+
+            if (noteIsShorterThanQuantization && notBigWrapAround) {
                 time = notes[indexOfQuantizedNoteOn].time + quantizationTime
             }
         }
@@ -277,8 +283,7 @@ class Sequence(
 
 
     fun erasing(isRepeating: Boolean, index: Int, stepViewCase: Boolean): Boolean {
-        if (notes[index].velocity > 0
-            && notes[index].id != pressedNotes[notes[index].pitch].id
+        if (notes[index].velocity > 0 && notes[index].id != pressedNotes[notes[index].pitch].id
         ) {
             Log.d("ryjtyj", "erasing index $index")
 
@@ -360,7 +365,7 @@ class Sequence(
         if(noteOnIndex == -1 || noteOffIndex == -1) {
             Log.d("ryjtyj", "stopNoteIfPlaying() error: ${if(noteOnIndex == -1) "noteOnIndex" else "noteOffIndex"} out of bounds")
         }
-        val dt = if (isRepeating) fullDeltaTimeRepeat else deltaTime
+        val dt = if (isRepeating) deltaTimeRepeat else deltaTime
         val deltaTimeInRange = if (noteOnIndex < noteOffIndex) {
             dt in notes[noteOnIndex].time..notes[noteOffIndex].time
         } else {
@@ -404,8 +409,8 @@ class Sequence(
         } else {
             time
         }
-        if(notes[index].time >= 2000) {
-            notes[index].time -= 2000
+        if(notes[index].time >= BARTIME) {
+            notes[index].time -= BARTIME
         } else if(notes[index].time < 0) {
             notes[index].time += 2000
         }

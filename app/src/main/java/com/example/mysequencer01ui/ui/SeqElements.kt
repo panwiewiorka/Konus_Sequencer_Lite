@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
@@ -43,6 +42,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -85,7 +85,7 @@ val Int.nonScaledSp
     get() = (this / LocalDensity.current.fontScale).sp
 
 val buttonsPadding = PaddingValues(top = 1.dp, end = 1.dp)
-val buttonsShape = RoundedCornerShape(0.dp)
+val buttonsShape = RectangleShape
 const val buttonTextSize = 12
 
 
@@ -101,7 +101,7 @@ fun PadButton(
 //    val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
     val buttonIsPressed by interactionSource.collectIsPressedAsState()
-    LaunchedEffect(interactionSource, pitch) {
+    LaunchedEffect(interactionSource, pitch, seqUiState.sequences[channel].pressedNotes[pitch].isPressed) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
@@ -110,10 +110,14 @@ fun PadButton(
                     seqViewModel.rememberInteraction(channel, pitch, interaction)
                 }
                 is PressInteraction.Release -> {
-                    seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+                    if (seqUiState.sequences[channel].pressedNotes[pitch].isPressed) {
+                        seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+                    }
                 }
                 is PressInteraction.Cancel -> {
-                    seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+                    if (seqUiState.sequences[channel].pressedNotes[pitch].isPressed) {
+                        seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+                    }
                 }
             }
         }
@@ -136,7 +140,7 @@ fun PadButton(
             Button(
                 interactionSource = interactionSource,
                 onClick = {},
-                shape = RoundedCornerShape(0.dp),
+                shape = buttonsShape,
                 colors = ButtonDefaults.buttonColors(
                     backgroundColor = if(seqUiState.selectedChannel == channel) selectedButton else buttonsColor
                 ),
