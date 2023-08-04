@@ -101,7 +101,7 @@ fun PadButton(
 //    val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
     val buttonIsPressed by interactionSource.collectIsPressedAsState()
-    LaunchedEffect(interactionSource, pitch, seqUiState.sequences[channel].pressedNotes[pitch].isPressed) {
+    LaunchedEffect(interactionSource, pitch, seqUiState.sequences[channel].pressedNotes[pitch].isPressed, seqUiState.padsMode) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
@@ -110,12 +110,12 @@ fun PadButton(
                     seqViewModel.rememberInteraction(channel, pitch, interaction)
                 }
                 is PressInteraction.Release -> {
-                    if (seqUiState.sequences[channel].pressedNotes[pitch].isPressed) {
+                    if (seqUiState.sequences[channel].pressedNotes[pitch].isPressed || seqUiState.padsMode != DEFAULT) {
                         seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
                     }
                 }
                 is PressInteraction.Cancel -> {
-                    if (seqUiState.sequences[channel].pressedNotes[pitch].isPressed) {
+                    if (seqUiState.sequences[channel].pressedNotes[pitch].isPressed || seqUiState.padsMode != DEFAULT) {
                         seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
                     }
                 }

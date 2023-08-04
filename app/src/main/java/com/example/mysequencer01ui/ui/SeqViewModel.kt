@@ -155,10 +155,10 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
                         // NORMAL ERASING or PLAYING
                         while (notes.size > indexToPlay && notes[indexToPlay].time <= deltaTime) {
-                            val gg = uiState.value.seqIsRecording && pressedNotes[notes[indexToPlay].pitch].isPressed // TODO RENAME gg & hf
-                            val hf = System.currentTimeMillis() - pressedNotes[notes[indexToPlay].pitch].noteOnTimestamp > uiState.value.quantizationTime / uiState.value.factorBpm * 1.5
-                            if (!uiState.value.isRepeating && (isErasing || gg)) {
-                                if (gg && pressedNotes[notes[indexToPlay].pitch].id == notes[indexToPlay].id && hf) {
+                            val overdubbing = uiState.value.seqIsRecording && pressedNotes[notes[indexToPlay].pitch].isPressed
+                            val noteShouldBeTiedToItself = System.currentTimeMillis() - pressedNotes[notes[indexToPlay].pitch].noteOnTimestamp > uiState.value.quantizationTime / uiState.value.factorBpm * 1.5
+                            if (!uiState.value.isRepeating && (isErasing || overdubbing)) {
+                                if (overdubbing && pressedNotes[notes[indexToPlay].pitch].id == notes[indexToPlay].id && noteShouldBeTiedToItself) {
                                     pressedNotes[notes[indexToPlay].pitch].isPressed = false
                                     recordNote(
                                         pitch = notes[indexToPlay].pitch,
