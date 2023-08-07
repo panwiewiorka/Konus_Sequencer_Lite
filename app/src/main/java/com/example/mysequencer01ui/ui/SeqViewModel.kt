@@ -54,6 +54,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private var previousPadsMode: PadsMode = DEFAULT
     private var listOfMutedChannels = emptyList<Int>()
     private var listOfSoloedChannels = emptyList<Int>()
+    private var previousDivisorValue = 0
 
     val interactionSources =
         Array(16) {
@@ -129,7 +130,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
         _uiState.update { a -> a.copy( seqIsPlaying = true ) }
         var clockTicks = 0
-        kmmk.startClock()
+        if (uiState.value.transmitClock) kmmk.startClock()
 
         // ------====== MAIN CYCLE
         CoroutineScope(Dispatchers.Main).launch {
@@ -149,7 +150,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         }
 
                         // ENGAGE REPEAT()
-                        if (uiState.value.divisorState > 0 != uiState.value.isRepeating && quantizeTime(deltaTime) <= deltaTime) {
+                        if (uiState.value.divisorState != previousDivisorValue && quantizeTime(deltaTime) <= deltaTime) {
                             repeat(uiState.value.divisorState)
                         }
 
@@ -512,10 +513,12 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 //            divisorState = divisor,
             sequences = uiState.value.sequences
         ) }
+        previousDivisorValue = divisor
     }
 
     fun changeRepeatDivisor(divisor: Int) {
         _uiState.update { it.copy(divisorState = divisor) }
+        if (!uiState.value.seqIsPlaying) repeat(divisor)
     }
 
 

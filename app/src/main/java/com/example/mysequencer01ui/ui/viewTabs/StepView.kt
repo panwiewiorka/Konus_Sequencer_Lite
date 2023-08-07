@@ -83,7 +83,7 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .width(0.6.dp)
-                                .background(if ((i + 4) % 4 == 0) shadeOfGray else buttonsBg)
+                                .background(if ((i + 4) % 4 == 0) buttons else buttonsBg)
                         )
                     }
                 }
@@ -524,7 +524,7 @@ fun NoteBox(
                     .height(noteHeight)
                     .width(changeLengthArea)
                     .border(0.6.dp, buttonsBg)
-                    .background(darkArea)
+                    .background(com.example.mysequencer01ui.ui.theme.changeLengthArea)
             )
 //        Text(text = "$indexNoteOn")
         }
@@ -532,7 +532,7 @@ fun NoteBox(
             Canvas (modifier = Modifier.fillMaxSize()) {
                 val endOfScreen = offsetX != 0.dp
                 val x = if (endOfScreen) size.width else 0f
-                drawLine(if (endOfScreen) darkArea else buttonsBg, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
+                drawLine(if (endOfScreen) com.example.mysequencer01ui.ui.theme.changeLengthArea else buttonsBg, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
             }
         }
     }

@@ -45,13 +45,13 @@ import com.example.mysequencer01ui.ui.nonScaledSp
 import com.example.mysequencer01ui.ui.playHeads
 import com.example.mysequencer01ui.ui.repeatBounds
 import com.example.mysequencer01ui.ui.theme.BackGray
-import com.example.mysequencer01ui.ui.theme.buttonsColor
+import com.example.mysequencer01ui.ui.theme.buttons
 import com.example.mysequencer01ui.ui.theme.dusk
 import com.example.mysequencer01ui.ui.theme.night
 import com.example.mysequencer01ui.ui.theme.noteSquare
 import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.selectedNoteSquare
-import com.example.mysequencer01ui.ui.theme.seqBg
+import com.example.mysequencer01ui.ui.theme.repeatButtons
 import com.example.mysequencer01ui.ui.theme.violet
 import kotlin.math.abs
 import kotlin.math.pow
@@ -133,7 +133,7 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
             val step = (maxWidth / 16).toPx()
             for (i in 0..15) {
                 drawLine(
-                    color = if((i + 4) % 4 == 0) buttonsColor else buttonsColor,
+                    color = if((i + 4) % 4 == 0) buttons else buttons,
                     start = Offset(i * step, if((i + 4) % 4 == 0) 0f else (size.height / 2 - size.height / 32)),
                     end = Offset(i * step, if((i + 4) % 4 == 0) size.height else size.height / 2 + size.height / 32),
                     strokeWidth = 2f
@@ -202,7 +202,7 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
 
 
 @Composable
-fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {    // TODO move into LiveView
+fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -274,6 +274,8 @@ fun RepeatButton(
         close()
     }
     val offset = if(triplet) width / 16 else width / -16
+
+        /*
     val hexagonShape = GenericShape { size, _ ->
         val c = size.height / sqrt(3f)
         val y = size.height / 2
@@ -287,6 +289,8 @@ fun RepeatButton(
         lineTo(x, 0f)
         close()
     }
+         */
+
     val rightToHexShape = GenericShape { size, _ ->
         val c = size.height / sqrt(3f)
         val y  = size.height / 2
@@ -323,7 +327,7 @@ fun RepeatButton(
         shape = if(triplet) rightToHexShape else leftToHexShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(divisor == divisorState) dusk else seqBg
+            backgroundColor = if(divisor == divisorState) dusk else repeatButtons
         ),
         modifier = Modifier
             .height(width)
@@ -350,7 +354,7 @@ fun RepeatButton(
                 fontSize = buttonTextSize.nonScaledSp,
                 color = if (divisor != divisorState) {
                     if (triplet) night else dusk
-                } else buttonsColor,
+                } else buttons,
             )
         }
     }

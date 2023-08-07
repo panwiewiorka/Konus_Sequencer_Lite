@@ -64,7 +64,6 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
 
     val keyHeight = buttonsSize * 1.9f
     val notesPadding = 1.dp
-    val spaceBetweenSliders = 20.dp
     val bordersPadding = 16.dp
 
     with(seqUiState.sequences[seqUiState.selectedChannel]) {

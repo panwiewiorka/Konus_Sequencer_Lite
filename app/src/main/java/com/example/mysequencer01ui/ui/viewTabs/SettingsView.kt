@@ -1,6 +1,5 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -22,7 +21,6 @@ import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.RadioButton
-import androidx.compose.material.Slider
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -34,8 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -46,13 +42,11 @@ import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.nonScaledSp
-import com.example.mysequencer01ui.ui.theme.buttonsBg
-import com.example.mysequencer01ui.ui.theme.buttonsColor
+import com.example.mysequencer01ui.ui.theme.buttons
 import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.warmRed
 import com.example.mysequencer01ui.ui.thickness
-import kotlin.math.abs
 import kotlin.math.atan2
 
 @Composable
@@ -77,7 +71,7 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextAndSwitch("VisualDebugger", seqUiState.visualDebugger) { seqViewModel.switchVisualDebugger() }
+                TextAndSwitch("Visual Debugger", seqUiState.visualDebugger) { seqViewModel.switchVisualDebugger() }
                 Spacer(modifier = Modifier.width(20.dp))
                 if(seqUiState.visualDebugger) {
                     Text("index", color = notWhite)
@@ -167,7 +161,7 @@ fun Knob(buttonsSize: Dp, bpm: Float, changeBPM: (Float) -> Unit) {
                 style = Stroke(width = thickness, cap = StrokeCap.Round)
             )
             drawArc(
-                color = buttonsColor,
+                color = buttons,
                 startAngle = 135f,
                 sweepAngle = -90f,
                 useCenter = false,

@@ -3,10 +3,14 @@ package com.example.mysequencer01ui.ui
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode.*
@@ -70,12 +74,15 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     LIVE -> LiveView(seqViewModel, seqUiState, buttonsSize)
                     STEP -> StepView(seqViewModel, seqUiState, buttonsSize, kmmk)
                     PIANO -> PianoView(seqViewModel, seqUiState, buttonsSize)
-                    AUTOMATION -> { }
+                    AUTOMATION -> { Text("// TODO =)", color = playGreen, fontSize = 20.sp, fontStyle = FontStyle.Italic, modifier = Modifier.align(Alignment.Center)) }
                     SETTINGS -> SettingsView(seqViewModel, seqUiState, buttonsSize, kmmk)
                 }
 
                 if(seqUiState.seqView != LIVE && seqUiState.padsMode != DEFAULT) {
-                    PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize)
+                    Row{
+                        Box(modifier = Modifier.width(10.dp).background(buttonsBg))
+                        PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize)
+                    }
                 }
             }
 

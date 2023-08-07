@@ -99,8 +99,7 @@ class Sequence(
         indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
 
         if(!stepRecord) {
-            stepViewYScroll = (noteHeight * (pitch - 5)).toInt()
-            if(stepViewYScroll < 0) stepViewYScroll = 0
+            stepViewYScroll = (noteHeight * (pitch - 5)).toInt().coerceAtLeast(0)
         }
     }
 
@@ -123,8 +122,8 @@ class Sequence(
             else -> deltaTimeRepeat
         }
 
-        if (velocity > 0 && seqIsPlaying) time = quantizeTime(time)
-        if (velocity > 0) {
+        if (velocity > 0 && seqIsPlaying) {
+            time = quantizeTime(time)
             idOfQuantizedNotesToIgnore.add(id)
         } else {
             val indexOfQuantizedNoteOn = notes.indexOfFirst { it.id ==  pressedNotes[pitch].id }
@@ -243,11 +242,14 @@ class Sequence(
     fun playing(index: Int, soloIsOff: Boolean, stepView: Boolean) {
         // if note isn't being manually played   AND   channel is soloed  OR  no soloing occurs and channel isn't muted
         if (!pressedNotes[notes[index].pitch].isPressed && (isSoloed || (soloIsOff && !isMuted))) {
-            if(dePressedNotesOnRepeat[notes[index].pitch] && stepView && notes[index].velocity == 0) {  // fix for playingNotes == -1 when releasing dragged note that was playing
+
+            if(dePressedNotesOnRepeat[notes[index].pitch] && stepView && notes[index].velocity == 0) {  // a fix for playingNotes == -1 when releasing dragged note that was playing
+                Log.d("ryjtyj", "noteOn ind11111ex = $index")
                 changePlayingNotes(notes[index].pitch, 1)
                 dePressedNotesOnRepeat[notes[index].pitch] = false
             }
-              else if (idOfQuantizedNotesToIgnore.indexOfFirst{ it == notes[index].id } != -1) {  // skip recording notes that are quantized forward
+              else if (idOfQuantizedNotesToIgnore.indexOfFirst{ it == notes[index].id } != -1) {  // skipping recording notes that are quantized forward
+                Log.d("ryjtyj", "noteOn ind2222ex = $index")
                 if(notes[index].velocity == 0) {
                     idOfQuantizedNotesToIgnore.removeAt(idOfQuantizedNotesToIgnore.indexOfFirst{ it == notes[index].id })
                 }

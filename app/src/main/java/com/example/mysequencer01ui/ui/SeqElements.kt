@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
@@ -68,7 +69,7 @@ import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.Sequence
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsBg
-import com.example.mysequencer01ui.ui.theme.buttonsColor
+import com.example.mysequencer01ui.ui.theme.buttons
 import com.example.mysequencer01ui.ui.theme.dusk
 import com.example.mysequencer01ui.ui.theme.night
 import com.example.mysequencer01ui.ui.theme.notWhite
@@ -142,7 +143,7 @@ fun PadButton(
                 onClick = {},
                 shape = buttonsShape,
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = if(seqUiState.selectedChannel == channel) selectedButton else buttonsColor
+                    backgroundColor = if(seqUiState.selectedChannel == channel) selectedButton else buttons
                 ),
                 contentPadding = PaddingValues(0.dp),
                 modifier = Modifier
@@ -240,7 +241,7 @@ fun PadsModeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonType: P
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (padsMode == buttonType) color else buttonsColor)
+            .background(if (padsMode == buttonType) color else buttons)
             .clickable(
                 interactionSource = buttonInteraction(
                     toggleTime,
@@ -320,7 +321,7 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp, showStrikeStripe: Boo
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (buttonPressed) dusk else buttonsColor)
+            .background(if (buttonPressed) dusk else buttons)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
@@ -371,7 +372,7 @@ fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: 
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (padsMode == QUANTIZING) dusk else buttonsColor)
+            .background(if (padsMode == QUANTIZING) dusk else buttons)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
@@ -402,7 +403,7 @@ fun RecButton(seqViewModel: SeqViewModel, padsMode: PadsMode, seqIsRecording: Bo
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (padsMode == DEFAULT && seqIsRecording) warmRed else buttonsColor)
+            .background(if (padsMode == DEFAULT && seqIsRecording) warmRed else buttons)
             .clickable(
                 interactionSource = buttonInteraction(
                     seqViewModel.toggleTime,
@@ -432,7 +433,7 @@ fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: D
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(buttonsColor)
+            .background(buttons)
             .clickable(
                 interactionSource = buttonInteraction(
                     seqViewModel.toggleTime,
@@ -460,7 +461,7 @@ fun StopButton(seqViewModel: SeqViewModel, buttonsSize: Dp) {
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(buttonsColor)
+            .background(buttons)
             .clickable(
                 interactionSource = buttonInteraction(
                     0,
@@ -497,7 +498,7 @@ fun SeqViewButton(
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (seqView == buttonSeqView) night else buttonsColor)
+            .background(if (seqView == buttonSeqView) night else buttons)
             .clickable(
                 interactionSource = buttonInteraction(
                     seqViewModel.toggleTime,
@@ -549,7 +550,7 @@ fun TextButton(
         shape = buttonsShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(false) notWhite else buttonsColor
+            backgroundColor = if(false) notWhite else buttons
         ),
         modifier = Modifier
             .size(buttonsSize)
@@ -605,7 +606,7 @@ fun DrawScope.repeatBounds(
 ) {
     if (sequence.repeatStartTime < sequence.repeatEndTime) {
         drawRect(
-            color = buttonsColor,
+            color = buttons,
             topLeft = Offset(0f, 0f),
             size = Size(
                 width = widthFactor * sequence.repeatStartTime.toFloat(),
@@ -614,7 +615,7 @@ fun DrawScope.repeatBounds(
             alpha = alpha
         )
         drawRect(
-            color = buttonsColor,
+            color = buttons,
             topLeft = Offset(widthFactor * sequence.repeatEndTime.toFloat(), 0f),
             size = Size(
                 width = widthFactor * (sequence.totalTime - sequence.repeatEndTime).toFloat(),
@@ -624,7 +625,7 @@ fun DrawScope.repeatBounds(
         )
     } else
         drawRect(
-            color = buttonsColor,
+            color = buttons,
             topLeft = Offset(widthFactor * sequence.repeatEndTime.toFloat(), 0f),
             size = Size(
                 width = (widthFactor * (sequence.repeatStartTime - sequence.repeatEndTime)).toFloat(),

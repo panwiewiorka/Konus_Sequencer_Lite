@@ -31,7 +31,7 @@ fun DrawScope.shiftSymbol(selecting: Boolean) {
 
     drawPath(
         path = path,
-        color = if (selecting) buttonsColor else dusk,
+        color = if (selecting) buttons else dusk,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round
@@ -44,7 +44,7 @@ fun DrawScope.allSymbol(buttonPressed: Boolean) {
     val m = size.height / 8f
     val l = m * 2
     drawRect(
-        color = if (buttonPressed) buttonsColor else dusk,
+        color = if (buttonPressed) buttons else dusk,
         topLeft = Offset(center.x - m, center.y - m),
         size = Size(l, l),
         style = Stroke(
@@ -60,7 +60,7 @@ fun DrawScope.allSymbol(buttonPressed: Boolean) {
     path.lineTo(center.x + m, center.y)
     drawPath(
         path = path,
-        color = if (buttonPressed) buttonsColor else dusk,
+        color = if (buttonPressed) buttons else dusk,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round
@@ -98,7 +98,7 @@ fun DrawScope.quantizeSymbolColor(quantizing: Boolean) {
     pathWhite.lineTo(center.x - m, center.y - m)
     drawPath(
         path = pathWhite,
-        color = if (quantizing) buttonsColor else notWhite,
+        color = if (quantizing) buttons else notWhite,
         style = Stroke( width = thickness, join = StrokeJoin.Round )
     )
 }
@@ -111,7 +111,7 @@ fun DrawScope.quantizeSymbol(quantizingPadsMode: Boolean, isQuantizing: Boolean)
     val color = if(isQuantizing) notWhite else selectedButton
 
     drawArc(
-        color = if (quantizingPadsMode) buttonsColor else color,
+        color = if (quantizingPadsMode) buttons else color,
         startAngle = 0f,
         sweepAngle = 180f,
         useCenter = false,
@@ -130,7 +130,7 @@ fun DrawScope.quantizeSymbol(quantizingPadsMode: Boolean, isQuantizing: Boolean)
 
     drawPath(
         path = path,
-        color = if (quantizingPadsMode) buttonsColor else color,
+        color = if (quantizingPadsMode) buttons else color,
         style = Stroke( width = thickness, join = StrokeJoin.Round)
     )
 }
@@ -154,7 +154,7 @@ fun DrawScope.saveArrow(saving: Boolean) {
 
     drawPath(
         path = path,
-        color = if(saving) buttonsColor else dusk,
+        color = if(saving) buttons else dusk,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round,
@@ -178,7 +178,7 @@ fun DrawScope.loadArrow(loading: Boolean) {
 
     drawPath(
         path = path,
-        color = if(loading) buttonsColor else dusk,
+        color = if(loading) buttons else dusk,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round,
@@ -205,7 +205,7 @@ fun DrawScope.soloSymbol(soloing: Boolean) {
     val m = size.height / 8f
     val s = size.height / 16f
     drawArc(
-        color = if(soloing) buttonsColor else violet,
+        color = if(soloing) buttons else violet,
         startAngle = 90f,
         sweepAngle = 180f,
         useCenter = false,
@@ -213,7 +213,7 @@ fun DrawScope.soloSymbol(soloing: Boolean) {
         size = size / 8f,
         style = Stroke(width = thickness, cap = StrokeCap.Round))
     drawArc(
-        color = if(soloing) buttonsColor else violet,
+        color = if(soloing) buttons else violet,
         startAngle = -90f,
         sweepAngle = 180f,
         useCenter = false,
@@ -225,7 +225,7 @@ fun DrawScope.soloSymbol(soloing: Boolean) {
 fun DrawScope.strikeStrip() {
     val m = size.height / 5.5f
     drawLine(
-        color = buttonsColor,
+        color = buttons,
         start = Offset(center.x - m, center.y + m / 3),
         end = Offset(center.x + m, center.y - m / 3),
         strokeWidth = thickness * 2,
@@ -254,7 +254,7 @@ fun DrawScope.muteSymbol(muting: Boolean) {
 
     drawPath(
         path = path,
-        color = if (muting) buttonsColor else violet,
+        color = if (muting) buttons else violet,
         style = Stroke( width = thickness, join = StrokeJoin.Round, cap = StrokeCap.Round )
     )
 }
@@ -314,7 +314,7 @@ fun DrawScope.clearSymbol(clearing: Boolean) {
 
     drawPath(
         path = path,
-        color = if (clearing) buttonsColor else notWhite,
+        color = if (clearing) buttons else notWhite,
         style = Stroke(
             width = thickness,
             cap = StrokeCap.Round
@@ -325,7 +325,7 @@ fun DrawScope.clearSymbol(clearing: Boolean) {
 
 fun DrawScope.recSymbol(padsMode: PadsMode, seqIsRecording: Boolean) {
     drawCircle(
-        color = if (seqIsRecording && padsMode == DEFAULT) buttonsColor else warmRed,
+        color = if (seqIsRecording && padsMode == DEFAULT) buttons else warmRed,
         radius = size.height / 7f,
         center = center,
         style = if(padsMode != DEFAULT && seqIsRecording) Fill else Stroke(width = thickness),
