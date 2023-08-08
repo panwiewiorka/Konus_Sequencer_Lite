@@ -199,7 +199,6 @@ fun NotesGrid(
                                         id = noteId,
                                         quantizationTime = seqUiState.quantizationTime,
                                         factorBpm = seqUiState.factorBpm,
-                                        staticNoteOffTime = seqViewModel.staticNoteOffTime,
                                         seqIsPlaying = seqUiState.seqIsPlaying,
                                         isRepeating = seqUiState.isRepeating,
                                         quantizeTime = seqViewModel::quantizeTime,
@@ -212,7 +211,6 @@ fun NotesGrid(
                                         id = noteId,
                                         quantizationTime = seqUiState.quantizationTime,
                                         factorBpm = seqUiState.factorBpm,
-                                        staticNoteOffTime = seqViewModel.staticNoteOffTime,
                                         seqIsPlaying = seqUiState.seqIsPlaying,
                                         isRepeating = seqUiState.isRepeating,
                                         quantizeTime = seqViewModel::quantizeTime,
@@ -228,7 +226,7 @@ fun NotesGrid(
                     .pointerInput(seqUiState.seqIsPlaying, seqUiState.isQuantizing) {
                         var noteDetected = false
                         var pitch = -1
-                        var time = -1.0
+                        var time: Double
                         var timeQuantized = -1.0
                         var noteDeltaTime = -1.0
                         var dragDeltaTime: Double

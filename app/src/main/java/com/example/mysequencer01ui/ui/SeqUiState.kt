@@ -1,13 +1,9 @@
 package com.example.mysequencer01ui.ui
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode
-import com.example.mysequencer01ui.RememberedPressInteraction
 import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.Sequence
 

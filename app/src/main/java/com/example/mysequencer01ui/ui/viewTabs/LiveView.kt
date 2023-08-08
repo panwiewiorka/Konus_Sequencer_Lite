@@ -94,10 +94,10 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
             ) {
                 repeat(5) {
                     RepeatButton(
-                        seqViewModel::changeRepeatDivisor,
-                        buttonsSize,
-                        2f.pow(it + 1).toInt(),
-                        seqUiState.divisorState
+                        changeRepeatDivisor = seqViewModel::changeRepeatDivisor,
+                        width = buttonsSize,
+                        divisor = 2f.pow(it + 1).toInt(),
+                        divisorState = seqUiState.divisorState
                     )
                 }
             }
@@ -105,11 +105,11 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 Spacer(modifier = Modifier.height(buttonsSize / 2))
                 repeat(4) {
                     RepeatButton(
-                        seqViewModel::changeRepeatDivisor,
-                        buttonsSize,
-                        3 * 2f.pow(it).toInt(),
-                        seqUiState.divisorState,
-                        true
+                        changeRepeatDivisor = seqViewModel::changeRepeatDivisor,
+                        width = buttonsSize,
+                        divisor = 3 * 2f.pow(it).toInt(),
+                        divisorState = seqUiState.divisorState,
+                        triplet = true
                     )
                 }
             }
@@ -218,12 +218,9 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {
                         "notes ON: ${playingNotes[60]},     ",
                     color = selectedButton)
                 Text(
-                    "#toPlay = ${indexToPlay},     " +
+                    "#toPlay = $indexToPlay,     " +
                         "#toRepeat = $indexToRepeat      " +
                         "#toStartRepeating = $indexToStartRepeating",
-                    color = selectedButton)
-                Text(
-                    "#indexToRepeat - wrapIndex = ${indexToRepeat - wrapIndex}",
                     color = selectedButton)
             }
         }
@@ -306,14 +303,14 @@ fun RepeatButton(
     }
 
     val interactionSource = remember { MutableInteractionSource() }
-    LaunchedEffect(interactionSource) {
+    LaunchedEffect(interactionSource, divisorState) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     changeRepeatDivisor(divisor)
                 }
                 is PressInteraction.Release -> {
-                    changeRepeatDivisor(0)
+                    if (divisorState == divisor) changeRepeatDivisor(0)
                 }
                 is PressInteraction.Cancel -> { }
             }
