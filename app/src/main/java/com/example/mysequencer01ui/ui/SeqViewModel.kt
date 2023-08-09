@@ -69,7 +69,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private var job = CoroutineScope(EmptyCoroutineContext).launch {  }
 
     init {
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             for(p in 0..15) {
                 for (c in 0..15) {
                     val lastIndex = dao.getLastIndex(p, c) ?: -1
@@ -130,7 +130,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         if (uiState.value.transmitClock) kmmk.startClock()
 
         // ------====== MAIN CYCLE
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             while (uiState.value.seqIsPlaying) {
                 for (c in 0..15) {
                     with (uiState.value.sequences[c]) {
@@ -204,15 +204,31 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             previousDeltaTime = deltaTime
 
                             // erasing or playing
+                            val wrapAround = repeatStartTime > repeatEndTime
+                            var noteOffInRepeatStart = false
+                            var noteOnInRepeatEnd = false
+                            var noteTimeToPlay = false
+                            var inRepeatBounds = false
+
+                            if (notes.size > indexToRepeat) {
+                                noteOffInRepeatStart =
+                                    notes[indexToRepeat].time == repeatStartTime && notes[indexToRepeat].velocity == 0
+                                noteOnInRepeatEnd =
+                                    notes[indexToRepeat].time == repeatEndTime && notes[indexToRepeat].velocity > 0
+
+                                noteTimeToPlay = (notes[indexToRepeat].time in repeatStartTime .. deltaTimeRepeat)
+                                    || (wrapAround && (notes[indexToRepeat].time in 0.0 .. deltaTimeRepeat))
+
+                                inRepeatBounds = notes[indexToRepeat].time in repeatStartTime .. repeatEndTime     // [...] && ..]
+                                    || (wrapAround && (notes[indexToRepeat].time >= repeatStartTime || notes[indexToRepeat].time <= repeatEndTime)) // [..
+                            }
+
                             while(
-                                notes.size > indexToRepeat
-                                && (
-                                    (notes[indexToRepeat].time in repeatStartTime .. deltaTimeRepeat)   // [...] && [..
-                                        || (repeatStartTime > repeatEndTime && (notes[indexToRepeat].time in 0.0 .. deltaTimeRepeat))  // ..]
-                                )
+                                notes.size > indexToRepeat && noteTimeToPlay && inRepeatBounds && !noteOnInRepeatEnd
                             ) {
                                 val overdubbing = uiState.value.seqIsRecording && pressedNotes[notes[indexToRepeat].pitch].isPressed
                                 if (isErasing || overdubbing) {
+                                    // tie note
                                     if (overdubbing && (getPairedNoteOffIndexAndTime(indexToRepeat).time == repeatEndTime
                                         && notes[notes.indexOfLast { it.id == pressedNotes[notes[indexToRepeat].pitch].id }].time == repeatStartTime )) {
                                         pressedNotes[notes[indexToRepeat].pitch].isPressed = false
@@ -227,18 +243,15 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                         cancelPadInteraction()
                                         indexToRepeat++
                                         Log.d("ryjtyj", "tied note ${notes[indexToRepeat].pitch}")
-                                    } else if (!erasing(true, indexToRepeat, false)) break
+                                    } else
+                                        if (!erasing(true, indexToRepeat, false)) break
                                 } else {
                                     if (indexToRepeat != draggedNoteOffIndex) {
-                                        if (!(notes[indexToRepeat].velocity > 0
-                                                && ((repeatStartTime < repeatEndTime && deltaTimeRepeat >= repeatEndTime) // ![...]
-                                                || deltaTimeRepeat >= repeatEndTime && deltaTimeRepeat < repeatStartTime))) { // ! ..] & [..
-                                            playing(
-                                                indexToRepeat,
-                                                !uiState.value.soloIsOn,
-                                                uiState.value.seqView == SeqView.STEP
-                                            )
-                                        }
+                                        playing(
+                                            indexToRepeat,
+                                            !uiState.value.soloIsOn,
+                                            uiState.value.seqView == SeqView.STEP
+                                        )
                                         // StepView case:
                                         if (indexToRepeat == draggedNoteOnIndex) {
                                             playingDraggedNoteOffInTime(uiState.value.factorBpm)
@@ -249,7 +262,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                             }
 
                             // end of repeating loop
-                            if ((repeatEndTime > repeatStartTime && deltaTimeRepeat > repeatEndTime) || deltaTimeRepeat in repeatEndTime..repeatStartTime) {
+                            if ((!wrapAround && deltaTimeRepeat > repeatEndTime) || deltaTimeRepeat in repeatEndTime .. repeatStartTime) {
                                 uiState.value.stopNotesOnChannel(c, END_OF_REPEAT)   // notesOFF on the end of loop // TODO activate only if channelIsPlayingNotes?
 
                                 indexToStartRepeating = searchIndexInTimeBoundaries()
@@ -259,9 +272,15 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
                                 for (p in 0..127) { // TODO change pressedNotes[] to mutableList?
                                     // notesON if we start repeatLoop in the middle of the note
-                                    val hangingNoteOffIndex = notes.indexOfFirst { it.pitch == p && it.time > deltaTimeRepeat }
+                                    var hangingNoteOffIndex = notes.indexOfFirst {
+                                        it.pitch == p && (it.time in repeatStartTime .. repeatEndTime || (wrapAround && it.time >= repeatStartTime))
+                                    }
+                                    if (hangingNoteOffIndex == -1 && wrapAround) hangingNoteOffIndex = notes.indexOfFirst {
+                                        it.pitch == p && it.time in 0.0 .. repeatEndTime
+                                    }
                                     if (hangingNoteOffIndex != -1 && notes[hangingNoteOffIndex].velocity == 0
-                                        && getPairedNoteOnIndexAndTime(hangingNoteOffIndex).time !in repeatStartTime..deltaTimeRepeat
+                                        && (getPairedNoteOnIndexAndTime(hangingNoteOffIndex).time !in repeatStartTime .. deltaTimeRepeat
+                                            || (wrapAround && getPairedNoteOnIndexAndTime(hangingNoteOffIndex).time in 0.0 .. deltaTimeRepeat))
                                     ) {
 //                                        kmmk.noteOn(c, p, 100)
                                         idOfQuantizedNotesToIgnore.add(notes[hangingNoteOffIndex].id)
@@ -295,9 +314,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         }
                     }
                 }
-                _uiState.update { a -> a.copy(
-                    visualArrayRefresh = !uiState.value.visualArrayRefresh // TODO compare time with sequences = uiState.value.sequences (if same -> replace & get rid of visualArrayRefresh)
-                ) }
+                _uiState.update { it.copy(visualArrayRefresh = !uiState.value.visualArrayRefresh) }
+
                 delay(3.milliseconds)
             }
         }
@@ -498,7 +516,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     if(c == 0) Log.d("ryjtyj", "indexToStartRepeating = $indexToStartRepeating, repeatStartTime = $repeatStartTime, repeatEndTime = $repeatEndTime")
                 }
             }
-            _uiState.update { it.copy( repeatLength = repeatLength ) }  // TODO move vv (merge)?
+            _uiState.update { it.copy( repeatLength = repeatLength ) }
         }
         _uiState.update { it.copy(
             isRepeating = divisor > 0,
@@ -628,7 +646,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
     private fun loadPattern(pattern: Int) {
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             for(c in 0..15) {
 //                val lastIndex = patterns[pattern][c].lastIndex
 //                for(i in 0 ..lastIndex) {
@@ -691,7 +709,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     fun switchPadsToQuantizingMode(switchOn: Boolean) {
         if(switchOn) {
             if(uiState.value.seqView != SeqView.LIVE) {
-                job = CoroutineScope(Dispatchers.Main).launch {
+                job = CoroutineScope(Dispatchers.Default).launch {
                     val time = System.currentTimeMillis()
                     while (uiState.value.quantizeModeTimer < toggleTime) {
                         delay(5)

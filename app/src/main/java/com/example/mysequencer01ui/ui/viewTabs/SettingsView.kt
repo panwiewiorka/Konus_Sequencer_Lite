@@ -1,5 +1,6 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -104,7 +105,7 @@ fun Knob(buttonsSize: Dp, bpm: Float, changeBPM: (Float) -> Unit) {
     var angle by remember { mutableStateOf(0f) }
     var dragStartedAngle by remember { mutableStateOf(0f) }
     var oldAngle by remember { mutableStateOf(angle) }
-    var rotationAngle by remember { mutableStateOf(bpm - 40 * 270 / 240) }
+    var rotationAngle by remember { mutableStateOf((bpm - 40) * 270 / 240) }
 
     Box(
 //        contentAlignment = Alignment.BottomCenter,

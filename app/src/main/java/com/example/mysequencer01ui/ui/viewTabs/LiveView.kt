@@ -73,7 +73,6 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(1f)
-//                .width(300.dp)
         ) {
             PatternsScreen(seqUiState, buttonsSize)
             Spacer(modifier = Modifier.weight(1f))

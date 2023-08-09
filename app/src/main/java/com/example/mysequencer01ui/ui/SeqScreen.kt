@@ -26,7 +26,8 @@ import com.example.mysequencer01ui.ui.viewTabs.StepView
 fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel()
 ) {
     val seqUiState by seqViewModel.uiState.collectAsState()
-    KeepScreenOn()
+
+    if (seqUiState.seqIsPlaying) KeepScreenOn()
 
     BoxWithConstraints(
         modifier = Modifier

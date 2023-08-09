@@ -497,7 +497,7 @@ fun SeqViewButton(
     Box(
         modifier = Modifier
             .size(buttonsSize)
-            .padding(buttonsPadding)
+            .padding(top = 1.dp)
             .background(if (seqView == buttonSeqView) night else buttons)
             .clickable(
                 interactionSource = buttonInteraction(

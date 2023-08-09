@@ -29,7 +29,6 @@ data class SeqUiState (
     val isRepeating: Boolean = false,
     val divisorState: Int = 0,
     val repeatLength: Double = 0.0,
-    val repeatStartFlag: Boolean = false,
 
     val transmitClock: Boolean = true,
     val visualDebugger: Boolean = false,

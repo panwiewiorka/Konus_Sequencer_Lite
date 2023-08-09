@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val dao: SeqDao
+//            val dao: SeqDao
             val kmmk = KmmkComponentContext()
             kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
             MySequencer01UiTheme(darkTheme = true) {

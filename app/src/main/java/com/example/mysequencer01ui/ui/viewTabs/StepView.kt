@@ -350,7 +350,7 @@ fun NotesGrid(
                         ) { change, dragAmount ->
                             change.consume()
 
-                            // if note exists where we drag -> move it, else scroll the grid
+                            // if note exists where we drag -> move it or change it's length, else scroll the grid
                             if (noteDetected) {
                                 xOffset += dragAmount.x
                                 if (!changeLengthAreaDetected) {
