@@ -19,8 +19,8 @@ class Sequence(
     var channelIsPlayingNotes: Int = 0,
     var playingNotes: Array<Int> = Array(128){ 0 },
     var pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, Long.MIN_VALUE) }, // manually pressed notes that are muting same ones played by sequencer
-    var dePressedNotesOnRepeat: Array<Boolean> = Array(128){ false }, // remembering notes that shouldn't play on release/cancel // TODO rename (notesToIgnore?)
-    var idOfQuantizedNotesToIgnore: MutableList<Int> = mutableListOf(),
+    var notesDragEndOnRepeat: Array<Boolean> = Array(128){ false }, // remembering notes that shouldn't play on release/cancel
+    var idOfNotesToIgnore: MutableList<Int> = mutableListOf(),
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
     var noteId: Int = Int.MIN_VALUE,
 
@@ -119,7 +119,7 @@ class Sequence(
 
         if (velocity > 0 && seqIsPlaying) {
             time = quantizeTime(time)
-            idOfQuantizedNotesToIgnore.add(id)
+            idOfNotesToIgnore.add(id)
         } else {
             val indexOfQuantizedNoteOn =
                 notes.indexOfFirst { it.id == pressedNotes[pitch].id }
@@ -164,26 +164,15 @@ class Sequence(
     ): Int {
         // We are searching for note instead of relying on playingNotes[] state because of quantizing issues (note could possibly play now but not in quantized time)
         var index = theIndex
-        var noteOnBeforeRec = notes.indexOfLast { it.pitch == pitch && it.time <= recordTime && it.id != id }
-        var noteOffAfterRec: Int
-
-        if (noteOnBeforeRec == -1 || notes[noteOnBeforeRec].velocity == 0) {
-            noteOnBeforeRec = -1
-            noteOffAfterRec = notes.indexOfFirst { it.pitch == pitch && it.time > recordTime && it.id != id }
-            if (noteOffAfterRec == -1 || notes[noteOffAfterRec].velocity > 0) {
-                noteOffAfterRec = -1
-            } else noteOnBeforeRec = getPairedNoteOnIndexAndTime(noteOffAfterRec).index
-        } else {
-            noteOffAfterRec = getPairedNoteOffIndexAndTime(noteOnBeforeRec).index
-        }
+        var (noteOnBeforeRec, noteOffAfterRec: Int) = findNoteIndicesAroundGivenTime(pitch, recordTime, id)
 
         if (noteOnBeforeRec != -1 && (notes[noteOnBeforeRec].time == recordTime && notes[noteOnBeforeRec].velocity > 0 && velocity == 0)) {
             noteOnBeforeRec = -1
             noteOffAfterRec = -1
         }
-        if (noteOnBeforeRec != -1 || noteOffAfterRec != -1) Log.d("ryjtyj", "OVERDUB: noteOnBeforeRec = $noteOnBeforeRec, noteOffAfterRec = $noteOffAfterRec")
 
         if (noteOnBeforeRec != -1 || noteOffAfterRec != -1) {
+            Log.d("ryjtyj", "OVERDUB: noteOnBeforeRec = $noteOnBeforeRec, noteOffAfterRec = $noteOffAfterRec")
             if (velocity > 0) {
                 if (noteOnBeforeRec != -1 && notes[noteOnBeforeRec].time == recordTime) {
                     eraseOverdubbingNote(noteOnBeforeRec)
@@ -201,6 +190,28 @@ class Sequence(
             index = notes.indexOfLast { it.time <= recordTime } + 1
         }
         return index
+    }
+
+    fun findNoteIndicesAroundGivenTime(
+        pitch: Int,
+        recordTime: Double,
+        id: Int
+    ): Pair<Int, Int> {
+        var noteOnBeforeRec =
+            notes.indexOfLast { it.pitch == pitch && it.time <= recordTime && it.id != id }
+        var noteOffAfterRec: Int
+
+        if (noteOnBeforeRec == -1 || notes[noteOnBeforeRec].velocity == 0) {
+            noteOnBeforeRec = -1
+            noteOffAfterRec =
+                notes.indexOfFirst { it.pitch == pitch && it.time > recordTime && it.id != id }
+            if (noteOffAfterRec == -1 || notes[noteOffAfterRec].velocity > 0) {
+                noteOffAfterRec = -1
+            } else noteOnBeforeRec = getPairedNoteOnIndexAndTime(noteOffAfterRec).index
+        } else {
+            noteOffAfterRec = getPairedNoteOffIndexAndTime(noteOnBeforeRec).index
+        }
+        return Pair(noteOnBeforeRec, noteOffAfterRec)
     }
 
     private fun eraseOverdubbingNote(noteOnBeforeRec: Int) {
@@ -241,17 +252,18 @@ class Sequence(
         // if note isn't being manually played   AND   channel is soloed  OR  no soloing occurs and channel isn't muted
         if (!pressedNotes[notes[index].pitch].isPressed && (isSoloed || (soloIsOff && !isMuted))) {
 
-            if(dePressedNotesOnRepeat[notes[index].pitch] && stepView && notes[index].velocity == 0) {  // a fix for playingNotes == -1 when releasing dragged note that was playing
+            if(notesDragEndOnRepeat[notes[index].pitch] && stepView && notes[index].velocity == 0) {  // a fix for playingNotes == -1 when releasing dragged note that was playing
                 changePlayingNotes(notes[index].pitch, 1)
-                dePressedNotesOnRepeat[notes[index].pitch] = false
+                notesDragEndOnRepeat[notes[index].pitch] = false
             }
-              else if (idOfQuantizedNotesToIgnore.indexOfFirst{ it == notes[index].id } != -1) {  // skipping recording notes that are quantized forward
+              else if (idOfNotesToIgnore.indexOfFirst{ it == notes[index].id } != -1) {  // skipping recording notes that are quantized forward
                 if(notes[index].velocity == 0) {
-                    idOfQuantizedNotesToIgnore.removeAt(idOfQuantizedNotesToIgnore.indexOfFirst{ it == notes[index].id })
+                    idOfNotesToIgnore.removeAt(idOfNotesToIgnore.indexOfFirst{ it == notes[index].id })
                     changePlayingNotes(notes[index].pitch, 1)
                 }
             }
             else {
+//                Log.d("ryjtyj", "deltaTimeRepeat = $deltaTimeRepeat, index = $index, pitch = ${notes[index].pitch}")
                 kmmk.noteOn(
                     channel,
                     notes[index].pitch,

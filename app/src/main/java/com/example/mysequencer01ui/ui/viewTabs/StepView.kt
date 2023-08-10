@@ -139,6 +139,7 @@ fun NotesGrid(
                                 var time =
                                     ((offset.x.toDp().value / maxWidth.value) * totalTime).toDouble()
 
+                                /*
                                 val noteOnIndex1 = notes.indexOfLast {
                                     it.pitch == pitch && it.velocity > 0 && it.time < time
                                 }
@@ -157,41 +158,54 @@ fun NotesGrid(
                                     if (noteOffIndex2 > -1) getPairedNoteOnIndexAndTime(
                                         noteOffIndex2
                                     ).index else -1
+                                 */
+
+                                val (noteOnIndex, noteOffIndex: Int) = findNoteIndicesAroundGivenTime(pitch, time, Int.MAX_VALUE)
+
+                                val noteExistsWhereWeTap = (noteOnIndex > -1 && noteOffIndex > -1) && (
+                                    (time in notes[noteOnIndex].time .. notes[noteOffIndex].time)  // [...]
+                                        || (noteOnIndex > noteOffIndex &&
+                                        (time in 0.0 .. notes[noteOffIndex].time  || time in notes[noteOnIndex].time .. totalTime.toDouble())) // ..] & [..
+                                    )
 
                                 // if note exists where we tap - erase it, else record new note
-                                if (
-                                    (
-                                        (noteOnIndex1 > -1 && noteOffIndex1 > -1) && (
-                                            (
-                                                time in notes[noteOnIndex1].time..notes[noteOffIndex1].time)  // normal case (not wrap-around) [---]
-                                                ||
-                                                (noteOnIndex1 > noteOffIndex1) && (time in notes[noteOnIndex1].time..totalTime.toDouble()) // wrap-around case, searching right part [--
-                                            )
-                                        ) ||
-                                    (
-                                        noteOffIndex2 > -1 && noteOnIndex2 > -1) && (
-                                        (noteOnIndex1 > noteOffIndex1) && (time in 0.0..notes[noteOffIndex1].time) // wrap-around case, searching left part --]
-                                        )
-                                ) {
-                                    erasing(seqUiState.isRepeating, noteOnIndex1, true)
+                                if (noteExistsWhereWeTap) {
+
+                                    erasing(seqUiState.isRepeating, noteOnIndex, true)
 
                                     if (seqUiState.isRepeating) {
                                         indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
-//                                        if (indexToRepeat == -1) indexToRepeat = 0
                                     } else {
                                         indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
-//                                        if (indexToPlay == -1) indexToPlay = 0
                                     }
 
                                 } else {
                                     time = seqViewModel.quantizeTime(time - seqUiState.quantizationTime / 2)
                                     val noteOffTime = time + seqUiState.quantizationTime
 
+/*
 //                                    val otherNoteOffInTheMiddle =
 //                                        notes.indexOfFirst { it.pitch == pitch && it.velocity == 0 && it.time in time..noteOffTime }
 //                                    if (otherNoteOffInTheMiddle != -1) {
 //                                        changeNoteTime(otherNoteOffInTheMiddle, time)
 //                                    }
+
+//                                    recIntoArray(
+//                                        index = notes.indexOfLast { it.time <= time } + 1,
+//                                        recordTime = time,
+//                                        pitch = pitch,
+//                                        velocity = 100,
+//                                        id = noteId,
+//                                    )
+//                                    recIntoArray(
+//                                        index = notes.indexOfLast { it.time <= noteOffTime } + 1,
+//                                        recordTime = noteOffTime,
+//                                        pitch = pitch,
+//                                        velocity = 0,
+//                                        id = noteId,
+//                                    )
+//
+ */
 
                                     recordNote(
                                         pitch = pitch,
@@ -343,7 +357,7 @@ fun NotesGrid(
                             onDragEnd = {
                                 draggedNoteOnIndex = -1
                                 draggedNoteOffIndex = -1
-                                if (noteDetected) dePressedNotesOnRepeat[pitch] = true
+                                if (noteDetected) notesDragEndOnRepeat[pitch] = true
                                 //offsetY = noteHeight * (127 - note.pitch)
                                 // TODO if releasing on top of another note -> delete another
                             }
