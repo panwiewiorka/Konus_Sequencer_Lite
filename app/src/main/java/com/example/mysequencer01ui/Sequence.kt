@@ -207,9 +207,9 @@ class Sequence(
                 notes.indexOfFirst { it.pitch == pitch && it.time > recordTime && it.id != id }
             if (noteOffAfterRec == -1 || notes[noteOffAfterRec].velocity > 0) {
                 noteOffAfterRec = -1
-            } else noteOnBeforeRec = getPairedNoteOnIndexAndTime(noteOffAfterRec).index
+            } else noteOnBeforeRec = getNotePairedIndexAndTime(noteOffAfterRec).index
         } else {
-            noteOffAfterRec = getPairedNoteOffIndexAndTime(noteOnBeforeRec).index
+            noteOffAfterRec = getNotePairedIndexAndTime(noteOnBeforeRec).index
         }
         return Pair(noteOnBeforeRec, noteOffAfterRec)
     }
@@ -248,30 +248,29 @@ class Sequence(
     }
 
 
-    fun playing(index: Int, soloIsOff: Boolean, stepView: Boolean) {
-        // if note isn't being manually played   AND   channel is soloed  OR  no soloing occurs and channel isn't muted
-        if (!pressedNotes[notes[index].pitch].isPressed && (isSoloed || (soloIsOff && !isMuted))) {
 
-            if(notesDragEndOnRepeat[notes[index].pitch] && stepView && notes[index].velocity == 0) {  // a fix for playingNotes == -1 when releasing dragged note that was playing
-                changePlayingNotes(notes[index].pitch, 1)
-                notesDragEndOnRepeat[notes[index].pitch] = false
-            }
-              else if (idOfNotesToIgnore.indexOfFirst{ it == notes[index].id } != -1) {  // skipping recording notes that are quantized forward
-                if(notes[index].velocity == 0) {
-                    idOfNotesToIgnore.removeAt(idOfNotesToIgnore.indexOfFirst{ it == notes[index].id })
-                    changePlayingNotes(notes[index].pitch, 1)
-                }
-            }
-            else {
-//                Log.d("ryjtyj", "deltaTimeRepeat = $deltaTimeRepeat, index = $index, pitch = ${notes[index].pitch}")
-                kmmk.noteOn(
-                    channel,
-                    notes[index].pitch,
-                    notes[index].velocity
-                )
+    fun playing(index: Int, soloIsOff: Boolean, stepView: Boolean) {
+        if(notesDragEndOnRepeat[notes[index].pitch] && stepView && notes[index].velocity == 0) {  // a fix for playingNotes == -1 when releasing dragged note that was playing
+            Log.d("ryjtyj", "notesDragEndOnRepeat INDEX = $index, PITCH = ${notes[index].pitch}")
+            notesDragEndOnRepeat[notes[index].pitch] = false
+        } //else if (notes[index].time - pressedNotes[notes[index].pitch].noteOnTimestamp <= quantizationTime / 2 / factorBpm)
+
+         else if (idOfNotesToIgnore.indexOfFirst{ it == notes[index].id } != -1) {  // fix for skipping recording notes that are quantized forward
+            Log.d("ryjtyj", "SKIP idOfNotesToIgnore = ${idOfNotesToIgnore.indexOfFirst{ it == notes[index].id }}")
+            if(notes[index].velocity == 0) {
+                Log.d("ryjtyj", "REMOVE idOfNotesToIgnore = ${idOfNotesToIgnore.indexOfFirst{ it == notes[index].id }}")
+                idOfNotesToIgnore.removeAt(idOfNotesToIgnore.indexOfFirst{ it == notes[index].id })
             }
         }
-        changePlayingNotes(notes[index].pitch, notes[index].velocity)
+        else if (!pressedNotes[notes[index].pitch].isPressed && (isSoloed || (soloIsOff && !isMuted))) {
+//                Log.d("ryjtyj", "deltaTimeRepeat = $deltaTimeRepeat, index = $index, pitch = ${notes[index].pitch}")
+            kmmk.noteOn(
+                channel,
+                notes[index].pitch,
+                notes[index].velocity
+            )
+            changePlayingNotes(notes[index].pitch, notes[index].velocity)
+        }
     }
 
     private var draggedNoteOffJob = CoroutineScope(Dispatchers.IO).launch { }
@@ -293,12 +292,13 @@ class Sequence(
     }
 
 
+
     fun erasing(isRepeating: Boolean, index: Int, stepViewCase: Boolean): Boolean {
         if (notes[index].velocity > 0 && (notes[index].id != pressedNotes[notes[index].pitch].id || !pressedNotes[notes[index].pitch].isPressed)
         ) {
             Log.d("ryjtyj", "erasing index $index")
 
-            var pairedNoteOffIndex = getPairedNoteOffIndexAndTime(index).index
+            var pairedNoteOffIndex = getNotePairedIndexAndTime(index).index
 
             // stop note_to_be_erased if playing (StepView condition)
             if(stepViewCase) stopNoteIfPlaying(isRepeating, index, pairedNoteOffIndex)
@@ -352,6 +352,7 @@ class Sequence(
     }
 
 
+
     fun clearChannel(channel: Int) {
         indexToPlay = 0
         indexToRepeat = 0
@@ -365,6 +366,7 @@ class Sequence(
         }
         Log.d("emptyTag", " ") // to hold in imports
     }
+
 
 
     private fun stopNoteIfPlaying(
@@ -387,6 +389,7 @@ class Sequence(
         }
     }
 
+
     fun changeStepViewYScroll(y: Int) {
         stepViewYScroll = y
     }
@@ -398,16 +401,17 @@ class Sequence(
         if(lowKeyboard) pianoViewOctaveLow = newValue else pianoViewOctaveHigh = newValue
     }
 
-    fun getPairedNoteOffIndexAndTime(index: Int): NoteIndexAndTime {
-        val pairedNoteOffIndex = notes.indexOfFirst { it.id == notes[index].id && it.velocity == 0 }
-        return if(pairedNoteOffIndex > -1) NoteIndexAndTime(pairedNoteOffIndex, notes[pairedNoteOffIndex].time) else NoteIndexAndTime(-1, Double.MIN_VALUE)
+    fun getNotePairedIndexAndTime(index: Int): NoteIndexAndTime {
+        val notePairedIndex = notes.indexOfFirst { it.id == notes[index].id && it.velocity != notes[index].velocity}
+        return if(notePairedIndex > -1) NoteIndexAndTime(notePairedIndex, notes[notePairedIndex].time) else NoteIndexAndTime(-1, Double.MIN_VALUE)
+//        val pairedNoteOffIndex = notes.indexOfFirst { it.id == notes[index].id && it.velocity == 0 }
+//        return if(pairedNoteOffIndex > -1) NoteIndexAndTime(pairedNoteOffIndex, notes[pairedNoteOffIndex].time) else NoteIndexAndTime(-1, Double.MIN_VALUE)
     }
 
-    // TODO merge with ^^ (assume that no duplicate IDs exist, search for same ID but different index)
-    fun getPairedNoteOnIndexAndTime(index: Int): NoteIndexAndTime {
-        val pairedNoteOnIndex = notes.indexOfFirst { it.id == notes[index].id && it.velocity > 0 }
-        return if(pairedNoteOnIndex > -1) NoteIndexAndTime(pairedNoteOnIndex, notes[pairedNoteOnIndex].time) else NoteIndexAndTime(-1, Double.MIN_VALUE)
-    }
+//    fun getPairedNoteOnIndexAndTime(index: Int): NoteIndexAndTime {
+//        val pairedNoteOnIndex = notes.indexOfFirst { it.id == notes[index].id && it.velocity > 0 }
+//        return if(pairedNoteOnIndex > -1) NoteIndexAndTime(pairedNoteOnIndex, notes[pairedNoteOnIndex].time) else NoteIndexAndTime(-1, Double.MIN_VALUE)
+//    }
 
     fun changeNotePitch(index: Int, pitch: Int) {
         notes[index].pitch = pitch
@@ -419,10 +423,11 @@ class Sequence(
         } else {
             time
         }
+
         if(notes[index].time >= BARTIME) {
             notes[index].time -= BARTIME
         } else if(notes[index].time < 0) {
-            notes[index].time += 2000
+            notes[index].time += BARTIME
         }
     }
 

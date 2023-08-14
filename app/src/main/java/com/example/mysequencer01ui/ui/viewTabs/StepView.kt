@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderColors
 import androidx.compose.material.SliderDefaults
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,7 +23,6 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.ui.BARTIME
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp, kmmk: KmmkComponentContext) {
+fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
     Log.d("emptyTag", "for holding Log in import")
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -45,7 +45,9 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
             .background(BackGray)
     ) {
         with(seqUiState.sequences[seqUiState.selectedChannel]) {
+
             val scrollState = rememberScrollState(stepViewYScroll)
+
             VerticalSlider(
                 value = stepViewYScroll.toFloat(),
                 onValueChange = {
@@ -58,11 +60,11 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                     .fillMaxWidth(0.85f)
                     .height(50.dp),
                 valueRange = 0f..scrollState.maxValue.toFloat(), // TODO hardcode
-            colors = SliderDefaults.colors(
-                thumbColor = violet,
-                activeTrackColor = darkViolet,
-                inactiveTrackColor = darkViolet
-            )
+                colors = SliderDefaults.colors(
+                    thumbColor = violet,
+                    activeTrackColor = darkViolet,
+                    inactiveTrackColor = darkViolet
+                )
             )
 
             BoxWithConstraints(
@@ -88,7 +90,7 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                     }
                 }
 
-                NotesGrid(seqViewModel, seqUiState, kmmk, scrollState)
+                NotesGrid(seqViewModel, seqUiState, scrollState)
 
                 Canvas(
                     modifier = Modifier.fillMaxSize()
@@ -109,7 +111,7 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
 
 @Composable
 fun NotesGrid(
-    seqViewModel: SeqViewModel, seqUiState: SeqUiState, kmmk: KmmkComponentContext, scrollState: ScrollState,
+    seqViewModel: SeqViewModel, seqUiState: SeqUiState, scrollState: ScrollState,
 ) {
     with(seqUiState.sequences[seqUiState.selectedChannel]){
 
@@ -219,6 +221,11 @@ fun NotesGrid(
                                         customTime = time,
                                         stepRecord = true,
                                     )
+
+                                    // override adding note to ignore list
+                                    // (fixing notes not to play first time after recording when switching from stepView to other view and back while seq is playing)
+                                    idOfNotesToIgnore.remove(noteId)
+
                                     recordNote(
                                         pitch = pitch,
                                         velocity = 0,
@@ -231,6 +238,7 @@ fun NotesGrid(
                                         customTime = noteOffTime,
                                         stepRecord = true,
                                     )
+
                                     increaseNoteId()
                                 }
                                 seqViewModel.updateSequencesUiState()
@@ -260,9 +268,9 @@ fun NotesGrid(
                                 }
                                 if (noteOnIndex == -1 || notes[noteOnIndex].velocity == 0) {
                                     noteOffIndex = notes.indexOfFirst { it.pitch == pitch && it.time > time }
-                                    if (noteOffIndex != -1 && notes[noteOffIndex].velocity == 0) noteOnIndex = getPairedNoteOnIndexAndTime(noteOffIndex).index
+                                    if (noteOffIndex != -1 && notes[noteOffIndex].velocity == 0) noteOnIndex = getNotePairedIndexAndTime(noteOffIndex).index
                                 } else {
-                                    noteOffIndex = getPairedNoteOffIndexAndTime(noteOnIndex).index
+                                    noteOffIndex = getNotePairedIndexAndTime(noteOnIndex).index
                                 }
 
                                 Log.d("ryjtyj", "noteOnIndex = $noteOnIndex, noteOffIndex = $noteOffIndex")
@@ -303,6 +311,9 @@ fun NotesGrid(
 
                                 if (noteDetected) {
 
+                                    draggedNoteOnIndex = noteOnIndex
+                                    draggedNoteOffIndex = noteOffIndex
+
                                     if (seqUiState.isQuantizing) {
                                         if (!changeLengthAreaDetected) {
                                             val tempTime = notes[noteOnIndex].time
@@ -334,7 +345,7 @@ fun NotesGrid(
                                         (
                                             currentIndex in noteOnIndex + 1..noteOffIndex // normal case (not wrap-around)
                                                 || noteOnIndex > noteOffIndex && (   // wrap-around case
-                                                currentIndex in noteOnIndex + 1..notes.size || currentIndex in 0..noteOffIndex
+                                                currentIndex in noteOnIndex + 1 until notes.size || currentIndex in 0..noteOffIndex
                                                 )
                                             )
                                     ) {
@@ -355,16 +366,21 @@ fun NotesGrid(
                                 }
                             },
                             onDragEnd = {
+//                                if (noteDetected && seqUiState.seqIsPlaying) {
+//                                    val dt = if (seqUiState.isRepeating) deltaTimeRepeat else deltaTime
+//                                    if (dt in )
+//                                    notesDragEndOnRepeat[pitch] = true
                                 draggedNoteOnIndex = -1
                                 draggedNoteOffIndex = -1
-                                if (noteDetected) notesDragEndOnRepeat[pitch] = true
-                                //offsetY = noteHeight * (127 - note.pitch)
-                                // TODO if releasing on top of another note -> delete another
+                                // offsetY = noteHeight * (127 - note.pitch)
+                                    // TODO if releasing on top of another note -> delete another
+//                                }
+
                             }
                         ) { change, dragAmount ->
                             change.consume()
 
-                            // if note exists where we drag -> move it or change it's length, else scroll the grid
+                            // if note exists where we drag -> move it or change it's length,  else scroll the grid
                             if (noteDetected) {
                                 xOffset += dragAmount.x
                                 if (!changeLengthAreaDetected) {
@@ -385,26 +401,30 @@ fun NotesGrid(
                                     changeNoteTime(noteOffIndex, dragDeltaTime, true)
                                 }
 
+                                val draggedNoteId = notes[noteOnIndex].id
+
                                 if (!changeLengthAreaDetected) {
                                     if (pitch != 127 - (yOffset / noteHeight.toPx()).toInt()) {
                                         pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
                                         changeNotePitch(noteOnIndex, pitch)
                                         changeNotePitch(noteOffIndex, pitch)
                                     }
+                                } else {
+                                    if (notes[noteOffIndex].time == notes[noteOnIndex].time && noteOffIndex > noteOnIndex) {
+                                        notes[noteOffIndex] = notes[noteOnIndex].also { notes[noteOnIndex] = notes[noteOffIndex] } // swapping two elements for wrap-around note when length = 0
+                                    }
                                 }
 
-                                val tempNoteOnTime = notes[noteOnIndex].time
-                                val tempNoteOffTime = notes[noteOffIndex].time
                                 sortNotesByTime()
 
-                                if (
-                                    notes[noteOnIndex].time != tempNoteOnTime ||
-                                    notes[noteOffIndex].time != tempNoteOffTime
-                                ) {
-                                    noteOnIndex =
-                                        notes.indexOfFirst { it.time == tempNoteOnTime && it.pitch == pitch }
-                                    noteOffIndex =
-                                        getPairedNoteOffIndexAndTime(noteOnIndex).index
+                                val noteOnIndexAfterSort = notes.indexOfFirst { it.id == draggedNoteId && it.velocity > 0 }
+                                val noteOffIndexAfterSort = notes.indexOfFirst { it.id == draggedNoteId && it.velocity == 0 }
+
+                                if (noteOnIndexAfterSort != noteOnIndex || noteOffIndexAfterSort != noteOffIndex) {
+                                    noteOnIndex = noteOnIndexAfterSort
+                                    draggedNoteOnIndex = noteOnIndex
+                                    noteOffIndex = noteOffIndexAfterSort
+                                    draggedNoteOffIndex = noteOffIndex
 
                                     if (seqUiState.isRepeating) {
                                         indexToRepeat = (notes.indexOfLast { it.time < deltaTimeRepeat } + 1).coerceAtLeast(0)
@@ -412,8 +432,6 @@ fun NotesGrid(
                                         indexToPlay = (notes.indexOfLast { it.time < deltaTime } + 1).coerceAtLeast(0)
                                     }
                                 }
-                                draggedNoteOnIndex = noteOnIndex
-                                draggedNoteOffIndex = noteOffIndex
 
                                 seqViewModel.updateSequencesUiState()
                             } else {
@@ -448,14 +466,15 @@ fun NotesGrid(
                     if(notes[i].velocity > 0) {
                         val widthFactor = maxWidth / BARTIME
                         val offsetX = widthFactor * notes[i].time.toInt()
-                        val noteOffIndexAndTime = getPairedNoteOffIndexAndTime(i)
+                        val noteOffIndexAndTime = getNotePairedIndexAndTime(i)
                         val noteOffIndex = noteOffIndexAndTime.index
                         var noteLength = widthFactor * (noteOffIndexAndTime.time - notes[i].time).toInt()
-                        if (noteLength < 0.dp) noteLength = maxWidth + noteLength
+                        if (noteLength <= 0.dp) noteLength = maxWidth + noteLength
                         val wrapAround = i > noteOffIndex
                         val changeLengthArea = (if (noteLength / 3 < maxWidth / 16) noteLength / 3 else maxWidth / 16)
+                        if (noteOffIndex == -1) Log.e("ryjtyj", "noteOffIndex == -1")
 
-//                        if (noteOffIndex != -1)
+
                         StepNote(
                             offsetX = offsetX,
                             offsetY = noteHeight * (127 - notes[i].pitch),
@@ -538,7 +557,7 @@ fun NoteBox(
                     .border(0.6.dp, buttonsBg)
                     .background(com.example.mysequencer01ui.ui.theme.changeLengthArea)
             )
-//        Text(text = "$indexNoteOn")
+        Text(text = "$indexNoteOn")
         }
         if (wrapAround) {
             Canvas (modifier = Modifier.fillMaxSize()) {

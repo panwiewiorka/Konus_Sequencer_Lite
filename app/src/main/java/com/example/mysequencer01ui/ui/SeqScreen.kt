@@ -73,7 +73,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             ) {
                 when(seqUiState.seqView) {
                     LIVE -> LiveView(seqViewModel, seqUiState, buttonsSize)
-                    STEP -> StepView(seqViewModel, seqUiState, buttonsSize, kmmk)
+                    STEP -> StepView(seqViewModel, seqUiState, buttonsSize)
                     PIANO -> PianoView(seqViewModel, seqUiState, buttonsSize)
                     AUTOMATION -> { Text("// TODO =)", color = playGreen, fontSize = 20.sp, fontStyle = FontStyle.Italic, modifier = Modifier.align(Alignment.Center)) }
                     SETTINGS -> SettingsView(seqViewModel, seqUiState, buttonsSize, kmmk)

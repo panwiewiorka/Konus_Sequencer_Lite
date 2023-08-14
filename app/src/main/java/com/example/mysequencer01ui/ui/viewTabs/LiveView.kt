@@ -149,7 +149,7 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                     for (i in notes.indices) {
                         if(notes[i].velocity > 0) {
                             val noteStart = (widthFactor * notes[i].time).toFloat()
-                            val noteOffIndexAndTime = getPairedNoteOffIndexAndTime(i)
+                            val noteOffIndexAndTime = getNotePairedIndexAndTime(i)
                             val noteOffIndex = noteOffIndexAndTime.index
                             val noteLength = noteOffIndexAndTime.time - notes[i].time
                             val noteWidth =
@@ -187,7 +187,7 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                         }
                     }
 
-                    playHeads(seqUiState, playhead, playheadRepeat)
+                    if (c == 0) playHeads(seqUiState, playhead, playheadRepeat)
 
                     if (seqUiState.isRepeating) repeatBounds(this, widthFactor, 0.3f)
                 }

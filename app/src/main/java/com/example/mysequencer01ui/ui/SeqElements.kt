@@ -573,28 +573,30 @@ fun DrawScope.playHeads(
 ) {
     // playhead color
     val conditionalColor = when (seqUiState.padsMode) {
-        PadsMode.MUTING -> violet
-        PadsMode.ERASING -> warmRed
-        PadsMode.CLEARING -> notWhite
+        MUTING -> violet
+        ERASING -> warmRed
+        CLEARING -> notWhite
         else -> {
             if (seqUiState.seqIsRecording) warmRed
             else playGreen
         }
     }
     // PLAYHEAD
-    drawLine(
-        color = conditionalColor,
-        start = Offset(playhead, 0f),
-        end = Offset(playhead, size.height)
-    )
-    // REPEAT PLAYHEAD
-    if (seqUiState.isRepeating && seqUiState.seqIsPlaying) {
+    if (seqUiState.seqIsPlaying) {
         drawLine(
             color = conditionalColor,
-            start = Offset(playheadRepeat, 0f),
-            end = Offset(playheadRepeat, size.height),
-            4f,
+            start = Offset(playhead, 0f),
+            end = Offset(playhead, size.height)
         )
+        // REPEAT PLAYHEAD
+        if (seqUiState.isRepeating) {
+            drawLine(
+                color = conditionalColor,
+                start = Offset(playheadRepeat, 0f),
+                end = Offset(playheadRepeat, size.height),
+                4f,
+            )
+        }
     }
 }
 
