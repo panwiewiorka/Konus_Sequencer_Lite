@@ -1,7 +1,8 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'kotlin-kapt'
+//    id 'kotlin-kapt'
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -38,7 +39,7 @@ android {
         compose true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion '1.4.2'
+        kotlinCompilerExtensionVersion '1.4.6'
     }
     packagingOptions {
         resources {
@@ -66,17 +67,17 @@ dependencies {
     implementation("dev.atsushieno:ktmidi-android:0.4.0")
 
     // Room
-    implementation("androidx.room:room-runtime:2.5.1")
-    annotationProcessor("androidx.room:room-compiler:2.5.1")
+    implementation("androidx.room:room-runtime:2.5.2")
+    annotationProcessor("androidx.room:room-compiler:2.5.2")
 
     // To use Kotlin annotation processing tool (kapt)
-    kapt("androidx.room:room-compiler:2.5.1")
+//    kapt("androidx.room:room-compiler:2.5.2")
     // To use Kotlin Symbol Processing (KSP)
-//    ksp("androidx.room:room-compiler:2.5.1")
+    ksp("androidx.room:room-compiler:2.5.2")
 
     // optional - Kotlin Extensions and Coroutines support for Room
-    implementation("androidx.room:room-ktx:2.5.1")
+    implementation("androidx.room:room-ktx:2.5.2")
     // optional - Test helpers
-    testImplementation("androidx.room:room-testing:2.5.1")
+    testImplementation("androidx.room:room-testing:2.5.2")
 
 }

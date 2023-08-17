@@ -30,7 +30,7 @@ data class SeqUiState (
     val divisorState: Int = 0,
     val repeatLength: Double = 0.0,
 
-    val transmitClock: Boolean = true,
+    val transmitClock: Boolean = false,
     val visualDebugger: Boolean = false,
     val debuggerViewSetting: Int = 0,
     val stepViewNoteHeight: Dp = 20.dp,

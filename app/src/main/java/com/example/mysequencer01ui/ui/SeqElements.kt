@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.util.Log
 import android.view.WindowManager
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
@@ -37,6 +38,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
@@ -74,6 +76,7 @@ import com.example.mysequencer01ui.ui.theme.dusk
 import com.example.mysequencer01ui.ui.theme.night
 import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.playGreen
+import com.example.mysequencer01ui.ui.theme.repeatButtons
 import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.violet
 import com.example.mysequencer01ui.ui.theme.warmRed
@@ -99,89 +102,270 @@ fun PadButton(
     seqUiState: SeqUiState,
     padsSize: Dp,
 ){
-//    val interactionSource = remember { MutableInteractionSource() }
-    var elapsedTime = remember { 0L }
-    val buttonIsPressed by interactionSource.collectIsPressedAsState()
-    LaunchedEffect(interactionSource, pitch, seqUiState.sequences[channel].pressedNotes[pitch].isPressed, seqUiState.padsMode) {
-        interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is PressInteraction.Press -> {
-                    seqViewModel.pressPad(channel, pitch, 100)
-                    elapsedTime = System.currentTimeMillis()
-                    seqViewModel.rememberInteraction(channel, pitch, interaction)
-                }
-                is PressInteraction.Release -> {
-                    if (seqUiState.sequences[channel].pressedNotes[pitch].isPressed || seqUiState.padsMode != DEFAULT) {
-                        seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+    with(seqUiState) {
+        //    val interactionSource = remember { MutableInteractionSource() }
+        var elapsedTime = remember { 0L }
+        val buttonIsPressed by interactionSource.collectIsPressedAsState()
+        LaunchedEffect(interactionSource, pitch, sequences[channel].pressedNotes[pitch].isPressed, padsMode) {
+            interactionSource.interactions.collect { interaction ->
+                when (interaction) {
+                    is PressInteraction.Press -> {
+                        seqViewModel.pressPad(channel, pitch, 100)
+                        elapsedTime = System.currentTimeMillis()
+                        seqViewModel.rememberInteraction(channel, pitch, interaction)
                     }
-                }
-                is PressInteraction.Cancel -> {
-                    if (seqUiState.sequences[channel].pressedNotes[pitch].isPressed || seqUiState.padsMode != DEFAULT) {
-                        seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+                    is PressInteraction.Release -> {
+                        if (sequences[channel].pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
+                            seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+                        }
                     }
-                }
-            }
-        }
-    }
-    val color = when (seqUiState.padsMode) {
-        MUTING -> violet
-        ERASING -> Color.Transparent
-        CLEARING -> Color.Transparent
-        else -> {
-            if (seqUiState.seqIsRecording) warmRed
-            else if (seqUiState.seqIsPlaying) playGreen
-            else Color.Transparent
-        }
-    }
-    Box{
-        Box(modifier = Modifier
-            .padding(buttonsPadding)
-            .alpha(if (seqUiState.sequences[channel].isMuted && channel != seqUiState.selectedChannel) 0.25f else 1f)
-        ){
-            Button(
-                interactionSource = interactionSource,
-                onClick = {},
-                shape = buttonsShape,
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = if(seqUiState.selectedChannel == channel) selectedButton else buttons
-                ),
-                contentPadding = PaddingValues(0.dp),
-                modifier = Modifier
-                    .size(padsSize - 1.dp)
-                    .border(
-                        width = 4.dp,
-                        color = if (seqUiState.sequences[channel].channelIsPlayingNotes > 0) color else Color.Transparent
-                    )
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(if (buttonIsPressed) color else Color.Transparent)
-                ) {
-                    if (seqUiState.sequences[channel].channelIsPlayingNotes > 0) {
-                        DashedBorder(
-                            when (seqUiState.padsMode) {
-                                ERASING -> warmRed
-                                CLEARING -> notWhite
-                                else -> Color.Transparent
-                            }
-                        )
-                    }
-                    if(seqUiState.sequences[channel].isMuted && !seqUiState.sequences[channel].isSoloed) {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            muteSymbol(false)
+                    is PressInteraction.Cancel -> {
+                        if (sequences[channel].pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
+                            seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
                         }
                     }
                 }
             }
         }
-        if(seqUiState.sequences[channel].isSoloed) {
-            Canvas(modifier = Modifier
-                .size(padsSize - 1.dp)
-                .rotate(24f)) {
-                soloSymbol(false)
+        val notActiveColor = when {
+            selectedChannel == channel -> selectedButton
+            sequences[channel].isMuted -> repeatButtons
+            else -> buttons
+        }
+
+        val color = when (padsMode) {
+            SAVING -> dusk
+            LOADING -> dusk
+            SOLOING -> violet
+            MUTING -> violet
+            ERASING -> warmRed
+            CLEARING -> notWhite
+            else -> {
+                if (seqIsRecording) warmRed
+                else playGreen
             }
+        }
+
+        /*
+        val backgroundColor by animateColorAsState(
+            targetValue = when {
+                buttonIsPressed && padsMode == SELECTING -> selectedButton
+                buttonIsPressed || (sequences[channel].channelIsPlayingNotes > 0) -> color
+                else -> notActiveColor
+            },
+            animationSpec = tween(
+                durationMillis = if (buttonIsPressed || (sequences[channel].channelIsPlayingNotes > 0)) 0 else 200
+            ),
+            label = "padBG"
+        )
+
+        val borderColor by animateColorAsState(
+            targetValue = when {
+                sequences[channel].channelIsPlayingNotes > 0 -> color
+                else -> notActiveColor
+            },
+            animationSpec = tween(
+                durationMillis = if (sequences[channel].channelIsPlayingNotes > 0) 0 else 200
+            ),
+            label = "padBorder"
+        )
+
+         */
+
+        Box (
+            modifier = Modifier
+                .padding(buttonsPadding)
+                .size(padsSize - 1.dp)
+                .background(
+                    when {
+                        buttonIsPressed && padsMode == SELECTING -> selectedButton
+                        buttonIsPressed -> color
+                        else -> notActiveColor
+                    }
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                ) {}
+                .clipToBounds()
+//                .recomposeHighlighter()
+        ){
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (sequences[channel].isMuted && !sequences[channel].isSoloed) 0.25f else 1f)
+            ) {
+                Canvas(modifier = Modifier
+                    .fillMaxSize()
+                ){
+                    if (sequences[channel].channelIsPlayingNotes > 0) {
+                        drawRect(
+                            color = color,
+                            topLeft = Offset(0f, 0f),
+                            size = size,
+                            style = Stroke(
+                                width = 8.dp.toPx(),
+                                pathEffect = if(padsMode == ERASING || padsMode == CLEARING) {
+                                    PathEffect.dashPathEffect(floatArrayOf(size.width / 2, size.width / 2), size.width / 4)
+                                } else null
+                            )
+                        )
+                    }
+                }
+            }
+            if (sequences[channel].isSoloed) {
+                Canvas(modifier = Modifier
+                    .fillMaxSize()
+                    .rotate(24f)) {
+                    soloSymbol(padsMode == SOLOING && buttonIsPressed)
+                }
+            } else if (sequences[channel].isMuted) {
+                Canvas(modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (selectedChannel == channel || buttonIsPressed) 1f else 0.25f)
+                ) {
+                    muteSymbol(padsMode == MUTING && buttonIsPressed)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PadButtonOld(
+    interactionSource: MutableInteractionSource,
+    channel: Int,
+    pitch: Int,
+    seqViewModel: SeqViewModel,
+    seqUiState: SeqUiState,
+    padsSize: Dp,
+){
+    with(seqUiState) {
+        //    val interactionSource = remember { MutableInteractionSource() }
+        var elapsedTime = remember { 0L }
+        val buttonIsPressed by interactionSource.collectIsPressedAsState()
+        LaunchedEffect(interactionSource, pitch, sequences[channel].pressedNotes[pitch].isPressed, padsMode) {
+            interactionSource.interactions.collect { interaction ->
+                when (interaction) {
+                    is PressInteraction.Press -> {
+                        seqViewModel.pressPad(channel, pitch, 100)
+                        elapsedTime = System.currentTimeMillis()
+                        seqViewModel.rememberInteraction(channel, pitch, interaction)
+                    }
+                    is PressInteraction.Release -> {
+                        if (sequences[channel].pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
+                            seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+                        }
+                    }
+                    is PressInteraction.Cancel -> {
+                        if (sequences[channel].pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
+                            seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
+                        }
+                    }
+                }
+            }
+        }
+        val color = when (padsMode) {
+            SAVING -> dusk
+            LOADING -> dusk
+            SOLOING -> violet
+            MUTING -> violet
+            ERASING -> Color.Transparent
+            CLEARING -> Color.Transparent
+            else -> {
+                if (seqIsRecording) warmRed
+                else if (seqIsPlaying) playGreen
+                else Color.Transparent
+            }
+        }
+        Box{
+            Box(modifier = Modifier
+                .padding(buttonsPadding)
+                .alpha(if (sequences[channel].isMuted) 0.25f else 1f)
+            ){
+                Button(
+                    interactionSource = interactionSource,
+                    onClick = {},
+                    shape = buttonsShape,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = if(selectedChannel == channel) selectedButton else buttons
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier
+                        .size(padsSize - 1.dp)
+                        .border(
+                            width = 4.dp,
+                            color = if (sequences[channel].channelIsPlayingNotes > 0) color else Color.Transparent
+                        )
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(if (buttonIsPressed) color else Color.Transparent)
+                    ) {
+                        if (sequences[channel].channelIsPlayingNotes > 0) {
+                            DashedBorder(
+                                when (padsMode) {
+                                    ERASING -> warmRed
+                                    CLEARING -> notWhite
+                                    else -> Color.Transparent
+                                }
+                            )
+                        }
+                        if (sequences[channel].isMuted && !sequences[channel].isSoloed) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                muteSymbol(padsMode == MUTING && buttonIsPressed)
+                            }
+                        }
+                    }
+                }
+            }
+            if (channel == selectedChannel) {
+                Box(
+                    modifier = Modifier
+                        .size(padsSize - 1.dp)
+                        .padding(4.dp)
+                        .background(selectedButton)
+                )
+            }
+            if (buttonIsPressed) {
+                Box(
+                    modifier = Modifier
+                        .size(padsSize - 1.dp)
+                        .background(if (padsMode == SELECTING) selectedButton else color)
+                ) {
+                    if (sequences[channel].isMuted && !sequences[channel].isSoloed) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            muteSymbol(padsMode == MUTING)
+                        }
+                    }
+                }
+            }
+            if (sequences[channel].isSoloed) {
+                if (sequences[channel].channelIsPlayingNotes > 0) {
+                    Box(
+                        modifier = Modifier
+                            .size(padsSize - 1.dp)
+                            .border(
+                                width = 4.dp,
+                                color = if (sequences[channel].channelIsPlayingNotes > 0) color else Color.Transparent
+                            )
+                    )
+                }
+                Canvas(modifier = Modifier
+                    .size(padsSize - 1.dp)
+                    .rotate(24f)) {
+                    soloSymbol(padsMode == SOLOING && buttonIsPressed)
+                }
+            }
+//        else if (buttonIsPressed && sequences[channel].isMuted) {
+//            Canvas(modifier = Modifier
+//                .size(padsSize - 1.dp)
+//                .rotate(24f)) {
+//                muteSymbol(false)
+//            }
+//        }
         }
     }
 }
@@ -256,7 +440,7 @@ fun PadsModeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonType: P
                 .fillMaxSize()
                 .blur(6.dp)
                 .alpha(0.6f)
-                .rotate(if(buttonType == SOLOING) 24f else 0f)
+                .rotate(if (buttonType == SOLOING) 24f else 0f)
             ){
                 when(buttonType) {
                     SELECTING -> shiftSymbol(false)
@@ -271,7 +455,7 @@ fun PadsModeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonType: P
         }
         Canvas(modifier = Modifier
             .fillMaxSize()
-            .rotate(if(buttonType == SOLOING) 24f else 0f)
+            .rotate(if (buttonType == SOLOING) 24f else 0f)
         ){
             when(buttonType) {
                 SELECTING -> shiftSymbol(padsMode == SELECTING)

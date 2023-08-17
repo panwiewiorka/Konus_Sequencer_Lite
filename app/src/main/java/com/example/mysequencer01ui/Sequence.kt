@@ -19,8 +19,9 @@ class Sequence(
     var channelIsPlayingNotes: Int = 0,
     var playingNotes: Array<Int> = Array(128){ 0 },
     var pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, Long.MIN_VALUE) }, // manually pressed notes that are muting same ones played by sequencer
-    var notesDragEndOnRepeat: Array<Boolean> = Array(128){ false }, // remembering notes that shouldn't play on release/cancel
+    var notesDragEndOnRepeat: Array<Boolean> = Array(128){ false }, // remembering notes that shouldn't play on release/cancel // FIXME currently always false. Remove?
     var idOfNotesToIgnore: MutableList<Int> = mutableListOf(),
+    var pitchTempSavedForCancel: Int = 0,
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
     var noteId: Int = Int.MIN_VALUE,
 
@@ -54,12 +55,12 @@ class Sequence(
         seqIsPlaying: Boolean,
         isRepeating: Boolean,
         quantizeTime: (Double) -> Double,
+        stepView: Boolean,
         customTime: Double = -1.0,
-        stepRecord: Boolean = false,
         noteHeight: Float = 60f
     ) {
         if(velocity == 0 && notes.indexOfFirst { it.id == id && it.velocity > 0 } == -1) return
-        val customRecTime = if (customTime >= totalTime) customTime - totalTime else customTime
+        val customRecTime = if (customTime > totalTime) customTime - totalTime else customTime
 
         val recordTime = getRecordTime(
             quantizeTime,
@@ -94,7 +95,7 @@ class Sequence(
         indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
         indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
 
-        if(!stepRecord) {
+        if(!stepView) {
             stepViewYScroll = (noteHeight * (pitch - 5)).toInt().coerceAtLeast(0)
         }
     }
@@ -111,7 +112,7 @@ class Sequence(
         velocity: Int,
     ): Double {
         var time = when {
-            (customRecTime > -1) -> customRecTime
+            (customRecTime > -1) -> if (customRecTime == totalTime.toDouble() && velocity > 0) 0.0 else customRecTime
             !seqIsPlaying -> if (velocity > 0) 0.0 else quantizationTime
             !isRepeating -> deltaTime
             else -> deltaTimeRepeat
@@ -138,7 +139,9 @@ class Sequence(
         }
 
         return when {
-            (customRecTime > -1) || !seqIsPlaying -> time
+            (customRecTime > -1) || !seqIsPlaying -> {
+                time
+            }
             !isRepeating -> {
                 time = time.coerceAtMost(totalTime.toDouble())
                 if (time >= totalTime.toDouble() && velocity > 0) 0.0 else time
@@ -262,18 +265,20 @@ class Sequence(
                 idOfNotesToIgnore.removeAt(idOfNotesToIgnore.indexOfFirst{ it == notes[index].id })
             }
         }
-        else if (!pressedNotes[notes[index].pitch].isPressed && (isSoloed || (soloIsOff && !isMuted))) {
+        else {
+            if (!pressedNotes[notes[index].pitch].isPressed && (isSoloed || (soloIsOff && !isMuted))) {
 //                Log.d("ryjtyj", "deltaTimeRepeat = $deltaTimeRepeat, index = $index, pitch = ${notes[index].pitch}")
-            kmmk.noteOn(
-                channel,
-                notes[index].pitch,
-                notes[index].velocity
-            )
+                kmmk.noteOn(
+                    channel,
+                    notes[index].pitch,
+                    notes[index].velocity
+                )
+            }
             changePlayingNotes(notes[index].pitch, notes[index].velocity)
         }
     }
 
-    private var draggedNoteOffJob = CoroutineScope(Dispatchers.IO).launch { }
+    var draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch { }
 
     fun playingDraggedNoteOffInTime(factorBpm: Double) {
         Log.d("ryjtyj", "playingDraggedNoteOffInTime()")
@@ -282,9 +287,17 @@ class Sequence(
         } else {
             notes[draggedNoteOffIndex].time - notes[draggedNoteOnIndex].time + totalTime
         }
-        val pitchTemp = notes[draggedNoteOffIndex].pitch
-        if(draggedNoteOffJob.isActive) draggedNoteOffJob.cancel()
-        draggedNoteOffJob = CoroutineScope(Dispatchers.IO).launch {
+        val pitchTemp = notes[draggedNoteOnIndex].pitch
+
+        if(draggedNoteOffJob.isActive) {
+            draggedNoteOffJob.cancel()
+            Log.d("ryjtyj", "draggedNoteOffJob.cancel()")
+            kmmk.noteOn(channel, pitchTempSavedForCancel, 0)
+            changePlayingNotes(pitchTempSavedForCancel, 0)
+        }
+        pitchTempSavedForCancel = pitchTemp
+
+        draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch {
             delay((delayTime / factorBpm).toLong())
             kmmk.noteOn(channel, pitchTemp, 0)
             changePlayingNotes(pitchTemp, 0)
@@ -318,7 +331,10 @@ class Sequence(
             }
             if (breakFlag) return false // break out of while() when erased last note in array
 
-        } else if(isRepeating) indexToRepeat++ else indexToPlay++  // skipping noteOFFs
+        } else {  // skipping noteOFFs
+            if(isRepeating) indexToRepeat++ else indexToPlay++
+            changePlayingNotes(notes[index].pitch, 0)
+        }
         return true
     }
 
@@ -424,10 +440,11 @@ class Sequence(
             time
         }
 
-        if(notes[index].time >= BARTIME) {
-            notes[index].time -= BARTIME
-        } else if(notes[index].time < 0) {
-            notes[index].time += BARTIME
+        when {
+            notes[index].time > BARTIME -> notes[index].time -= BARTIME
+            notes[index].time == BARTIME.toDouble() && notes[index].velocity > 0 -> notes[index].time = 0.0
+            notes[index].time < 0 -> notes[index].time += BARTIME
+            else -> {}
         }
     }
 
@@ -447,6 +464,9 @@ class Sequence(
             playingNotes[pitch]--
             channelIsPlayingNotes--
         }
+        Log.d("ryjtyj", "playingNotes[$pitch] = ${playingNotes[pitch]}")
+        Log.d("ryjtyj", "channelIsPlayingNotes = $channelIsPlayingNotes")
+
 //        Log.d("ryjtyj", "playingNotes[$pitch] = ${playingNotes[pitch]}, channelIsPlayingNotes = $channelIsPlayingNotes")
         if(playingNotes[pitch] < 0) {
             Log.d("ryjtyj", "playingNotes[$pitch] = ${playingNotes[pitch]}, fixing to 0")

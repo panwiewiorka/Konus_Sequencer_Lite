@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
@@ -44,9 +43,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.KeyColorAndNumber
-import com.example.mysequencer01ui.PianoKeysType
 import com.example.mysequencer01ui.PianoKeysType.BLACK
 import com.example.mysequencer01ui.PianoKeysType.WHITE
+import com.example.mysequencer01ui.PressedNote
 import com.example.mysequencer01ui.RememberedPressInteraction
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -73,21 +72,24 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 .padding(bordersPadding),
         ) {
             val keyWidth = (maxWidth - notesPadding * 26) / 14
+            val halfOfQuantize = seqUiState.quantizationTime / seqUiState.factorBpm / 2
 
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
                 PianoKeyboard(
-                    seqViewModel.interactionSources[seqUiState.selectedChannel],
-                    seqViewModel::rememberInteraction,
-                    seqUiState.selectedChannel,
-                    playingNotes,
-                    seqUiState.seqIsRecording,
-                    keyWidth,
-                    keyHeight,
-                    pianoViewOctaveHigh,
-                    notesPadding,
-                    seqViewModel::pressPad
+                    interactionSources = seqViewModel.interactionSources[seqUiState.selectedChannel],
+                    rememberInteraction = seqViewModel::rememberInteraction,
+                    selectedChannel = seqUiState.selectedChannel,
+                    playingNotes = playingNotes,
+                    seqIsRecording = seqUiState.seqIsRecording,
+                    keyWidth = keyWidth,
+                    keyHeight = keyHeight,
+                    octave = pianoViewOctaveHigh,
+                    notesPadding = notesPadding,
+                    pressedNotes = seqUiState.sequences[seqUiState.selectedChannel].pressedNotes,
+                    pressPad = seqViewModel::pressPad,
+                    halfOfQuantize = halfOfQuantize
                 )
                 Row(
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -142,16 +144,18 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     }
                 }
                 PianoKeyboard(
-                    seqViewModel.interactionSources[seqUiState.selectedChannel],
-                    seqViewModel::rememberInteraction,
-                    seqUiState.selectedChannel,
-                    playingNotes,
-                    seqUiState.seqIsRecording,
-                    keyWidth,
-                    keyHeight,
-                    pianoViewOctaveLow,
-                    notesPadding,
-                    seqViewModel::pressPad
+                    interactionSources = seqViewModel.interactionSources[seqUiState.selectedChannel],
+                    rememberInteraction = seqViewModel::rememberInteraction,
+                    selectedChannel = seqUiState.selectedChannel,
+                    playingNotes = playingNotes,
+                    seqIsRecording = seqUiState.seqIsRecording,
+                    keyWidth = keyWidth,
+                    keyHeight = keyHeight,
+                    octave = pianoViewOctaveLow,
+                    notesPadding = notesPadding,
+                    pressedNotes = seqUiState.sequences[seqUiState.selectedChannel].pressedNotes,
+                    pressPad = seqViewModel::pressPad,
+                    halfOfQuantize = halfOfQuantize
                 )
             }
         }
@@ -170,14 +174,16 @@ fun PianoKeyboard(
     keyHeight: Dp,
     octave: Int,
     notesPadding: Dp,
+    pressedNotes: Array<PressedNote>,
     pressPad: (Int, Int, Int) -> Unit,
+    halfOfQuantize: Double
 ) {
     val startPitch = 0
     Column(
         verticalArrangement = Arrangement.spacedBy(-keyHeight / 2),
 //        modifier = Modifier.horizontalScroll(keyboardScrollState),
     ) {
-        Row() {
+        Row {
             repeat(24) {
                 val key = getKeyColorAndNumber(startPitch, it)
                 val keyIsWhite = !key.isBlack
@@ -190,13 +196,15 @@ fun PianoKeyboard(
                         rememberInteraction = rememberInteraction,
                         seqIsRecording = seqIsRecording,
                         noteIsPlaying = playingNotes[pitch] > 0,
+                        isPressed = pressedNotes[pitch].isPressed,
                         pressPad = pressPad,
                         selectedChannel = selectedChannel,
                         pitch = pitch,
                         keyWidth = keyWidth,
                         keyHeight = keyHeight,
                         notesPadding = notesPadding,
-                        whiteKey = true
+                        whiteKey = true,
+                        halfOfQuantize = halfOfQuantize
                     )
                     if (pitch % 12 == 0) Text("${(pitch / 12) - 1}")
                 }
@@ -215,13 +223,15 @@ fun PianoKeyboard(
                     rememberInteraction = rememberInteraction,
                     seqIsRecording = seqIsRecording,
                     noteIsPlaying = playingNotes[pitch] > 0,
+                    isPressed = pressedNotes[pitch].isPressed,
                     pressPad = pressPad,
                     selectedChannel = selectedChannel,
                     pitch = pitch,
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
                     notesPadding = notesPadding,
-                    whiteKey = false
+                    whiteKey = false,
+                    halfOfQuantize = halfOfQuantize
                 )
                 if(key.number % 12 == 5 || key.number % 12 == 0) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
             }
@@ -241,6 +251,7 @@ fun PianoKey(
     rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
     seqIsRecording: Boolean,
     noteIsPlaying: Boolean,
+    isPressed: Boolean,
     pressPad: (Int, Int, Int) -> Unit,
     selectedChannel: Int,
     pitch: Int,
@@ -248,21 +259,25 @@ fun PianoKey(
     keyHeight: Dp,
     notesPadding: Dp,
     whiteKey: Boolean,
+    halfOfQuantize: Double,
 ) {
-    val keyIsPressed by interactionSource.collectIsPressedAsState()
+//    val keyIsPressed by interactionSource.collectIsPressedAsState()
 //    val interactionSource = remember { MutableInteractionSource() }
-    LaunchedEffect(interactionSource, selectedChannel, pitch) {
+    var elapsedTime = 0L
+    LaunchedEffect(interactionSource, selectedChannel, pitch, isPressed) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     pressPad(selectedChannel, pitch, 100)
                     rememberInteraction(selectedChannel, pitch, interaction)
+                    elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
-                    pressPad(selectedChannel, pitch, 0)
+                    // second condition needed for slow smartphones skipping noteOff due to 'isPressed' not updating in time
+                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0)
                 }
                 is PressInteraction.Cancel -> {
-                    pressPad(selectedChannel, pitch, 0)
+                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0)
                 }
             }
         }
@@ -273,7 +288,7 @@ fun PianoKey(
             .padding(notesPadding, 0.dp)
             .border(4.dp, if (noteIsPlaying) color else Color.Transparent)
             .background(
-                if (keyIsPressed) {
+                if (isPressed) {
                     color
                 } else {
                     if (whiteKey) notWhite else BackGray
@@ -285,6 +300,7 @@ fun PianoKey(
                 interactionSource = interactionSource,
                 indication = null
             ) { }
+//            .recomposeHighlighter()
     ) { }
 }
 
