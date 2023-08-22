@@ -198,7 +198,7 @@ fun PadButton(
                 Canvas(modifier = Modifier
                     .fillMaxSize()
                 ){
-                    if (sequences[channel].channelIsPlayingNotes > 0) {
+                    if (padsState[channel]) {
                         drawRect(
                             color = color,
                             topLeft = Offset(0f, 0f),
@@ -420,7 +420,7 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
 
 
 @Composable
-fun PadsModeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonType: PadsMode, buttonsSize: Dp, color: Color, toggleTime: Int){
+fun PadsModeButton(editCurrentPadsMode: (PadsMode, Boolean, Boolean) -> Unit, padsMode: PadsMode, buttonType: PadsMode, buttonsSize: Dp, color: Color, toggleTime: Int){
     Box(
         modifier = Modifier
             .size(buttonsSize)
@@ -429,11 +429,12 @@ fun PadsModeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonType: P
             .clickable(
                 interactionSource = buttonInteraction(
                     toggleTime,
-                    { seqViewModel.editCurrentPadsMode(buttonType, true) },
-                    { seqViewModel.editCurrentPadsMode(buttonType, false, true) }
+                    { editCurrentPadsMode(buttonType, true, false) },
+                    { editCurrentPadsMode(buttonType, false, true) }
                 ),
                 indication = null
             ) { }
+            .recomposeHighlighter()
     ){
         if (padsMode != buttonType) {
             Canvas(modifier = Modifier
@@ -528,6 +529,8 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp, showStrikeStripe: Boo
 
 @Composable
 fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp, isQuantizing: Boolean, quantizeModeTimer: Int){
+    Log.d("ryjtyj", "padsMode = $padsMode")
+
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = 0L
     LaunchedEffect(interactionSource) {

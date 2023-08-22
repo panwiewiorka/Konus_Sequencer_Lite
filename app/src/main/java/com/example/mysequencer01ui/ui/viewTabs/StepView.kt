@@ -7,7 +7,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderColors
@@ -199,7 +198,7 @@ fun NotesGrid(
                                     // if note exists where we tap - erase it, else record new note
                                     if (noteExistsWhereWeTap) {
 
-                                        erasing(seqUiState.isRepeating, noteOnIndex, true)
+                                        erasing(seqUiState.isRepeating, noteOnIndex, true, seqViewModel::updateSequencesUiState, seqViewModel::updatePadsUiState)
 
                                         if (seqUiState.isRepeating) {
                                             indexToRepeat =
@@ -398,7 +397,11 @@ fun NotesGrid(
                                                 }
                                                 delay((delayTime / seqUiState.factorBpm).toLong())
                                                 kmmk.noteOn(channel, tempPitch, 0)
-                                                changePlayingNotes(tempPitch, 0)
+                                                changePlayingNotes(
+                                                    tempPitch,
+                                                    0,
+                                                    seqViewModel::updatePadsUiState
+                                                )
                                             }
                                         }
                                     }

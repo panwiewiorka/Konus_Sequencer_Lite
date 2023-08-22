@@ -31,6 +31,16 @@ data class KeyColorAndNumber (
     var number: Int,
 )
 
+data class RecordingPackage (
+    val theIndex: Int,
+    val recordTime: Double,
+    val pitch: Int,
+    val id: Int,
+    val velocity: Int,
+    val stepView: Boolean,
+    val noteHeight: Float
+)
+
 //-------------------------------------
 
 enum class PadsMode{

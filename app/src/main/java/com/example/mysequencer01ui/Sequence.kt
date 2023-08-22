@@ -21,6 +21,7 @@ class Sequence(
     var pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, Long.MIN_VALUE) }, // manually pressed notes that are muting same ones played by sequencer
     var notesDragEndOnRepeat: Array<Boolean> = Array(128){ false }, // remembering notes that shouldn't play on release/cancel // FIXME currently always false. Remove?
     var idOfNotesToIgnore: MutableList<Int> = mutableListOf(),
+    var listOfNotesToRecord: MutableList<RecordingPackage> = mutableListOf(),
     var pitchTempSavedForCancel: Int = 0,
     var onPressedMode: PadsMode = PadsMode.DEFAULT,
     var noteId: Int = Int.MIN_VALUE,
@@ -59,6 +60,8 @@ class Sequence(
         customTime: Double = -1.0,
         noteHeight: Float = 60f
     ) {
+        Log.d("ryjtyj", "recording() at channel $channel, id = ${id - Int.MIN_VALUE}, velocity = $velocity")
+
         if(velocity == 0 && notes.indexOfFirst { it.id == id && it.velocity > 0 } == -1) return
         val customRecTime = if (customTime > totalTime) customTime - totalTime else customTime
 
@@ -75,28 +78,12 @@ class Sequence(
         )
         if (recordTime == repeatEndTime && isRepeating && velocity > 0) return
 
-        var index = notes.indexOfLast { it.time <= recordTime } + 1
+        val index = notes.indexOfLast { it.time <= recordTime } + 1
 
-        Log.d("ryjtyj", "index to record: $index, record time = $recordTime")
-
-        index = overdubPlayingNotes(pitch, recordTime, id, velocity, index)
-
-        // if noteOff has the same time as some other note(ON) -> place it before:
-        val indexOfNoteOnAtTheSameTime = notes.indexOfLast { it.time == recordTime && it.pitch == pitch && it.velocity > 0 && velocity == 0 }
-        if (indexOfNoteOnAtTheSameTime != -1) {
-            Log.d("ryjtyj", "indexOfNoteOnAtTheSameTime = $indexOfNoteOnAtTheSameTime")
-            index = indexOfNoteOnAtTheSameTime
-        }
-
-        // RECORDING
-        Log.d("ryjtyj", "RECORDING index = $index, id = ${id - Int.MIN_VALUE}")
-        recIntoArray(index, recordTime, pitch, velocity, id)
-
-        indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
-        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
-
-        if(!stepView) {
-            stepViewYScroll = (noteHeight * (pitch - 5)).toInt().coerceAtLeast(0)
+        if(seqIsPlaying) {
+            listOfNotesToRecord.add(RecordingPackage(index, recordTime, pitch, id, velocity, stepView, noteHeight))
+        } else {
+            recording(index, recordTime, pitch, id, velocity, stepView, noteHeight)
         }
     }
 
@@ -250,9 +237,45 @@ class Sequence(
         }
     }
 
+    fun recording(
+        theIndex: Int,
+        recordTime: Double,
+        pitch: Int,
+        id: Int,
+        velocity: Int,
+        stepView: Boolean,
+        noteHeight: Float
+    ) {
+        var index = theIndex
+        Log.d("ryjtyj", "index to record: $index, record time = $recordTime")
+
+        index = overdubPlayingNotes(pitch, recordTime, id, velocity, index)
+
+        // if noteOff has the same time as some other note(ON) -> place it before:
+        val indexOfNoteOnAtTheSameTime =
+            notes.indexOfLast { it.time == recordTime && it.pitch == pitch && it.velocity > 0 && velocity == 0 }
+        if (indexOfNoteOnAtTheSameTime != -1) {
+            Log.d("ryjtyj", "indexOfNoteOnAtTheSameTime = $indexOfNoteOnAtTheSameTime")
+            index = indexOfNoteOnAtTheSameTime
+        }
+
+        // RECORDING
+        Log.d("ryjtyj", "RECORDING index = $index, id = ${id - Int.MIN_VALUE}")
+        recIntoArray(index, recordTime, pitch, velocity, id)
+
+        indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
+        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
+
+        if (!stepView) {
+            stepViewYScroll = (noteHeight * (pitch - 5)).toInt().coerceAtLeast(0)
+        }
+    }
 
 
-    fun playing(index: Int, soloIsOff: Boolean, stepView: Boolean) {
+
+    fun playing(index: Int, soloIsOff: Boolean, stepView: Boolean, updatePadsUiState: (Pair<Int, Boolean>) -> Unit) {
+        if(notes.size <= index) Log.e("ryjtyj", "start of playing(): channel $channel, index = $index, indexToPlay = $indexToPlay, notes.size = ${notes.size}")
+
         if(notesDragEndOnRepeat[notes[index].pitch] && stepView && notes[index].velocity == 0) {  // a fix for playingNotes == -1 when releasing dragged note that was playing
             Log.d("ryjtyj", "notesDragEndOnRepeat INDEX = $index, PITCH = ${notes[index].pitch}")
             notesDragEndOnRepeat[notes[index].pitch] = false
@@ -267,20 +290,20 @@ class Sequence(
         }
         else {
             if (!pressedNotes[notes[index].pitch].isPressed && (isSoloed || (soloIsOff && !isMuted))) {
-//                Log.d("ryjtyj", "deltaTimeRepeat = $deltaTimeRepeat, index = $index, pitch = ${notes[index].pitch}")
+                Log.d("ryjtyj", "playing() at channel $channel: deltaTimeRepeat = $deltaTimeRepeat, index = $index, pitch = ${notes[index].pitch}")
                 kmmk.noteOn(
                     channel,
                     notes[index].pitch,
                     notes[index].velocity
                 )
             }
-            changePlayingNotes(notes[index].pitch, notes[index].velocity)
+            changePlayingNotes(notes[index].pitch, notes[index].velocity, updatePadsUiState)
         }
     }
 
-    var draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch { }
+    var draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch { } // TODO change to IO?
 
-    fun playingDraggedNoteOffInTime(factorBpm: Double) {
+    fun playingDraggedNoteOffInTime(factorBpm: Double, updatePadsUiState: (Pair<Int, Boolean>) -> Unit) {
         Log.d("ryjtyj", "playingDraggedNoteOffInTime()")
         val delayTime = if (draggedNoteOnIndex < draggedNoteOffIndex) {
             notes[draggedNoteOffIndex].time - notes[draggedNoteOnIndex].time
@@ -293,20 +316,20 @@ class Sequence(
             draggedNoteOffJob.cancel()
             Log.d("ryjtyj", "draggedNoteOffJob.cancel()")
             kmmk.noteOn(channel, pitchTempSavedForCancel, 0)
-            changePlayingNotes(pitchTempSavedForCancel, 0)
+            changePlayingNotes(pitchTempSavedForCancel, 0, updatePadsUiState)
         }
         pitchTempSavedForCancel = pitchTemp
 
         draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch {
             delay((delayTime / factorBpm).toLong())
             kmmk.noteOn(channel, pitchTemp, 0)
-            changePlayingNotes(pitchTemp, 0)
+            changePlayingNotes(pitchTemp, 0, updatePadsUiState)
         }
     }
 
 
 
-    fun erasing(isRepeating: Boolean, index: Int, stepViewCase: Boolean): Boolean {
+    fun erasing(isRepeating: Boolean, index: Int, stepViewCase: Boolean, updateSequencesUiState: () -> Unit, updatePadsUiState: (Pair<Int, Boolean>) -> Unit): Boolean {
         if (notes[index].velocity > 0 && (notes[index].id != pressedNotes[notes[index].pitch].id || !pressedNotes[notes[index].pitch].isPressed)
         ) {
             Log.d("ryjtyj", "erasing index $index")
@@ -314,7 +337,7 @@ class Sequence(
             var pairedNoteOffIndex = getNotePairedIndexAndTime(index).index
 
             // stop note_to_be_erased if playing (StepView condition)
-            if(stepViewCase) stopNoteIfPlaying(isRepeating, index, pairedNoteOffIndex)
+            if(stepViewCase) stopNoteIfPlaying(isRepeating, index, pairedNoteOffIndex, updatePadsUiState)
 
             if(pairedNoteOffIndex > index) pairedNoteOffIndex--
 
@@ -329,11 +352,12 @@ class Sequence(
             if (pairedNoteOffIndex < index && pairedNoteOffIndex > -1) {
                 if(isRepeating) if(indexToRepeat > 0) indexToRepeat-- else if(indexToPlay > 0) indexToPlay-- // TODO why we don't indexToPlay-- in other conditions, if else if..
             }
+            updateSequencesUiState()
             if (breakFlag) return false // break out of while() when erased last note in array
 
         } else {  // skipping noteOFFs
             if(isRepeating) indexToRepeat++ else indexToPlay++
-            changePlayingNotes(notes[index].pitch, 0)
+            changePlayingNotes(notes[index].pitch, 0, updatePadsUiState)
         }
         return true
     }
@@ -369,7 +393,7 @@ class Sequence(
 
 
 
-    fun clearChannel(channel: Int) {
+    fun clearChannel(channel: Int, updatePadsUiState: (Pair<Int, Boolean>) -> Unit) {
         indexToPlay = 0
         indexToRepeat = 0
         indexToStartRepeating = 0
@@ -377,7 +401,7 @@ class Sequence(
         for(p in 0..127){
             while(playingNotes[p] > 0) {
                 kmmk.noteOn(channel, p, 0)
-                changePlayingNotes(p, 0)
+                changePlayingNotes(p, 0, updatePadsUiState)
             }
         }
         Log.d("emptyTag", " ") // to hold in imports
@@ -388,7 +412,8 @@ class Sequence(
     private fun stopNoteIfPlaying(
         isRepeating: Boolean,
         noteOnIndex: Int,
-        noteOffIndex: Int
+        noteOffIndex: Int,
+        updatePadsUiState: (Pair<Int, Boolean>) -> Unit
     ) {
         if(noteOnIndex == -1 || noteOffIndex == -1) {
             Log.d("ryjtyj", "stopNoteIfPlaying() error: ${if(noteOnIndex == -1) "noteOnIndex" else "noteOffIndex"} out of bounds")
@@ -401,7 +426,7 @@ class Sequence(
         }
         while (!pressedNotes[notes[noteOnIndex].pitch].isPressed && playingNotes[notes[noteOnIndex].pitch] > 0 && deltaTimeInRange) {
             kmmk.noteOn(channel, notes[noteOnIndex].pitch, 0)
-            changePlayingNotes(notes[noteOnIndex].pitch, 0)
+            changePlayingNotes(notes[noteOnIndex].pitch, 0, updatePadsUiState)
         }
     }
 
@@ -456,7 +481,7 @@ class Sequence(
         noteId++
     }
 
-    fun changePlayingNotes(pitch: Int, velocity: Int) {
+    fun changePlayingNotes(pitch: Int, velocity: Int, updatePadsUiState: (Pair<Int, Boolean>) -> Unit) {
         if(velocity > 0) {
             playingNotes[pitch]++
             channelIsPlayingNotes++
@@ -464,8 +489,8 @@ class Sequence(
             playingNotes[pitch]--
             channelIsPlayingNotes--
         }
-        Log.d("ryjtyj", "playingNotes[$pitch] = ${playingNotes[pitch]}")
-        Log.d("ryjtyj", "channelIsPlayingNotes = $channelIsPlayingNotes")
+        Log.d("ryjtyj", "channel $channel: playingNotes[$pitch] = ${playingNotes[pitch]}")
+        Log.d("ryjtyj", "channel $channel: channelIsPlayingNotes = $channelIsPlayingNotes")
 
 //        Log.d("ryjtyj", "playingNotes[$pitch] = ${playingNotes[pitch]}, channelIsPlayingNotes = $channelIsPlayingNotes")
         if(playingNotes[pitch] < 0) {
@@ -476,6 +501,7 @@ class Sequence(
             Log.d("ryjtyj", "channelIsPlayingNotes = $channelIsPlayingNotes, fixing to 0")
             channelIsPlayingNotes = 0
         }
+        updatePadsUiState(Pair(channel, channelIsPlayingNotes > 0))
     }
 
     fun searchIndexInTimeBoundaries(): Int {

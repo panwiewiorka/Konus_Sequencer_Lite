@@ -36,5 +36,6 @@ data class SeqUiState (
     val stepViewNoteHeight: Dp = 20.dp,
     val visualArrayRefresh: Boolean = false,
 
+    val padsState: Array<Boolean> = Array(16){false},
     val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it, kmmk) },
     )

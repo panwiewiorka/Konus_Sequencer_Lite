@@ -1,5 +1,10 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,6 +41,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.mysequencer01ui.ui.BARTIME
 import com.example.mysequencer01ui.ui.PadsGrid
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -126,6 +132,14 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
             .padding(buttonsPadding)
             .background(BackGray)
     ) {
+//        val playheadState = animateFloatAsState(
+//            targetValue = if(!seqUiState.seqIsPlaying) 0f else BARTIME.toFloat(),
+//            animationSpec = infiniteRepeatable(
+//                TweenSpec(BARTIME, easing = LinearEasing)
+//            ),
+//            label = "playhead"
+//        )
+
         Canvas(modifier = Modifier.fillMaxSize()) {
 
             // STEP LINES
@@ -154,6 +168,7 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                 with(seqUiState.sequences[c]) {
                     val widthFactor = size.width / totalTime
                     val playhead = (widthFactor * deltaTime).toFloat()
+//                    val playhead = (widthFactor * playheadState.value)
                     val playheadRepeat = (widthFactor * deltaTimeRepeat).toFloat()
 
                     // NOTES
@@ -224,7 +239,7 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
 
                     if (c == 15) playHeads(seqUiState, playhead, playheadRepeat)
 
-                    if (seqUiState.isRepeating) repeatBounds(this, widthFactor, 0.3f)
+                    if (seqUiState.isRepeating) repeatBounds(this, widthFactor, 0.1f)
                 }
             }
         }
