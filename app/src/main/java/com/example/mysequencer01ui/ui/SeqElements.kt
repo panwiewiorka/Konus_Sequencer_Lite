@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.util.Log
 import android.view.WindowManager
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -63,7 +61,6 @@ import com.example.mysequencer01ui.PadsMode.DEFAULT
 import com.example.mysequencer01ui.PadsMode.ERASING
 import com.example.mysequencer01ui.PadsMode.LOADING
 import com.example.mysequencer01ui.PadsMode.MUTING
-import com.example.mysequencer01ui.PadsMode.QUANTIZING
 import com.example.mysequencer01ui.PadsMode.SAVING
 import com.example.mysequencer01ui.PadsMode.SELECTING
 import com.example.mysequencer01ui.PadsMode.SOLOING
@@ -98,134 +95,137 @@ fun PadButton(
     interactionSource: MutableInteractionSource,
     channel: Int,
     pitch: Int,
-    seqViewModel: SeqViewModel,
-    seqUiState: SeqUiState,
+    pressPad: (Int, Int, Int, Long) -> Unit,
+    rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
+    padsMode: PadsMode,
     padsSize: Dp,
+    selectedChannel: Int,
+    seqIsRecording: Boolean,
+    channelIsPlaying: Boolean, // padsState[channel] = true
+    sequence: Sequence, // sequences[channel]
 ){
-    with(seqUiState) {
-        //    val interactionSource = remember { MutableInteractionSource() }
-        var elapsedTime = remember { 0L }
-        val buttonIsPressed by interactionSource.collectIsPressedAsState()
-        LaunchedEffect(interactionSource, pitch, sequences[channel].pressedNotes[pitch].isPressed, padsMode) {
-            interactionSource.interactions.collect { interaction ->
-                when (interaction) {
-                    is PressInteraction.Press -> {
-                        seqViewModel.pressPad(channel, pitch, 100)
-                        elapsedTime = System.currentTimeMillis()
-                        seqViewModel.rememberInteraction(channel, pitch, interaction)
+    //    val interactionSource = remember { MutableInteractionSource() }
+    var elapsedTime = remember { 0L }
+    val buttonIsPressed by interactionSource.collectIsPressedAsState()
+    LaunchedEffect(interactionSource, pitch, sequence.pressedNotes[pitch].isPressed, padsMode) {
+        interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> {
+                    pressPad(channel, pitch, 100, 0)
+                    elapsedTime = System.currentTimeMillis()
+                    rememberInteraction(channel, pitch, interaction)
+                }
+                is PressInteraction.Release -> {
+                    if (sequence.pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
+                        pressPad(channel, pitch, 0, elapsedTime)
                     }
-                    is PressInteraction.Release -> {
-                        if (sequences[channel].pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
-                            seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
-                        }
-                    }
-                    is PressInteraction.Cancel -> {
-                        if (sequences[channel].pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
-                            seqViewModel.pressPad(channel, pitch, 0, elapsedTime)
-                        }
+                }
+                is PressInteraction.Cancel -> {
+                    if (sequence.pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
+                        pressPad(channel, pitch, 0, elapsedTime)
                     }
                 }
             }
         }
-        val notActiveColor = when {
-            selectedChannel == channel -> selectedButton
-            sequences[channel].isMuted -> repeatButtons
-            else -> buttons
+    }
+    val notActiveColor = when {
+        selectedChannel == channel -> selectedButton
+        sequence.isMuted -> repeatButtons
+        else -> buttons
+    }
+
+    val color = when (padsMode) {
+        SAVING -> dusk
+        LOADING -> dusk
+        SOLOING -> violet
+        MUTING -> violet
+        ERASING -> warmRed
+        CLEARING -> notWhite
+        else -> {
+            if (seqIsRecording) warmRed
+            else playGreen
         }
+    }
 
-        val color = when (padsMode) {
-            SAVING -> dusk
-            LOADING -> dusk
-            SOLOING -> violet
-            MUTING -> violet
-            ERASING -> warmRed
-            CLEARING -> notWhite
-            else -> {
-                if (seqIsRecording) warmRed
-                else playGreen
-            }
-        }
+    /*
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            buttonIsPressed && padsMode == SELECTING -> selectedButton
+            buttonIsPressed || (sequences[channel].channelIsPlayingNotes > 0) -> color
+            else -> notActiveColor
+        },
+        animationSpec = tween(
+            durationMillis = if (buttonIsPressed || (sequences[channel].channelIsPlayingNotes > 0)) 0 else 200
+        ),
+        label = "padBG"
+    )
 
-        /*
-        val backgroundColor by animateColorAsState(
-            targetValue = when {
-                buttonIsPressed && padsMode == SELECTING -> selectedButton
-                buttonIsPressed || (sequences[channel].channelIsPlayingNotes > 0) -> color
-                else -> notActiveColor
-            },
-            animationSpec = tween(
-                durationMillis = if (buttonIsPressed || (sequences[channel].channelIsPlayingNotes > 0)) 0 else 200
-            ),
-            label = "padBG"
-        )
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            sequences[channel].channelIsPlayingNotes > 0 -> color
+            else -> notActiveColor
+        },
+        animationSpec = tween(
+            durationMillis = if (sequences[channel].channelIsPlayingNotes > 0) 0 else 200
+        ),
+        label = "padBorder"
+    )
 
-        val borderColor by animateColorAsState(
-            targetValue = when {
-                sequences[channel].channelIsPlayingNotes > 0 -> color
-                else -> notActiveColor
-            },
-            animationSpec = tween(
-                durationMillis = if (sequences[channel].channelIsPlayingNotes > 0) 0 else 200
-            ),
-            label = "padBorder"
-        )
+     */
 
-         */
-
-        Box (
+    Box (
+        modifier = Modifier
+            .padding(buttonsPadding)
+            .size(padsSize - 1.dp)
+            .background(
+                when {
+                    buttonIsPressed && padsMode == SELECTING -> selectedButton
+                    buttonIsPressed -> color
+                    else -> notActiveColor
+                }
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+            ) {}
+            .clipToBounds()
+            .recomposeHighlighter()
+    ){
+        Box(
             modifier = Modifier
-                .padding(buttonsPadding)
-                .size(padsSize - 1.dp)
-                .background(
-                    when {
-                        buttonIsPressed && padsMode == SELECTING -> selectedButton
-                        buttonIsPressed -> color
-                        else -> notActiveColor
-                    }
-                )
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                ) {}
-                .clipToBounds()
-//                .recomposeHighlighter()
-        ){
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(if (sequences[channel].isMuted && !sequences[channel].isSoloed) 0.25f else 1f)
-            ) {
-                Canvas(modifier = Modifier
-                    .fillMaxSize()
-                ){
-                    if (padsState[channel]) {
-                        drawRect(
-                            color = color,
-                            topLeft = Offset(0f, 0f),
-                            size = size,
-                            style = Stroke(
-                                width = 8.dp.toPx(),
-                                pathEffect = if(padsMode == ERASING || padsMode == CLEARING) {
-                                    PathEffect.dashPathEffect(floatArrayOf(size.width / 2, size.width / 2), size.width / 4)
-                                } else null
-                            )
+                .fillMaxSize()
+                .alpha(if (sequence.isMuted && !sequence.isSoloed) 0.25f else 1f)
+        ) {
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+            ){
+                if (channelIsPlaying) {
+                    drawRect(
+                        color = color,
+                        topLeft = Offset(0f, 0f),
+                        size = size,
+                        style = Stroke(
+                            width = 8.dp.toPx(),
+                            pathEffect = if(padsMode == ERASING || padsMode == CLEARING) {
+                                PathEffect.dashPathEffect(floatArrayOf(size.width / 2, size.width / 2), size.width / 4)
+                            } else null
                         )
-                    }
+                    )
                 }
             }
-            if (sequences[channel].isSoloed) {
-                Canvas(modifier = Modifier
-                    .fillMaxSize()
-                    .rotate(24f)) {
-                    soloSymbol(padsMode == SOLOING && buttonIsPressed)
-                }
-            } else if (sequences[channel].isMuted) {
-                Canvas(modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(if (selectedChannel == channel || buttonIsPressed) 1f else 0.25f)
-                ) {
-                    muteSymbol(padsMode == MUTING && buttonIsPressed)
-                }
+        }
+        if (sequence.isSoloed) {
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .rotate(24f)) {
+                soloSymbol(padsMode == SOLOING && buttonIsPressed)
+            }
+        } else if (sequence.isMuted) {
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .alpha(if (selectedChannel == channel || buttonIsPressed) 1f else 0.25f)
+            ) {
+                muteSymbol(padsMode == MUTING && buttonIsPressed)
             }
         }
     }
@@ -401,15 +401,21 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
                     for(x in 0..3) {
                         Box {
                             val pitch = 60
+                            val channel = x + (3 - y) * 4
                             PadButton(
-                                seqViewModel.interactionSources[x + (3 - y) * 4][pitch].interactionSource,
-                                x + (3 - y) * 4,
+                                seqViewModel.interactionSources[channel][pitch].interactionSource,
+                                channel,
                                 pitch,
-                                seqViewModel,
-                                seqUiState,
-                                padsSize
+                                seqViewModel::pressPad,
+                                seqViewModel::rememberInteraction,
+                                seqUiState.padsMode,
+                                padsSize,
+                                seqUiState.selectedChannel,
+                                seqUiState.seqIsRecording,
+                                seqUiState.padsState[channel],
+                                seqUiState.sequences[channel],
                             )
-//                            Text("${x + (3 - y) * 4}")
+//                            Text("$channel")
                         }
                     }
                 }
@@ -420,12 +426,12 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
 
 
 @Composable
-fun PadsModeButton(editCurrentPadsMode: (PadsMode, Boolean, Boolean) -> Unit, padsMode: PadsMode, buttonType: PadsMode, buttonsSize: Dp, color: Color, toggleTime: Int){
+fun PadsModeButton(editCurrentPadsMode: (PadsMode, Boolean, Boolean) -> Unit, buttonIsSelected: Boolean, buttonType: PadsMode, buttonsSize: Dp, color: Color, toggleTime: Int){
     Box(
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (padsMode == buttonType) color else buttons)
+            .background(if (buttonIsSelected) color else buttons)
             .clickable(
                 interactionSource = buttonInteraction(
                     toggleTime,
@@ -434,9 +440,8 @@ fun PadsModeButton(editCurrentPadsMode: (PadsMode, Boolean, Boolean) -> Unit, pa
                 ),
                 indication = null
             ) { }
-            .recomposeHighlighter()
     ){
-        if (padsMode != buttonType) {
+        if (!buttonIsSelected) {
             Canvas(modifier = Modifier
                 .fillMaxSize()
                 .blur(6.dp)
@@ -459,13 +464,13 @@ fun PadsModeButton(editCurrentPadsMode: (PadsMode, Boolean, Boolean) -> Unit, pa
             .rotate(if (buttonType == SOLOING) 24f else 0f)
         ){
             when(buttonType) {
-                SELECTING -> shiftSymbol(padsMode == SELECTING)
-                SAVING -> saveArrow(padsMode == SAVING)
-                LOADING -> loadArrow(padsMode == LOADING)
-                SOLOING -> soloSymbol(padsMode == SOLOING)
-                MUTING -> muteSymbol(padsMode == MUTING)
-                ERASING -> eraseSymbol(padsMode == ERASING)
-                else -> clearSymbol(padsMode == CLEARING)
+                SELECTING -> shiftSymbol(buttonIsSelected)
+                SAVING -> saveArrow(buttonIsSelected)
+                LOADING -> loadArrow(buttonIsSelected)
+                SOLOING -> soloSymbol(buttonIsSelected)
+                MUTING -> muteSymbol(buttonIsSelected)
+                ERASING -> eraseSymbol(buttonIsSelected)
+                else -> clearSymbol(buttonIsSelected)
             }
         }
     }
@@ -528,8 +533,7 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp, showStrikeStripe: Boo
 
 
 @Composable
-fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: Dp, isQuantizing: Boolean, quantizeModeTimer: Int){
-    Log.d("ryjtyj", "padsMode = $padsMode")
+fun QuantizeButton(switchPadsToQuantizingMode: (Boolean) -> Unit, switchQuantization: () -> Unit, padsModeIsQuantizing: Boolean, buttonsSize: Dp, isQuantizing: Boolean, quantizeModeTimer: Int, toggleTime: Int){
 
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = 0L
@@ -538,19 +542,19 @@ fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: 
             when (interaction) {
                 is PressInteraction.Press -> {
                     elapsedTime = System.currentTimeMillis()
-                    seqViewModel.switchPadsToQuantizingMode(true)
+                    switchPadsToQuantizingMode(true)
                 }
                 is PressInteraction.Release -> {
-                    if ((System.currentTimeMillis() - elapsedTime) < seqViewModel.toggleTime) {
-                        seqViewModel.switchQuantization()
+                    if ((System.currentTimeMillis() - elapsedTime) < toggleTime) {
+                        switchQuantization()
                     }
-                    seqViewModel.switchPadsToQuantizingMode(false)
+                    switchPadsToQuantizingMode(false)
                 }
                 is PressInteraction.Cancel -> {
-                    if ((System.currentTimeMillis() - elapsedTime) < seqViewModel.toggleTime) {
-                        seqViewModel.switchQuantization()
+                    if ((System.currentTimeMillis() - elapsedTime) < toggleTime) {
+                        switchQuantization()
                     }
-                    seqViewModel.switchPadsToQuantizingMode(false)
+                    switchPadsToQuantizingMode(false)
                 }
             }
         }
@@ -559,14 +563,14 @@ fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: 
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (padsMode == QUANTIZING) dusk else buttons)
+            .background(if (padsModeIsQuantizing) dusk else buttons)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
             ) { }
     ){
-        val progress = quantizeModeTimer.toFloat() / seqViewModel.toggleTime
-        if (padsMode != QUANTIZING) {
+        val progress = quantizeModeTimer.toFloat() / toggleTime
+        if (!padsModeIsQuantizing) {
             Canvas(modifier = Modifier
                 .fillMaxSize()
                 .blur(6.dp)
@@ -577,7 +581,7 @@ fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: 
         }
         Canvas(modifier = Modifier.fillMaxSize()){
 //            if(isQuantizing) quantizeSymbolColor(padsMode == QUANTIZING) else quantizeSymbol(padsMode == QUANTIZING)
-            quantizeSymbol(padsMode == QUANTIZING, isQuantizing)
+            quantizeSymbol(padsModeIsQuantizing, isQuantizing)
             quantizeLineCounter(progress)
         }
     }
@@ -585,37 +589,37 @@ fun QuantizeButton(seqViewModel: SeqViewModel, padsMode: PadsMode, buttonsSize: 
 
 
 @Composable
-fun RecButton(seqViewModel: SeqViewModel, padsMode: PadsMode, seqIsRecording: Boolean, buttonsSize: Dp){
+fun RecButton(changeRecState: () -> Unit, padsModeIsDefault: Boolean, seqIsRecording: Boolean, buttonsSize: Dp, toggleTime: Int){
     Box(
         modifier = Modifier
             .size(buttonsSize)
             .padding(buttonsPadding)
-            .background(if (padsMode == DEFAULT && seqIsRecording) warmRed else buttons)
+            .background(if (padsModeIsDefault && seqIsRecording) warmRed else buttons)
             .clickable(
                 interactionSource = buttonInteraction(
-                    seqViewModel.toggleTime,
-                    { seqViewModel.changeRecState() }
+                    toggleTime,
+                    { changeRecState() }
                 ),
                 indication = null
             ) { }
     ){
-        if (!(seqIsRecording && padsMode == DEFAULT)) {
+        if (!(seqIsRecording && padsModeIsDefault)) {
             Canvas(modifier = Modifier
                 .fillMaxSize()
                 .alpha(0.6f)
                 .blur(4.dp)){
-                recSymbol(padsMode, seqIsRecording)
+                recSymbol(padsModeIsDefault, seqIsRecording)
             }
         }
         Canvas(modifier = Modifier.fillMaxSize()){
-            recSymbol(padsMode, seqIsRecording)
+            recSymbol(padsModeIsDefault, seqIsRecording)
         }
     }
 }
 
 
 @Composable
-fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: Dp){
+fun PlayButton(startSeq: () -> Unit, stopSeq: () -> Unit, seqIsPlaying: Boolean, buttonsSize: Dp, toggleTime: Int){
     Box(
         modifier = Modifier
             .size(buttonsSize)
@@ -623,9 +627,9 @@ fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: D
             .background(buttons)
             .clickable(
                 interactionSource = buttonInteraction(
-                    seqViewModel.toggleTime,
-                    { seqViewModel.startSeq() },
-                    { seqViewModel.stopSeq() }
+                    toggleTime,
+                    { startSeq() },
+                    { stopSeq() }
                 ),
                 indication = LocalIndication.current
             ) { }
@@ -643,7 +647,7 @@ fun PlayButton(seqViewModel: SeqViewModel, seqIsPlaying: Boolean, buttonsSize: D
 }
 
 @Composable
-fun StopButton(seqViewModel: SeqViewModel, buttonsSize: Dp) {
+fun StopButton(stopAllNotes: () -> Unit, buttonsSize: Dp) {
     Box(
         modifier = Modifier
             .size(buttonsSize)
@@ -652,7 +656,7 @@ fun StopButton(seqViewModel: SeqViewModel, buttonsSize: Dp) {
             .clickable(
                 interactionSource = buttonInteraction(
                     0,
-                    { seqViewModel.stopAllNotes() },
+                    { stopAllNotes() },
                 ),
                 indication = LocalIndication.current
             ) { }
@@ -672,12 +676,13 @@ fun StopButton(seqViewModel: SeqViewModel, buttonsSize: Dp) {
 
 @Composable
 fun SeqViewButton(
-    seqViewModel: SeqViewModel,
+    changeSeqViewState: (SeqView) -> Unit,
     cancelPadInteraction: () -> Unit, // TODO remove, use seqViewModel.cancelPadInteraction() instead
-    seqView: SeqView,
+    seqViewIsSelected: Boolean,
     buttonSeqView: SeqView,
     buttonsSize: Dp,
     text: String,
+    toggleTime: Int,
     textColor: Color = dusk,
     fontSize: Int = buttonTextSize,
 ){
@@ -685,21 +690,22 @@ fun SeqViewButton(
         modifier = Modifier
             .size(buttonsSize)
             .padding(top = 1.dp)
-            .background(if (seqView == buttonSeqView) night else buttons)
+            .background(if (seqViewIsSelected) night else buttons)
             .clickable(
                 interactionSource = buttonInteraction(
-                    seqViewModel.toggleTime,
+                    toggleTime,
                     {
-                        seqViewModel.changeSeqViewState(buttonSeqView)
+                        changeSeqViewState(buttonSeqView)
                         cancelPadInteraction()
                     },
                     { },
                 ),
                 indication = null
-            ) { },
+            ) { }
+            .recomposeHighlighter(),
         contentAlignment = Alignment.Center
     ) {
-        if (seqView != buttonSeqView) {
+        if (!seqViewIsSelected) {
             Text(
                 text,
                 fontSize = fontSize.nonScaledSp,
@@ -712,7 +718,7 @@ fun SeqViewButton(
         Text(
             text,
             fontSize = fontSize.nonScaledSp,
-            color = if (seqView == buttonSeqView) BackGray else textColor
+            color = if (seqViewIsSelected) BackGray else textColor
         )
     }
 }

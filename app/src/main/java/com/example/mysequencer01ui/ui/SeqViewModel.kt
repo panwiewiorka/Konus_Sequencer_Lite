@@ -325,10 +325,10 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     updateSequencesUiState()
                 }
 
-//                _uiState.update { it.copy(
-//                    visualArrayRefresh = !uiState.value.visualArrayRefresh,
-////                    sequences = uiState.value.sequences
-//                ) }
+                _uiState.update { it.copy(
+                    visualArrayRefresh = !uiState.value.visualArrayRefresh,
+//                    sequences = uiState.value.sequences
+                ) }
 
                 delay(3.milliseconds)
             }
@@ -775,7 +775,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-    fun editCurrentPadsMode(mode: PadsMode, switchOn: Boolean, momentary: Boolean = false){
+    fun editCurrentPadsMode(mode: PadsMode, switchOn: Boolean, momentary: Boolean = false){ // TODO simplify with when?
         if(switchOn) {
             if(mode != uiState.value.padsMode) {
                 previousPadsMode = uiState.value.padsMode

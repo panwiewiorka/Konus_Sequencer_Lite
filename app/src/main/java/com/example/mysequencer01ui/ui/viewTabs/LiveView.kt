@@ -49,6 +49,7 @@ import com.example.mysequencer01ui.ui.buttonTextSize
 import com.example.mysequencer01ui.ui.buttonsPadding
 import com.example.mysequencer01ui.ui.nonScaledSp
 import com.example.mysequencer01ui.ui.playHeads
+import com.example.mysequencer01ui.ui.recomposeHighlighter
 import com.example.mysequencer01ui.ui.repeatBounds
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttons

@@ -39,6 +39,15 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
         Row(
             modifier = Modifier.fillMaxSize()
         ) {
+            // to avoid unnecessary recompositions:
+            val editCurrentPadsMode = remember {seqViewModel::editCurrentPadsMode}
+            val changeRecState = remember {seqViewModel::changeRecState}
+            val startSeq = remember {seqViewModel::startSeq}
+            val stopSeq = remember {seqViewModel::stopSeq}
+            val switchPadsToQuantizingMode = remember {seqViewModel::switchPadsToQuantizingMode}
+            val switchQuantization = remember {seqViewModel::switchQuantization}
+            val changeSeqViewState = remember {seqViewModel::changeSeqViewState}
+            val cancelPadInteraction = remember {seqViewModel::cancelPadInteraction}
 
             // ----==== LEFT BUTTONS
             Column(
@@ -47,22 +56,22 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 if(seqUiState.padsMode != DEFAULT && seqUiState.padsMode != SELECTING && seqUiState.padsMode != LOADING)
                     AllButton(seqViewModel, buttonsSize,
                         (seqUiState.padsMode == SOLOING && seqUiState.soloIsOn) || (seqUiState.padsMode == MUTING && seqUiState.muteIsOn))
-                else PadsModeButton(seqViewModel::editCurrentPadsMode, seqUiState.padsMode, SELECTING, buttonsSize, dusk, 0)
-                PadsModeButton(seqViewModel::editCurrentPadsMode, seqUiState.padsMode, SAVING, buttonsSize, dusk, 0)
-                PadsModeButton(seqViewModel::editCurrentPadsMode, seqUiState.padsMode, SOLOING, buttonsSize, violet, seqViewModel.toggleTime)
-                PadsModeButton(seqViewModel::editCurrentPadsMode, seqUiState.padsMode, ERASING, buttonsSize, notWhite, seqViewModel.toggleTime)
-                RecButton(seqViewModel, seqUiState.padsMode, seqUiState.seqIsRecording, buttonsSize)
+                else PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == SELECTING, SELECTING, buttonsSize, dusk, 0)
+                PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == SAVING, SAVING, buttonsSize, dusk, 0)
+                PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == SOLOING, SOLOING, buttonsSize, violet, seqViewModel.toggleTime)
+                PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == ERASING, ERASING, buttonsSize, notWhite, seqViewModel.toggleTime)
+                RecButton(changeRecState, seqUiState.padsMode == DEFAULT, seqUiState.seqIsRecording, buttonsSize, seqViewModel.toggleTime)
             }
             Column(
                 modifier = Modifier.fillMaxHeight()
             ) {
-                QuantizeButton(seqViewModel, seqUiState.padsMode, buttonsSize, seqUiState.isQuantizing, seqUiState.quantizeModeTimer)
-                PadsModeButton(seqViewModel::editCurrentPadsMode, seqUiState.padsMode, LOADING, buttonsSize, dusk, 0)
-                PadsModeButton(seqViewModel::editCurrentPadsMode, seqUiState.padsMode, MUTING, buttonsSize, violet, seqViewModel.toggleTime)
-                PadsModeButton(seqViewModel::editCurrentPadsMode, seqUiState.padsMode, CLEARING, buttonsSize, notWhite, 0)
+                QuantizeButton(switchPadsToQuantizingMode, switchQuantization, seqUiState.padsMode == QUANTIZING, buttonsSize, seqUiState.isQuantizing, seqUiState.quantizeModeTimer, seqViewModel.toggleTime)
+                PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == LOADING, LOADING, buttonsSize, dusk, seqViewModel.toggleTime)
+                PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == MUTING, MUTING, buttonsSize, violet, seqViewModel.toggleTime)
+                PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == CLEARING, CLEARING, buttonsSize, notWhite, 0)
                 if(!seqUiState.seqIsPlaying && seqUiState.padsMode == SELECTING)
-                    StopButton(seqViewModel, buttonsSize)
-                else PlayButton(seqViewModel, seqUiState.seqIsPlaying, buttonsSize)
+                    StopButton(seqViewModel::stopAllNotes, buttonsSize)
+                else PlayButton(startSeq, stopSeq, seqUiState.seqIsPlaying, buttonsSize, seqViewModel.toggleTime)
             }
 
             // ----==== SeqView CONTENT
@@ -93,11 +102,11 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 modifier = Modifier
                     .fillMaxHeight()
             ) {
-                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, LIVE, buttonsSize, "ϴ")
-                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, PIANO, buttonsSize, "ϡ")
-                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, STEP, buttonsSize, "ʭ")
-                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, AUTOMATION, buttonsSize, "֎")
-                SeqViewButton(seqViewModel, seqViewModel::cancelPadInteraction, seqUiState.seqView, SETTINGS, buttonsSize, "╪")
+                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == LIVE, LIVE, buttonsSize, "ϴ", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == PIANO, PIANO, buttonsSize, "ϡ", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == STEP, STEP, buttonsSize, "ʭ", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == AUTOMATION, AUTOMATION, buttonsSize, "֎", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == SETTINGS, SETTINGS, buttonsSize, "╪", seqViewModel.toggleTime)
             }
         }
     }

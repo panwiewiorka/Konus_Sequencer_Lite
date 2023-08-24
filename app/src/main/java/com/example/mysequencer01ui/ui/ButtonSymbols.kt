@@ -323,12 +323,12 @@ fun DrawScope.clearSymbol(clearing: Boolean) {
 }
 
 
-fun DrawScope.recSymbol(padsMode: PadsMode, seqIsRecording: Boolean) {
+fun DrawScope.recSymbol(padsModeIsDefault: Boolean, seqIsRecording: Boolean) {
     drawCircle(
-        color = if (seqIsRecording && padsMode == DEFAULT) buttons else warmRed,
+        color = if (seqIsRecording && padsModeIsDefault) buttons else warmRed,
         radius = size.height / 7f,
         center = center,
-        style = if(padsMode != DEFAULT && seqIsRecording) Fill else Stroke(width = thickness),
+        style = if(!padsModeIsDefault && seqIsRecording) Fill else Stroke(width = thickness),
     )
 }
 
