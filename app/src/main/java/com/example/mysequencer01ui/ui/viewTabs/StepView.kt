@@ -154,7 +154,9 @@ fun NotesGrid(
                             reverseScrolling = true,
                             flingBehavior = flingBehavior()
                         )
-                        .pointerInput(seqUiState.selectedChannel) {
+                        .pointerInput(seqUiState.selectedChannel, seqUiState.seqIsPlaying
+//                            , seqUiState.sequences[seqUiState.selectedChannel]
+                        ) {
                             detectTapGestures(
                                 onTap = { offset ->
                                     val pitch = 127 - (offset.y / noteHeight.toPx()).toInt()
@@ -194,6 +196,7 @@ fun NotesGrid(
                                                 || (noteOnIndex > noteOffIndex &&
                                                 (time in 0.0..notes[noteOffIndex].time || time in notes[noteOnIndex].time..totalTime.toDouble())) // ..] & [..
                                             )
+                                    Log.d("ryjtyj", "$noteExistsWhereWeTap")
 
                                     // if note exists where we tap - erase it, else record new note
                                     if (noteExistsWhereWeTap) {
@@ -245,13 +248,10 @@ fun NotesGrid(
                                             seqIsPlaying = seqUiState.seqIsPlaying,
                                             isRepeating = seqUiState.isRepeating,
                                             quantizeTime = seqViewModel::quantizeTime,
-                                            stepView = true,
+                                            isStepView = true,
+                                            isStepRecord = true,
                                             customTime = time,
                                         )
-
-                                        // override adding note to ignore list
-                                        // (fixing notes not to play first time after recording when switching from stepView to other view and back while seq is playing)
-                                        idOfNotesToIgnore.remove(noteId)
 
                                         recordNote(
                                             pitch = pitch,
@@ -262,7 +262,8 @@ fun NotesGrid(
                                             seqIsPlaying = seqUiState.seqIsPlaying,
                                             isRepeating = seqUiState.isRepeating,
                                             quantizeTime = seqViewModel::quantizeTime,
-                                            stepView = true,
+                                            isStepView = true,
+                                            isStepRecord = true,
                                             customTime = noteOffTime,
                                         )
 

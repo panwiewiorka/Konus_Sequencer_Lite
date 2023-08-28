@@ -101,10 +101,9 @@ fun PadButton(
     padsSize: Dp,
     selectedChannel: Int,
     seqIsRecording: Boolean,
-    channelIsPlaying: Boolean, // padsState[channel] = true
-    sequence: Sequence, // sequences[channel]
+    channelIsPlayingNotes: Boolean,
+    sequence: Sequence,
 ){
-    //    val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
     val buttonIsPressed by interactionSource.collectIsPressedAsState()
     LaunchedEffect(interactionSource, pitch, sequence.pressedNotes[pitch].isPressed, padsMode) {
@@ -199,7 +198,7 @@ fun PadButton(
             Canvas(modifier = Modifier
                 .fillMaxSize()
             ){
-                if (channelIsPlaying) {
+                if (channelIsPlayingNotes) {
                     drawRect(
                         color = color,
                         topLeft = Offset(0f, 0f),
@@ -231,6 +230,7 @@ fun PadButton(
     }
 }
 
+/*
 @Composable
 fun PadButtonOld(
     interactionSource: MutableInteractionSource,
@@ -370,6 +370,7 @@ fun PadButtonOld(
     }
 }
 
+
 @Composable
 fun DashedBorder(color: Color) {
     Box(
@@ -387,7 +388,7 @@ fun DashedBorder(color: Color) {
         }
     }
 }
-
+ */
 
 @Composable
 fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
@@ -403,17 +404,17 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
                             val pitch = 60
                             val channel = x + (3 - y) * 4
                             PadButton(
-                                seqViewModel.interactionSources[channel][pitch].interactionSource,
-                                channel,
-                                pitch,
-                                seqViewModel::pressPad,
-                                seqViewModel::rememberInteraction,
-                                seqUiState.padsMode,
-                                padsSize,
-                                seqUiState.selectedChannel,
-                                seqUiState.seqIsRecording,
-                                seqUiState.padsState[channel],
-                                seqUiState.sequences[channel],
+                                interactionSource = seqViewModel.interactionSources[channel][pitch].interactionSource,
+                                channel = channel,
+                                pitch = pitch,
+                                pressPad = seqViewModel::pressPad,
+                                rememberInteraction = seqViewModel::rememberInteraction,
+                                padsMode = seqUiState.padsMode,
+                                padsSize = padsSize,
+                                selectedChannel = seqUiState.selectedChannel,
+                                seqIsRecording = seqUiState.seqIsRecording,
+                                channelIsPlayingNotes = seqUiState.padsState[channel],
+                                sequence = seqUiState.sequences[channel],
                             )
 //                            Text("$channel")
                         }
@@ -426,7 +427,14 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
 
 
 @Composable
-fun PadsModeButton(editCurrentPadsMode: (PadsMode, Boolean, Boolean) -> Unit, buttonIsSelected: Boolean, buttonType: PadsMode, buttonsSize: Dp, color: Color, toggleTime: Int){
+fun PadsModeButton(
+    editCurrentPadsMode: (PadsMode, Boolean, Boolean) -> Unit,
+    buttonIsSelected: Boolean,
+    buttonType: PadsMode,
+    buttonsSize: Dp,
+    color: Color,
+    toggleTime: Int
+){
     Box(
         modifier = Modifier
             .size(buttonsSize)
@@ -478,7 +486,12 @@ fun PadsModeButton(editCurrentPadsMode: (PadsMode, Boolean, Boolean) -> Unit, bu
 
 
 @Composable
-fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp, showStrikeStripe: Boolean){
+fun AllButton(
+    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
+    updateSequencesUiState: () -> Unit,
+    buttonsSize: Dp,
+    showStrikeStripe: Boolean
+){
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = remember { 0L }
     val buttonPressed by interactionSource.collectIsPressedAsState()
@@ -487,22 +500,22 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp, showStrikeStripe: Boo
             when (interaction) {
                 is PressInteraction.Press -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 100, allButton = true)
+                        pressPad(i, 26, 100, 0, true)
                     }
-                    seqViewModel.updateSequencesUiState()
+                    updateSequencesUiState()
                     elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
+                        pressPad(i, 26, 0, elapsedTime, true)
                     }
-                    seqViewModel.updateSequencesUiState()
+                    updateSequencesUiState()
                 }
                 is PressInteraction.Cancel -> {
                     for(i in 0..15){
-                        seqViewModel.pressPad(i, 26, 0, elapsedTime, allButton = true)
+                        pressPad(i, 26, 0, elapsedTime, true)
                     }
-                    seqViewModel.updateSequencesUiState()
+                    updateSequencesUiState()
                 }
             }
         }
@@ -533,7 +546,15 @@ fun AllButton(seqViewModel: SeqViewModel, buttonsSize: Dp, showStrikeStripe: Boo
 
 
 @Composable
-fun QuantizeButton(switchPadsToQuantizingMode: (Boolean) -> Unit, switchQuantization: () -> Unit, padsModeIsQuantizing: Boolean, buttonsSize: Dp, isQuantizing: Boolean, quantizeModeTimer: Int, toggleTime: Int){
+fun QuantizeButton(
+    switchPadsToQuantizingMode: (Boolean) -> Unit,
+    switchQuantization: () -> Unit,
+    padsModeIsQuantizing: Boolean,
+    buttonsSize: Dp,
+    isQuantizing: Boolean,
+    quantizeModeTimer: Int,
+    toggleTime: Int,
+){
 
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = 0L
@@ -701,8 +722,7 @@ fun SeqViewButton(
                     { },
                 ),
                 indication = null
-            ) { }
-            .recomposeHighlighter(),
+            ) { },
         contentAlignment = Alignment.Center
     ) {
         if (!seqViewIsSelected) {

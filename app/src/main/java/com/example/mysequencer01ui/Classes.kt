@@ -32,12 +32,12 @@ data class KeyColorAndNumber (
 )
 
 data class RecordingPackage (
-    val theIndex: Int,
     val recordTime: Double,
     val pitch: Int,
     val id: Int,
     val velocity: Int,
-    val stepView: Boolean,
+    val isStepView: Boolean,
+    val isStepRecord: Boolean,
     val noteHeight: Float
 )
 

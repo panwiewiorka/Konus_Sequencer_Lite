@@ -40,12 +40,14 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             modifier = Modifier.fillMaxSize()
         ) {
             // to avoid unnecessary recompositions:
+            val pressPad = remember {seqViewModel::pressPad}
+            val updateSequencesUiState = remember {seqViewModel::updateSequencesUiState}
             val editCurrentPadsMode = remember {seqViewModel::editCurrentPadsMode}
+            val switchPadsToQuantizingMode = remember {seqViewModel::switchPadsToQuantizingMode}
+            val switchQuantization = remember {seqViewModel::switchQuantization}
             val changeRecState = remember {seqViewModel::changeRecState}
             val startSeq = remember {seqViewModel::startSeq}
             val stopSeq = remember {seqViewModel::stopSeq}
-            val switchPadsToQuantizingMode = remember {seqViewModel::switchPadsToQuantizingMode}
-            val switchQuantization = remember {seqViewModel::switchQuantization}
             val changeSeqViewState = remember {seqViewModel::changeSeqViewState}
             val cancelPadInteraction = remember {seqViewModel::cancelPadInteraction}
 
@@ -54,7 +56,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 modifier = Modifier.fillMaxHeight()
             ) {
                 if(seqUiState.padsMode != DEFAULT && seqUiState.padsMode != SELECTING && seqUiState.padsMode != LOADING)
-                    AllButton(seqViewModel, buttonsSize,
+                    AllButton(pressPad, updateSequencesUiState, buttonsSize,
                         (seqUiState.padsMode == SOLOING && seqUiState.soloIsOn) || (seqUiState.padsMode == MUTING && seqUiState.muteIsOn))
                 else PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == SELECTING, SELECTING, buttonsSize, dusk, 0)
                 PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == SAVING, SAVING, buttonsSize, dusk, 0)
