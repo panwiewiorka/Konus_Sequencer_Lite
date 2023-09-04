@@ -5,10 +5,10 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.util.Log
 import android.view.WindowManager
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +66,7 @@ import com.example.mysequencer01ui.PadsMode.SAVING
 import com.example.mysequencer01ui.PadsMode.SELECTING
 import com.example.mysequencer01ui.PadsMode.SOLOING
 import com.example.mysequencer01ui.SeqView
-import com.example.mysequencer01ui.Sequence
+import com.example.mysequencer01ui.ChannelSequence
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.buttons
@@ -95,33 +96,35 @@ fun PadButton(
     interactionSource: MutableInteractionSource,
     channel: Int,
     pitch: Int,
-    pressPad: (Int, Int, Int, Long) -> Unit,
+    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
     rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
     padsMode: PadsMode,
     padsSize: Dp,
     selectedChannel: Int,
     seqIsRecording: Boolean,
     channelIsPlayingNotes: Boolean,
-    sequence: Sequence,
+    isPressed: Boolean,
+    isMuted: Boolean,
+    isSoloed: Boolean
 ){
     var elapsedTime = remember { 0L }
     val buttonIsPressed by interactionSource.collectIsPressedAsState()
-    LaunchedEffect(interactionSource, pitch, sequence.pressedNotes[pitch].isPressed, padsMode) {
+    LaunchedEffect(interactionSource, pitch, isPressed, padsMode) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
-                    pressPad(channel, pitch, 100, 0)
+                    pressPad(channel, pitch, 100, 0, false)
                     elapsedTime = System.currentTimeMillis()
                     rememberInteraction(channel, pitch, interaction)
                 }
                 is PressInteraction.Release -> {
-                    if (sequence.pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
-                        pressPad(channel, pitch, 0, elapsedTime)
+                    if (isPressed || padsMode != DEFAULT) {
+                        pressPad(channel, pitch, 0, elapsedTime, false)
                     }
                 }
                 is PressInteraction.Cancel -> {
-                    if (sequence.pressedNotes[pitch].isPressed || padsMode != DEFAULT) {
-                        pressPad(channel, pitch, 0, elapsedTime)
+                    if (isPressed || padsMode != DEFAULT) {
+                        pressPad(channel, pitch, 0, elapsedTime, false)
                     }
                 }
             }
@@ -129,7 +132,7 @@ fun PadButton(
     }
     val notActiveColor = when {
         selectedChannel == channel -> selectedButton
-        sequence.isMuted -> repeatButtons
+        isMuted -> repeatButtons
         else -> buttons
     }
 
@@ -188,12 +191,11 @@ fun PadButton(
                 indication = null,
             ) {}
             .clipToBounds()
-            .recomposeHighlighter()
     ){
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .alpha(if (sequence.isMuted && !sequence.isSoloed) 0.25f else 1f)
+                .alpha(if (isMuted && !isSoloed) 0.25f else 1f)
         ) {
             Canvas(modifier = Modifier
                 .fillMaxSize()
@@ -213,13 +215,13 @@ fun PadButton(
                 }
             }
         }
-        if (sequence.isSoloed) {
+        if (isSoloed) {
             Canvas(modifier = Modifier
                 .fillMaxSize()
                 .rotate(24f)) {
                 soloSymbol(padsMode == SOLOING && buttonIsPressed)
             }
-        } else if (sequence.isMuted) {
+        } else if (isMuted) {
             Canvas(modifier = Modifier
                 .fillMaxSize()
                 .alpha(if (selectedChannel == channel || buttonIsPressed) 1f else 0.25f)
@@ -391,7 +393,15 @@ fun DashedBorder(color: Color) {
  */
 
 @Composable
-fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
+fun PadsGrid(
+    channelSequences: MutableList<ChannelSequence>,
+    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
+    rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
+    padsMode: PadsMode,
+    selectedChannel: Int,
+    seqIsRecording: Boolean,
+    padsSize: Dp
+){
     Box(
         modifier = Modifier.background(buttonsBg),
         contentAlignment = Alignment.Center,
@@ -403,18 +413,21 @@ fun PadsGrid(seqViewModel: SeqViewModel, seqUiState: SeqUiState, padsSize: Dp){
                         Box {
                             val pitch = 60
                             val channel = x + (3 - y) * 4
+                            val channelState by channelSequences[channel].channelState.collectAsState()
                             PadButton(
-                                interactionSource = seqViewModel.interactionSources[channel][pitch].interactionSource,
+                                interactionSource = channelSequences[channel].interactionSources[pitch].interactionSource,
                                 channel = channel,
                                 pitch = pitch,
-                                pressPad = seqViewModel::pressPad,
-                                rememberInteraction = seqViewModel::rememberInteraction,
-                                padsMode = seqUiState.padsMode,
+                                pressPad = pressPad,
+                                rememberInteraction = rememberInteraction,
+                                padsMode = padsMode,
                                 padsSize = padsSize,
-                                selectedChannel = seqUiState.selectedChannel,
-                                seqIsRecording = seqUiState.seqIsRecording,
-                                channelIsPlayingNotes = seqUiState.padsState[channel],
-                                sequence = seqUiState.sequences[channel],
+                                selectedChannel = selectedChannel,
+                                seqIsRecording = seqIsRecording,
+                                channelIsPlayingNotes = channelState.channelIsPlayingNotes > 0,
+                                isPressed = channelState.pressedNotes[pitch].isPressed,
+                                isMuted = channelState.isMuted,
+                                isSoloed = channelState.isSoloed
                             )
 //                            Text("$channel")
                         }
@@ -488,7 +501,6 @@ fun PadsModeButton(
 @Composable
 fun AllButton(
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
-    updateSequencesUiState: () -> Unit,
     buttonsSize: Dp,
     showStrikeStripe: Boolean
 ){
@@ -502,20 +514,20 @@ fun AllButton(
                     for(i in 0..15){
                         pressPad(i, 26, 100, 0, true)
                     }
-                    updateSequencesUiState()
+//                    updateSequencesUiState()
                     elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
                     for(i in 0..15){
                         pressPad(i, 26, 0, elapsedTime, true)
                     }
-                    updateSequencesUiState()
+//                    updateSequencesUiState()
                 }
                 is PressInteraction.Cancel -> {
                     for(i in 0..15){
                         pressPad(i, 26, 0, elapsedTime, true)
                     }
-                    updateSequencesUiState()
+//                    updateSequencesUiState()
                 }
             }
         }
@@ -698,7 +710,7 @@ fun StopButton(stopAllNotes: () -> Unit, buttonsSize: Dp) {
 @Composable
 fun SeqViewButton(
     changeSeqViewState: (SeqView) -> Unit,
-    cancelPadInteraction: () -> Unit, // TODO remove, use seqViewModel.cancelPadInteraction() instead
+    cancelAllPadsInteraction: () -> Unit, // TODO remove, use seqViewModel.cancelPadInteraction() instead
     seqViewIsSelected: Boolean,
     buttonSeqView: SeqView,
     buttonsSize: Dp,
@@ -717,7 +729,7 @@ fun SeqViewButton(
                     toggleTime,
                     {
                         changeSeqViewState(buttonSeqView)
-                        cancelPadInteraction()
+                        cancelAllPadsInteraction()
                     },
                     { },
                 ),
@@ -780,31 +792,22 @@ fun TextButton(
 
 
 fun DrawScope.playHeads(
-    seqUiState: SeqUiState,
+    seqIsPlaying: Boolean,
+    isRepeating: Boolean,
+    playHeadsColor: Color,
     playhead: Float,
     playheadRepeat: Float
 ) {
-    // playhead color
-    val conditionalColor = when (seqUiState.padsMode) {
-        MUTING -> violet
-        ERASING -> warmRed
-        CLEARING -> notWhite
-        else -> {
-            if (seqUiState.seqIsRecording) warmRed
-            else playGreen
-        }
-    }
-    // PLAYHEAD
-    if (seqUiState.seqIsPlaying) {
+    if (seqIsPlaying) {
         drawLine(
-            color = conditionalColor,
+            color = playHeadsColor,
             start = Offset(playhead, 0f),
-            end = Offset(playhead, size.height)
+            end = Offset(playhead, size.height),
+            1f
         )
-        // REPEAT PLAYHEAD
-        if (seqUiState.isRepeating) {
+        if (isRepeating) {
             drawLine(
-                color = conditionalColor,
+                color = playHeadsColor,
                 start = Offset(playheadRepeat, 0f),
                 end = Offset(playheadRepeat, size.height),
                 4f,
@@ -815,25 +818,27 @@ fun DrawScope.playHeads(
 
 
 fun DrawScope.repeatBounds(
-    sequence: Sequence,
+    totalTime: Int,
+    repeatStartTime: Double,
+    repeatEndTime: Double,
     widthFactor: Float,
     alpha: Float,
 ) {
-    if (sequence.repeatStartTime < sequence.repeatEndTime) {
+    if (repeatStartTime < repeatEndTime) {
         drawRect(
             color = buttons,
             topLeft = Offset(0f, 0f),
             size = Size(
-                width = widthFactor * sequence.repeatStartTime.toFloat(),
+                width = widthFactor * repeatStartTime.toFloat(),
                 height = size.height
             ),
             alpha = alpha
         )
         drawRect(
             color = buttons,
-            topLeft = Offset(widthFactor * sequence.repeatEndTime.toFloat(), 0f),
+            topLeft = Offset(widthFactor * repeatEndTime.toFloat(), 0f),
             size = Size(
-                width = widthFactor * (sequence.totalTime - sequence.repeatEndTime).toFloat(),
+                width = widthFactor * (totalTime - repeatEndTime).toFloat(),
                 height = size.height
             ),
             alpha = alpha
@@ -841,9 +846,9 @@ fun DrawScope.repeatBounds(
     } else
         drawRect(
             color = buttons,
-            topLeft = Offset(widthFactor * sequence.repeatEndTime.toFloat(), 0f),
+            topLeft = Offset(widthFactor * repeatEndTime.toFloat(), 0f),
             size = Size(
-                width = (widthFactor * (sequence.repeatStartTime - sequence.repeatEndTime)).toFloat(),
+                width = (widthFactor * (repeatStartTime - repeatEndTime)).toFloat(),
                 height = size.height
             ),
             alpha = alpha

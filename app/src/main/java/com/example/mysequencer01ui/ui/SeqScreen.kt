@@ -41,7 +41,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
         ) {
             // to avoid unnecessary recompositions:
             val pressPad = remember {seqViewModel::pressPad}
-            val updateSequencesUiState = remember {seqViewModel::updateSequencesUiState}
+//            val updateSequencesUiState = remember {seqViewModel::updateSequencesUiState}
             val editCurrentPadsMode = remember {seqViewModel::editCurrentPadsMode}
             val switchPadsToQuantizingMode = remember {seqViewModel::switchPadsToQuantizingMode}
             val switchQuantization = remember {seqViewModel::switchQuantization}
@@ -49,15 +49,23 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             val startSeq = remember {seqViewModel::startSeq}
             val stopSeq = remember {seqViewModel::stopSeq}
             val changeSeqViewState = remember {seqViewModel::changeSeqViewState}
-            val cancelPadInteraction = remember {seqViewModel::cancelPadInteraction}
+            val cancelAllPadsInteraction = remember {seqViewModel::cancelAllPadsInteraction}
+
+//            val changeBPM = remember {seqViewModel::changeBPM}
+//            val switchClockTransmitting = remember {seqViewModel::switchClockTransmitting}
+//            val switchVisualDebugger = remember {seqViewModel::switchVisualDebugger}
+//            val selectDebuggerSetting = remember {seqViewModel::selectDebuggerSetting}
 
             // ----==== LEFT BUTTONS
             Column(
                 modifier = Modifier.fillMaxHeight()
             ) {
                 if(seqUiState.padsMode != DEFAULT && seqUiState.padsMode != SELECTING && seqUiState.padsMode != LOADING)
-                    AllButton(pressPad, updateSequencesUiState, buttonsSize,
-                        (seqUiState.padsMode == SOLOING && seqUiState.soloIsOn) || (seqUiState.padsMode == MUTING && seqUiState.muteIsOn))
+                    AllButton(
+                        pressPad,
+                        buttonsSize,
+                        (seqUiState.padsMode == SOLOING && seqUiState.soloIsOn) || (seqUiState.padsMode == MUTING && seqUiState.muteIsOn)
+                    )
                 else PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == SELECTING, SELECTING, buttonsSize, dusk, 0)
                 PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == SAVING, SAVING, buttonsSize, dusk, 0)
                 PadsModeButton(editCurrentPadsMode, seqUiState.padsMode == SOLOING, SOLOING, buttonsSize, violet, seqViewModel.toggleTime)
@@ -88,13 +96,22 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     PIANO -> PianoView(seqViewModel, seqUiState, buttonsSize)
                     STEP -> StepView(seqViewModel, seqUiState, buttonsSize)
                     AUTOMATION -> { Text("// TODO =)", color = playGreen, fontSize = 20.sp, fontStyle = FontStyle.Italic, modifier = Modifier.align(Alignment.Center)) }
+//                    SETTINGS -> SettingsView(changeBPM, switchClockTransmitting, switchVisualDebugger, selectDebuggerSetting, seqUiState.bpm, seqUiState.transmitClock, seqUiState.visualDebugger, seqUiState.debuggerViewSetting, buttonsSize, kmmk)
                     SETTINGS -> SettingsView(seqViewModel, seqUiState, buttonsSize, kmmk)
                 }
 
                 if(seqUiState.seqView != LIVE && seqUiState.padsMode != DEFAULT) {
                     Row{
                         Box(modifier = Modifier.width(10.dp).background(buttonsBg))
-                        PadsGrid(seqViewModel = seqViewModel, seqUiState = seqUiState, padsSize = buttonsSize)
+                        PadsGrid(
+                            channelSequences = seqViewModel.channelSequences,
+                            pressPad = seqViewModel::pressPad,
+                            rememberInteraction = seqViewModel::rememberInteraction,
+                            padsMode = seqUiState.padsMode,
+                            selectedChannel = seqUiState.selectedChannel,
+                            seqIsRecording = seqUiState.seqIsRecording,
+                            padsSize = buttonsSize
+                        )
                     }
                 }
             }
@@ -104,11 +121,11 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 modifier = Modifier
                     .fillMaxHeight()
             ) {
-                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == LIVE, LIVE, buttonsSize, "ϴ", seqViewModel.toggleTime)
-                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == PIANO, PIANO, buttonsSize, "ϡ", seqViewModel.toggleTime)
-                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == STEP, STEP, buttonsSize, "ʭ", seqViewModel.toggleTime)
-                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == AUTOMATION, AUTOMATION, buttonsSize, "֎", seqViewModel.toggleTime)
-                SeqViewButton(changeSeqViewState, cancelPadInteraction, seqUiState.seqView == SETTINGS, SETTINGS, buttonsSize, "╪", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == LIVE, LIVE, buttonsSize, "ϴ", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == PIANO, PIANO, buttonsSize, "ϡ", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == STEP, STEP, buttonsSize, "ʭ", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == AUTOMATION, AUTOMATION, buttonsSize, "֎", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == SETTINGS, SETTINGS, buttonsSize, "╪", seqViewModel.toggleTime)
             }
         }
     }

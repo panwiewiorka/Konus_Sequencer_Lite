@@ -1,11 +1,12 @@
 package com.example.mysequencer01ui.ui
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode
 import com.example.mysequencer01ui.SeqView
-import com.example.mysequencer01ui.Sequence
+import com.example.mysequencer01ui.ui.theme.playGreen
 
 data class SeqUiState (
     val kmmk: KmmkComponentContext,
@@ -17,6 +18,7 @@ data class SeqUiState (
     val seqIsPlaying: Boolean = false,
     val seqIsRecording: Boolean = false,
     val padsMode: PadsMode = PadsMode.DEFAULT,
+    val playHeadsColor: Color = playGreen,
     val muteIsOn: Boolean = false,
     val soloIsOn: Boolean = false,
     val selectedChannel: Int = 0,
@@ -36,6 +38,6 @@ data class SeqUiState (
     val stepViewNoteHeight: Dp = 20.dp,
     val visualArrayRefresh: Boolean = false,
 
-    val padsState: Array<Boolean> = Array(16){false},
-    val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it, kmmk) },
+//    val padsState: Array<Boolean> = Array(16){false},
+//    val sequences: MutableList<Sequence> = MutableList(16){ Sequence(it, kmmk) },
     )

@@ -43,12 +43,68 @@ import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.nonScaledSp
+import com.example.mysequencer01ui.ui.recomposeHighlighter
 import com.example.mysequencer01ui.ui.theme.buttons
 import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.warmRed
 import com.example.mysequencer01ui.ui.thickness
 import kotlin.math.atan2
+
+/*
+@Composable
+fun SettingsViewTestRecomposing(
+    changeBPM: (Float) -> Unit,
+    switchClockTransmitting: () -> Unit,
+    switchVisualDebugger: () -> Unit,
+    selectDebuggerSetting: (Int) -> Unit,
+    bpm: Float,
+    transmitClock: Boolean,
+    visualDebugger: Boolean,
+    debuggerViewSetting: Int,
+    buttonsSize: Dp,
+    kmmk: KmmkComponentContext,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(40.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .recomposeHighlighter()
+        ) {
+            MidiSelector(kmmk)
+
+            Knob(buttonsSize, bpm, changeBPM)
+
+            TextAndSwitch("Clock transmit", transmitClock) { switchClockTransmitting() }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().recomposeHighlighter(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextAndSwitch("Visual Debugger", visualDebugger) { switchVisualDebugger() }
+                Spacer(modifier = Modifier.width(20.dp))
+                if(visualDebugger) {
+                    Text("index", color = notWhite)
+                    RadioButton(
+                        selected = debuggerViewSetting == 0,
+                        onClick = { selectDebuggerSetting(0) },
+                        modifier = Modifier.padding(end = 10.dp))
+                    Text("noteId", color = notWhite)
+                    RadioButton(
+                        selected = debuggerViewSetting == 1,
+                        onClick = { selectDebuggerSetting(1) },
+                        modifier = Modifier.padding(end = 10.dp))
+                }
+            }
+        }
+    }
+}
+ */
 
 @Composable
 fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp, kmmk: KmmkComponentContext) {
@@ -90,6 +146,8 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
         }
     }
 }
+
+
 
 @Composable
 fun TextAndSwitch(text: String, switchState: Boolean, toDo: () -> Unit) {

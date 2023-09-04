@@ -7,7 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,7 +26,10 @@ import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -49,6 +51,7 @@ import com.example.mysequencer01ui.PressedNote
 import com.example.mysequencer01ui.RememberedPressInteraction
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
+import com.example.mysequencer01ui.ui.recomposeHighlighter
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.dusk
@@ -65,12 +68,17 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
     val notesPadding = 1.dp
     val bordersPadding = 16.dp
 
-    with(seqUiState.sequences[seqUiState.selectedChannel]) {
+    with(seqViewModel.channelSequences[seqUiState.selectedChannel]) {
+        val channelState by channelState.collectAsState()
+
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bordersPadding),
         ) {
+            val rememberInteraction by remember { mutableStateOf(seqViewModel::rememberInteraction) }
+            val pressPad by remember { mutableStateOf(seqViewModel::pressPad) }
+
             val keyWidth = (maxWidth - notesPadding * 26) / 14
             val halfOfQuantize = seqUiState.quantizationTime / seqUiState.factorBpm / 2
 
@@ -78,17 +86,17 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 modifier = Modifier.fillMaxSize()
             ) {
                 PianoKeyboard(
-                    interactionSources = seqViewModel.interactionSources[seqUiState.selectedChannel],
-                    rememberInteraction = seqViewModel::rememberInteraction,
+                    interactionSources = interactionSources,
+                    rememberInteraction = rememberInteraction,
                     selectedChannel = seqUiState.selectedChannel,
                     playingNotes = playingNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
-                    octave = pianoViewOctaveHigh,
+                    octave = channelState.pianoViewOctaveHigh,
                     notesPadding = notesPadding,
-                    pressedNotes = seqUiState.sequences[seqUiState.selectedChannel].pressedNotes,
-                    pressPad = seqViewModel::pressPad,
+                    pressedNotes = channelState.pressedNotes,
+                    pressPad = pressPad,
                     halfOfQuantize = halfOfQuantize
                 )
                 Row(
@@ -106,16 +114,14 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                                 buttonsSize,
                                 lowerPiano = true,
                                 upButton = false,
-                                ::changeKeyboardOctave,
-                                seqViewModel::updateSequencesUiState
+                                ::changeKeyboardOctave
                             )
                             OctaveButton(
                                 modifier = Modifier.weight(1f),
                                 buttonsSize,
                                 lowerPiano = true,
                                 upButton = true,
-                                ::changeKeyboardOctave,
-                                seqViewModel::updateSequencesUiState
+                                ::changeKeyboardOctave
                             )
                         }
                     }
@@ -129,32 +135,30 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                                 buttonsSize,
                                 lowerPiano = false,
                                 upButton = false,
-                                ::changeKeyboardOctave,
-                                seqViewModel::updateSequencesUiState
+                                ::changeKeyboardOctave
                             )
                             OctaveButton(
                                 modifier = Modifier.weight(1f),
                                 buttonsSize,
                                 lowerPiano = false,
                                 upButton = true,
-                                ::changeKeyboardOctave,
-                                seqViewModel::updateSequencesUiState
+                                ::changeKeyboardOctave
                             )
                         }
                     }
                 }
                 PianoKeyboard(
-                    interactionSources = seqViewModel.interactionSources[seqUiState.selectedChannel],
-                    rememberInteraction = seqViewModel::rememberInteraction,
+                    interactionSources = interactionSources,
+                    rememberInteraction = rememberInteraction,
                     selectedChannel = seqUiState.selectedChannel,
                     playingNotes = playingNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
-                    octave = pianoViewOctaveLow,
+                    octave = channelState.pianoViewOctaveLow,
                     notesPadding = notesPadding,
-                    pressedNotes = seqUiState.sequences[seqUiState.selectedChannel].pressedNotes,
-                    pressPad = seqViewModel::pressPad,
+                    pressedNotes = channelState.pressedNotes,
+                    pressPad = pressPad,
                     halfOfQuantize = halfOfQuantize
                 )
             }
@@ -175,7 +179,7 @@ fun PianoKeyboard(
     octave: Int,
     notesPadding: Dp,
     pressedNotes: Array<PressedNote>,
-    pressPad: (Int, Int, Int) -> Unit,
+    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
     halfOfQuantize: Double
 ) {
     val startPitch = 0
@@ -252,7 +256,7 @@ fun PianoKey(
     seqIsRecording: Boolean,
     noteIsPlaying: Boolean,
     isPressed: Boolean,
-    pressPad: (Int, Int, Int) -> Unit,
+    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
     selectedChannel: Int,
     pitch: Int,
     keyWidth: Dp,
@@ -268,16 +272,16 @@ fun PianoKey(
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
-                    pressPad(selectedChannel, pitch, 100)
+                    pressPad(selectedChannel, pitch, 100, 0, false)
                     rememberInteraction(selectedChannel, pitch, interaction)
                     elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
                     // second condition needed for slow smartphones skipping noteOff due to 'isPressed' not updating in time
-                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0)
+                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0, 0, false)
                 }
                 is PressInteraction.Cancel -> {
-                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0)
+                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0, 0, false)
                 }
             }
         }
@@ -300,7 +304,6 @@ fun PianoKey(
                 interactionSource = interactionSource,
                 indication = null
             ) { }
-//            .recomposeHighlighter()
     ) { }
 }
 
@@ -312,13 +315,11 @@ fun OctaveButton(
     lowerPiano: Boolean,
     upButton: Boolean,
     changeKeyboardOctave: (Boolean, Int) -> Unit,
-    updateSeqUiState: () -> Unit
 ) {
     Button(
         elevation = null,
         onClick = {
             changeKeyboardOctave(lowerPiano, if(upButton) 1 else -1)
-            updateSeqUiState()
         },
         shape = RectangleShape,
         contentPadding = PaddingValues(0.dp),
@@ -330,7 +331,10 @@ fun OctaveButton(
         ),
     ) {
         Box {
-            Canvas(modifier = Modifier.fillMaxSize().blur(6.dp).alpha(0.6f)) {
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .blur(6.dp)
+                .alpha(0.6f)) {
                 octaveArrow(buttonsSize)
             }
             Canvas(modifier = Modifier.fillMaxSize()) {

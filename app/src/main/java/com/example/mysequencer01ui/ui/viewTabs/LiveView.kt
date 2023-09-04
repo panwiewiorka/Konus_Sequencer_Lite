@@ -1,10 +1,6 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.TweenSpec
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,6 +25,9 @@ import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +40,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.ui.BARTIME
+import com.example.mysequencer01ui.NoteIndexAndTime
+import com.example.mysequencer01ui.ui.ChannelState
 import com.example.mysequencer01ui.ui.PadsGrid
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
@@ -60,7 +60,6 @@ import com.example.mysequencer01ui.ui.theme.night
 import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.repeatButtons
 import com.example.mysequencer01ui.ui.theme.violet
-import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -74,22 +73,32 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
     Row(
         modifier = Modifier.fillMaxSize()
     ) {
-        //KeyboardRow(kmmk, 1)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(1f)
         ) {
-            PatternsScreen(seqUiState, buttonsSize)
+            PatternsScreen(seqViewModel, seqUiState, buttonsSize)
             Spacer(modifier = Modifier.weight(1f))
             Row(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-//                Knob(buttonsSize, seqUiState.bpm, seqViewModel::changeBPM)
-                PadsGrid(seqViewModel, seqUiState, buttonsSize)
+                // to avoid unnecessary recompositions:
+                val pressPad = remember {seqViewModel::pressPad}
+                val rememberInteraction = remember {seqViewModel::rememberInteraction}
+
+                PadsGrid(
+                    channelSequences = seqViewModel.channelSequences,
+                    pressPad = pressPad,
+                    rememberInteraction = rememberInteraction,
+                    padsMode = seqUiState.padsMode,
+                    selectedChannel = seqUiState.selectedChannel,
+                    seqIsRecording = seqUiState.seqIsRecording,
+                    padsSize = buttonsSize
+                )
             }
         }
         Spacer(modifier = Modifier.width(spacerSize))
@@ -125,7 +134,7 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
 
 
 @Composable
-fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
+fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,95 +173,151 @@ fun PatternsScreen(seqUiState: SeqUiState, buttonsSize: Dp) {
                     strokeWidth = 2f,
                 )
             }
+        }
 
-            for(c in 0..15) {
-                with(seqUiState.sequences[c]) {
-                    val widthFactor = size.width / totalTime
-                    val playhead = (widthFactor * deltaTime).toFloat()
-//                    val playhead = (widthFactor * playheadState.value)
-                    val playheadRepeat = (widthFactor * deltaTimeRepeat).toFloat()
+        val height = maxHeight / seqViewModel.channelSequences.size
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            for(c in seqViewModel.channelSequences.indices) {
+                val channelState by seqViewModel.channelSequences[15 - c].channelState.collectAsState()
+                val getNotePairedIndexAndTime by remember { mutableStateOf(seqViewModel.channelSequences[15 - c]::getNotePairedIndexAndTime)}
 
-                    // NOTES
-                    for (i in notes.indices) {
-                        if(notes[i].velocity > 0) {
-                            val noteStart = (widthFactor * notes[i].time).toFloat()
-                            val noteOffIndexAndTime = getNotePairedIndexAndTime(i)
-                            val noteOffIndex = noteOffIndexAndTime.index
-                            val noteLength = widthFactor * (noteOffIndexAndTime.time - notes[i].time).toFloat()
-                            val noteWidth =
-                                if (noteOffIndex != -1) {
-                                    if(noteLength > 0f && noteLength <= size.height / 16) {
-                                        size.height / 16
-                                    } else noteLength
-                                } else {
-                                    if (seqUiState.isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
-                                }
-
-                            val fasterThanHalfOfQuantize = System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= seqUiState.quantizationTime / seqUiState.factorBpm / 2
-                            if (noteWidth > 0  || (noteOffIndex == -1 && fasterThanHalfOfQuantize)) {   // normal note (not wrap-around) [...]
-                                drawRoundRect(
-                                    color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) violet else darkViolet,
-                                    topLeft = Offset(noteStart, size.height - ((c + 1) * size.height / 16)),
-                                    size = Size(
-                                        width = noteWidth,
-                                        height = size.height / 16),
-                                    cornerRadius = CornerRadius(size.height, size.height)
-                                )
-                            } else {   // wrap-around note
-
-                                // [..
-                                drawRoundRect(
-                                    color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) violet else darkViolet,
-                                    topLeft = Offset(noteStart,size.height - ((c + 1) * size.height / 16)),
-                                    size = Size(
-                                        width = size.width - noteStart,
-                                        height = size.height / 16),
-                                    cornerRadius = CornerRadius(size.height, size.height)
-                                )
-                                val halfTheLength = noteStart + (size.width - noteStart) / 2
-                                drawRect(
-                                    color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) violet else darkViolet,
-                                    topLeft = Offset(halfTheLength,size.height - ((c + 1) * size.height / 16)),
-                                    size = Size(
-                                        width = size.width - halfTheLength,
-                                        height = size.height / 16),
-                                )
-
-                                // ..]
-                                drawRoundRect(
-                                    color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) violet else darkViolet,
-                                    topLeft = Offset(0f,size.height - ((c + 1) * size.height / 16)),
-                                    size = Size(
-                                        width = noteWidth + noteStart,  // noteWidth is negative here
-                                        height = size.height / 16),
-                                    cornerRadius = CornerRadius(size.height, size.height)
-                                )
-                                drawRect(
-                                    color = if (seqUiState.sequences[seqUiState.selectedChannel].channel == c) violet else darkViolet,
-                                    topLeft = Offset(0f,size.height - ((c + 1) * size.height / 16)),
-                                    size = Size(
-                                        width = (noteWidth + noteStart) / 2,  // noteWidth is negative here
-                                        height = size.height / 16),
-                                )
-                            }
-                        }
-                    }
-
-                    if (c == 15) playHeads(seqUiState, playhead, playheadRepeat)
-
-                    if (seqUiState.isRepeating) repeatBounds(this, widthFactor, 0.1f)
-                }
+                ChannelScreen(
+                    channelState = channelState,
+                    getNotePairedIndexAndTime = getNotePairedIndexAndTime, // TODO by remember?
+                    seqIsPlaying = seqUiState.seqIsPlaying,
+                    isRepeating = seqUiState.isRepeating,
+                    selectedChannel = seqUiState.selectedChannel,
+                    quantizationTime = seqUiState.quantizationTime,
+                    factorBpm = seqUiState.factorBpm,
+                    playHeadsColor = seqUiState.playHeadsColor,
+                    height = height,
+                )
             }
         }
+
         if (seqUiState.visualDebugger) {
-            VisualDebugger(seqUiState, buttonsSize)
+            VisualDebugger(seqViewModel, seqUiState, buttonsSize)
         }
     }
 }
 
 
 @Composable
-fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {
+fun ChannelScreen(
+    channelState: ChannelState,
+    getNotePairedIndexAndTime: (Int) -> NoteIndexAndTime,
+    seqIsPlaying: Boolean,
+    isRepeating: Boolean,
+    selectedChannel: Int,
+    quantizationTime: Double,
+    factorBpm: Double,
+    playHeadsColor: Color,
+    height: Dp,
+    ) {
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+    ) {
+        with(channelState) {
+            val widthFactor = size.width / totalTime
+            val playhead = (widthFactor * deltaTime).toFloat()
+//    val playhead = (widthFactor * playheadState.value)
+            val playheadRepeat = (widthFactor * deltaTimeRepeat).toFloat()
+
+            // NOTES
+            for (i in notes.indices) {
+                if(notes[i].velocity > 0) {
+                    val noteStart = (widthFactor * notes[i].time).toFloat()
+                    val noteOffIndexAndTime = getNotePairedIndexAndTime(i)
+                    val noteOffIndex = noteOffIndexAndTime.index
+                    val noteLength = widthFactor * (noteOffIndexAndTime.time - notes[i].time).toFloat()
+                    val noteWidth =
+                        if (noteOffIndex != -1) {
+                            if(noteLength > 0f && noteLength <= size.height / 16) {
+                                size.height / 16
+                            } else noteLength
+                        } else {
+                            if (isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
+                        }
+
+                    val fasterThanHalfOfQuantize = System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= quantizationTime / factorBpm / 2
+                    if (noteWidth > 0  || (noteOffIndex == -1 && fasterThanHalfOfQuantize)) {   // normal note (not wrap-around) [...]
+                        drawRoundRect(
+                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            topLeft = Offset(noteStart, 0f),
+                            size = Size(
+                                width = noteWidth,
+                                height = height.toPx()),
+                            cornerRadius = CornerRadius(size.height, size.height)
+                        )
+                    } else {   // wrap-around note
+
+                        // [..
+                        drawRoundRect(
+                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            topLeft = Offset(noteStart,0f),
+                            size = Size(
+                                width = size.width - noteStart,
+                                height = height.toPx()),
+                            cornerRadius = CornerRadius(size.height, size.height)
+                        )
+                        val halfTheLength = noteStart + (size.width - noteStart) / 2
+                        drawRect(
+                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            topLeft = Offset(halfTheLength,0f),
+                            size = Size(
+                                width = size.width - halfTheLength,
+                                height = height.toPx()),
+                        )
+
+                        // ..]
+                        drawRoundRect(
+                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            topLeft = Offset(0f,0f),
+                            size = Size(
+                                width = noteWidth + noteStart,  // noteWidth is negative here
+                                height = height.toPx()),
+                            cornerRadius = CornerRadius(size.height, size.height)
+                        )
+                        drawRect(
+                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            topLeft = Offset(0f,0f),
+                            size = Size(
+                                width = (noteWidth + noteStart) / 2,  // noteWidth is negative here
+                                height = height.toPx()),
+                        )
+                    }
+                }
+            }
+
+            playHeads(
+                seqIsPlaying = seqIsPlaying,
+                isRepeating = isRepeating,
+                playHeadsColor = playHeadsColor,
+                playhead = playhead,
+                playheadRepeat = playheadRepeat
+            )
+
+            if (isRepeating) repeatBounds(
+                totalTime = totalTime,
+                repeatStartTime = repeatStartTime,
+                repeatEndTime = repeatEndTime,
+                widthFactor = widthFactor,
+                alpha = 0.65f
+            )
+        }
+    }
+}
+
+
+@Composable
+fun VisualDebugger(seqViewModel: SeqViewModel, seqUiState: SeqUiState, height: Dp) {
+    Log.d("emptyTag", "") // for keeping in imports
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -262,7 +327,7 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {
         contentAlignment = Alignment.TopStart
     ) {
         Column() {
-            with(seqUiState.sequences[0]) {
+            with(seqViewModel.channelSequences[0]) {
                 Text(
                     "noteId = ${noteId - Int.MIN_VALUE},    " +
                         "notes ON: ${playingNotes[60]},     ",
@@ -275,7 +340,8 @@ fun VisualDebugger(seqUiState: SeqUiState, height: Dp) {
             }
         }
         for(c in 0..3){
-            with(seqUiState.sequences[c]) {
+            val channelState by seqViewModel.channelSequences[c].channelState.collectAsState()
+            with(channelState) {
                 for (i in notes.indices) {
                     Text(
                         text =
