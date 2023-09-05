@@ -64,166 +64,16 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         stopNotesOnChannel: (Int, StopNotesMode) -> Unit,
     ) {
         updateDeltaTime((System.currentTimeMillis() - startTimeStamp) * factorBpm + bpmDelta)
-        // NORMAL ERASING or PLAYING
+
         while (channelState.value.notes.size > indexToPlay && channelState.value.notes[indexToPlay].time <= channelState.value.deltaTime) {
-            val noteToPlay = channelState.value.notes[indexToPlay]
-            val pressedNote = channelState.value.pressedNotes[noteToPlay.pitch]
-            val overdubbing = seqIsRecording && pressedNote.isPressed
-            val noteShouldBeTiedToItself = System.currentTimeMillis() - pressedNote.noteOnTimestamp > quantizationTime / factorBpm * 1.5
-
-            if (!isRepeating && (isErasing || overdubbing)) {
-                if (overdubbing && pressedNote.id == noteToPlay.id && noteShouldBeTiedToItself) { // tie note
-                    updatePressedNote(noteToPlay.pitch, false)
-                    recIntoArray(
-                        index = indexToPlay,
-                        recordTime = noteToPlay.time,
-                        pitch = noteToPlay.pitch,
-                        velocity = 0,
-                        id = pressedNote.id
-                    )
-                    cancelPadInteraction()
-                    indexToPlay++
-                } else if (!erasing(false, indexToPlay, false)) break
-            } else {
-                if(!isRepeating && indexToPlay != draggedNoteOffIndex) {
-                    playing(
-                        indexToPlay,
-                        !soloIsOn,
-                        isStepView
-                    )
-                    // StepView case:
-                    if (indexToPlay == draggedNoteOnIndex) {
-                        playingDraggedNoteOffInTime(factorBpm)
-                    }
-                }
-                indexToPlay++
-            }
+            if (eraseOrPlay(seqIsRecording, quantizationTime, factorBpm, isRepeating, soloIsOn, isStepView)) break
         }
 
-        /** IF REPEATING **/
         if (isRepeating) {
-
-            // update deltaTimeRepeat
-            if (channelState.value.deltaTime < previousDeltaTime) {
-                previousDeltaTime -= channelState.value.totalTime
-            }
-            updateDeltaTimeRepeat(channelState.value.deltaTimeRepeat + channelState.value.deltaTime - previousDeltaTime)
-//                deltaTimeRepeat += (deltaTime - previousDeltaTime)
-//                            if(c == 0) Log.d("ryjtyj", "UPDATE: deltaTimeRepeat = $deltaTimeRepeat, deltaTime = $deltaTime")
-            previousDeltaTime = channelState.value.deltaTime
-
-            // erasing or playing
-            val repeatStartTime = channelState.value.repeatStartTime
-            val repeatEndTime = channelState.value.repeatEndTime
-            var deltaTimeRepeat = channelState.value.deltaTimeRepeat
-
-            while(
-            // make sure element exists in array
-                channelState.value.notes.size > indexToRepeat
-                // time to play note
-                && (channelState.value.notes[indexToRepeat].time in repeatStartTime .. deltaTimeRepeat
-                    || (repeatStartTime > repeatEndTime && (channelState.value.notes[indexToRepeat].time in 0.0 .. deltaTimeRepeat)))
-                // note is in repeat bounds
-                && (channelState.value.notes[indexToRepeat].time in repeatStartTime .. repeatEndTime     // [...]
-                    || (repeatStartTime > repeatEndTime && (channelState.value.notes[indexToRepeat].time >= repeatStartTime || channelState.value.notes[indexToRepeat].time <= repeatEndTime))) // ..] && [..
-                // no noteON present in repeatEndTime
-                && !(channelState.value.notes[indexToRepeat].time == repeatEndTime && channelState.value.notes[indexToRepeat].velocity > 0)
-            ) {
-                val noteToRepeat = channelState.value.notes[indexToRepeat]
-                val pressedNote = channelState.value.pressedNotes[noteToRepeat.pitch]
-                val overdubbing = seqIsRecording && pressedNote.isPressed
-                if (isErasing || overdubbing) {
-                    // tie note
-                    if (overdubbing && (getNotePairedIndexAndTime(indexToRepeat).time == repeatEndTime
-                            && channelState.value.notes[channelState.value.notes.indexOfLast { it.id == pressedNote.id }].time == repeatStartTime )) {
-                        updatePressedNote(noteToRepeat.pitch, false)
-                        recIntoArray(
-                            index = indexToRepeat,
-                            recordTime = noteToRepeat.time,
-                            pitch = noteToRepeat.pitch,
-                            velocity = 0,
-                            id = pressedNote.id
-                        )
-                        cancelPadInteraction()
-                        indexToRepeat++
-                        Log.d("ryjtyj", "tied note ${noteToRepeat.pitch}")
-                    } else
-                        if (!erasing(true, indexToRepeat, false)) break
-                } else {
-                    if (indexToRepeat != draggedNoteOffIndex) {
-                        playing(
-                            indexToRepeat,
-                            !soloIsOn,
-                            isStepView
-                        )
-                        // StepView case:
-                        if (indexToRepeat == draggedNoteOnIndex) {
-                            playingDraggedNoteOffInTime(factorBpm)
-                        }
-                    }
-                    indexToRepeat++
-                }
-            }
-
-            // end of repeating loop
-            if ((repeatStartTime < repeatEndTime && deltaTimeRepeat > repeatEndTime) || deltaTimeRepeat in repeatEndTime .. repeatStartTime) {
-                stopNotesOnChannel(channelNumber, END_OF_REPEAT)  // notesOFF on the end of loop // TODO activate only if channelIsPlayingNotes?
-
-                indexToStartRepeating = searchIndexInTimeBoundaries()
-                indexToRepeat = indexToStartRepeating
-
-                updateDeltaTimeRepeat(deltaTimeRepeat - (repeatEndTime - repeatStartTime))
-                deltaTimeRepeat = channelState.value.deltaTimeRepeat
-//                    deltaTimeRepeat -= (repeatEndTime - repeatStartTime)
-//                                if(c == 0) Log.d("ryjtyj", "end of REPEAT (> repeatEnd): deltaTimeRepeat = $deltaTimeRepeat, deltaTime = $deltaTime")
-                idsOfNotesToIgnore.clear()
-
-                for (p in 0..127) { // TODO change pressedNotes[] to mutableList?
-                    // ignore noteOff if we start repeatLoop in the middle of the note
-                    var hangingNoteOffIndex = channelState.value.notes.indexOfFirst {
-                        it.pitch == p && (it.time in repeatStartTime .. repeatEndTime || (repeatStartTime > repeatEndTime && it.time >= repeatStartTime))
-                    }
-                    if (hangingNoteOffIndex == -1 && repeatStartTime > repeatEndTime) hangingNoteOffIndex = channelState.value.notes.indexOfFirst {
-                        it.pitch == p && it.time in 0.0 .. repeatEndTime
-                    }
-                    if (hangingNoteOffIndex != -1 && channelState.value.notes[hangingNoteOffIndex].velocity == 0
-                        && (getNotePairedIndexAndTime(hangingNoteOffIndex).time !in repeatStartTime .. deltaTimeRepeat
-                            || (repeatStartTime > repeatEndTime && getNotePairedIndexAndTime(hangingNoteOffIndex).time in 0.0 .. deltaTimeRepeat))
-                    ) {
-                        idsOfNotesToIgnore.add(channelState.value.notes[hangingNoteOffIndex].id)
-                        Log.d("ryjtyj", "hanging NoteOff INDEX on the start of the loop = $hangingNoteOffIndex")
-                    }
-                    // notesON on the start of the loop if notes are being held
-                    if (channelState.value.pressedNotes[p].isPressed) {
-                        kmmk.noteOn(channelNumber, p, 100)
-                        Log.d("ryjtyj", "noteON on the start of the loop (note $p is being pressed")
-                        if (seqIsRecording) recordNote(
-                            pitch = p,
-                            velocity = 100,
-                            id = channelState.value.pressedNotes[p].id,
-                            quantizationTime = quantizationTime,
-                            quantizeTime = quantizeTime,
-                            factorBpm = factorBpm,
-                            seqIsPlaying = true,
-                            isRepeating = true,
-                            isStepView = isStepView,
-                            isStepRecord = false,
-                            customTime = repeatStartTime
-                        )
-                        changePlayingNotes(p, 100)
-                        increaseNoteId()
-                    }
-                }
-            }
-            if (deltaTimeRepeat > channelState.value.totalTime) {
-                updateDeltaTimeRepeat(deltaTimeRepeat - channelState.value.totalTime)
-//                    deltaTimeRepeat -= totalTime
-//                                if(c == 0) Log.d("ryjtyj", "end of CYCLE (> totalTime): deltaTimeRepeat = $deltaTimeRepeat, deltaTime = $deltaTime")
-                indexToRepeat = 0
-            }
+            advanceRepeating(seqIsRecording, soloIsOn, isStepView, factorBpm, stopNotesOnChannel, quantizationTime, quantizeTime)
         }
 
-        // END OF SEQUENCE (non-repeating)
+        // end of sequence
         if (channelState.value.deltaTime >= channelState.value.totalTime) {
             startTimeStamp = System.currentTimeMillis() - (channelState.value.deltaTime - channelState.value.totalTime).toLong()
             bpmDelta = 0.0
@@ -231,7 +81,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             idsOfNotesToIgnore.clear()
         }
 
-        // RECORD NOTES (if any)
+        // record notes (if any)
         while (listOfNotesToRecord.isNotEmpty()) {
             with(listOfNotesToRecord[0]) {
                 recording(
@@ -249,6 +99,204 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             }
             listOfNotesToRecord.removeAt(0)
         }
+    }
+
+    private fun eraseOrPlay(
+        seqIsRecording: Boolean,
+        quantizationTime: Double,
+        factorBpm: Double,
+        isRepeating: Boolean,
+        soloIsOn: Boolean,
+        isStepView: Boolean,
+    ): Boolean {
+        val noteToPlay = channelState.value.notes[indexToPlay]
+        val pressedNote = channelState.value.pressedNotes[noteToPlay.pitch]
+        val overdubbing = seqIsRecording && pressedNote.isPressed
+        val noteShouldBeTiedToItself = System.currentTimeMillis() - pressedNote.noteOnTimestamp > quantizationTime / factorBpm * 1.5
+
+        if (!isRepeating && (isErasing || overdubbing)) {
+            if (overdubbing && pressedNote.id == noteToPlay.id && noteShouldBeTiedToItself) { // tie note
+                updatePressedNote(noteToPlay.pitch, false)
+                recIntoArray(
+                    index = indexToPlay,
+                    recordTime = noteToPlay.time,
+                    pitch = noteToPlay.pitch,
+                    velocity = 0,
+                    id = pressedNote.id
+                )
+                cancelPadInteraction()
+                indexToPlay++
+            } else {
+                if (!erasing(false, indexToPlay, false)) return true
+            }
+        } else {
+            if (!isRepeating && indexToPlay != draggedNoteOffIndex) {
+                playing(
+                    indexToPlay,
+                    !soloIsOn,
+                    isStepView
+                )
+                // StepView case:
+                if (indexToPlay == draggedNoteOnIndex) {
+                    playingDraggedNoteOffInTime(factorBpm)
+                }
+            }
+            indexToPlay++
+        }
+        return false
+    }
+
+    private fun advanceRepeating(
+        seqIsRecording: Boolean,
+        soloIsOn: Boolean,
+        isStepView: Boolean,
+        factorBpm: Double,
+        stopNotesOnChannel: (Int, StopNotesMode) -> Unit,
+        quantizationTime: Double,
+        quantizeTime: (Double) -> Double,
+    ) {
+        if (channelState.value.deltaTime < previousDeltaTime) {
+            previousDeltaTime -= channelState.value.totalTime
+        }
+        updateDeltaTimeRepeat(channelState.value.deltaTimeRepeat + channelState.value.deltaTime - previousDeltaTime)
+        previousDeltaTime = channelState.value.deltaTime
+
+        // erasing or playing
+        val repeatStartTime = channelState.value.repeatStartTime
+        val repeatEndTime = channelState.value.repeatEndTime
+        var deltaTimeRepeat = channelState.value.deltaTimeRepeat
+
+        while (
+        // make sure element exists in array
+            channelState.value.notes.size > indexToRepeat
+            // time to play note
+            && (channelState.value.notes[indexToRepeat].time in repeatStartTime..deltaTimeRepeat
+                || (repeatStartTime > repeatEndTime && (channelState.value.notes[indexToRepeat].time in 0.0..deltaTimeRepeat)))
+            // note is in repeat bounds
+            && (channelState.value.notes[indexToRepeat].time in repeatStartTime..repeatEndTime     // [...]
+                || (repeatStartTime > repeatEndTime && (channelState.value.notes[indexToRepeat].time >= repeatStartTime || channelState.value.notes[indexToRepeat].time <= repeatEndTime))) // ..] && [..
+            // no noteON present in repeatEndTime
+            && !(channelState.value.notes[indexToRepeat].time == repeatEndTime && channelState.value.notes[indexToRepeat].velocity > 0)
+        ) {
+            if (eraseOrPlayInRepeat(seqIsRecording, repeatEndTime, repeatStartTime, soloIsOn, isStepView, factorBpm)) break
+        }
+
+        // end of repeating loop
+        if ((repeatStartTime < repeatEndTime && deltaTimeRepeat > repeatEndTime) || deltaTimeRepeat in repeatEndTime..repeatStartTime) {
+            deltaTimeRepeat =
+                restartRepeatingLoop(stopNotesOnChannel, deltaTimeRepeat, repeatEndTime, repeatStartTime, seqIsRecording, quantizationTime, quantizeTime, factorBpm, isStepView)
+        }
+        // wrap-around
+        if (deltaTimeRepeat > channelState.value.totalTime) {
+            updateDeltaTimeRepeat(deltaTimeRepeat - channelState.value.totalTime)
+            indexToRepeat = 0
+        }
+    }
+
+    private fun restartRepeatingLoop(
+        stopNotesOnChannel: (Int, StopNotesMode) -> Unit,
+        deltaTimeRepeat: Double,
+        repeatEndTime: Double,
+        repeatStartTime: Double,
+        seqIsRecording: Boolean,
+        quantizationTime: Double,
+        quantizeTime: (Double) -> Double,
+        factorBpm: Double,
+        isStepView: Boolean,
+    ): Double {
+        var deltaTimeRepeat1 = deltaTimeRepeat
+        stopNotesOnChannel(channelNumber, END_OF_REPEAT)  // notesOFF on the end of loop // TODO activate only if channelIsPlayingNotes?
+
+        indexToStartRepeating = searchIndexInTimeBoundaries()
+        indexToRepeat = indexToStartRepeating
+
+        updateDeltaTimeRepeat(deltaTimeRepeat1 - (repeatEndTime - repeatStartTime))
+        deltaTimeRepeat1 = channelState.value.deltaTimeRepeat
+        idsOfNotesToIgnore.clear()
+
+        for (p in 0..127) { // TODO change pressedNotes[] to mutableList?
+            // ignore noteOff if we start repeatLoop in the middle of the note
+            var hangingNoteOffIndex = channelState.value.notes.indexOfFirst {
+                it.pitch == p && (it.time in repeatStartTime..repeatEndTime || (repeatStartTime > repeatEndTime && it.time >= repeatStartTime))
+            }
+            if (hangingNoteOffIndex == -1 && repeatStartTime > repeatEndTime) hangingNoteOffIndex = channelState.value.notes.indexOfFirst {
+                it.pitch == p && it.time in 0.0..repeatEndTime
+            }
+            if (hangingNoteOffIndex != -1 && channelState.value.notes[hangingNoteOffIndex].velocity == 0
+                && (getNotePairedIndexAndTime(hangingNoteOffIndex).time !in repeatStartTime..deltaTimeRepeat1
+                    || (repeatStartTime > repeatEndTime && getNotePairedIndexAndTime(hangingNoteOffIndex).time in 0.0..deltaTimeRepeat1))
+            ) {
+                idsOfNotesToIgnore.add(channelState.value.notes[hangingNoteOffIndex].id)
+                Log.d("ryjtyj", "hanging NoteOff INDEX on the start of the loop = $hangingNoteOffIndex")
+            }
+            // notesON on the start of the loop if notes are being held
+            if (channelState.value.pressedNotes[p].isPressed) {
+                kmmk.noteOn(channelNumber, p, 100)
+                Log.d("ryjtyj", "noteON on the start of the loop (note $p is being pressed")
+                if (seqIsRecording) recordNote(
+                    pitch = p,
+                    velocity = 100,
+                    id = channelState.value.pressedNotes[p].id,
+                    quantizationTime = quantizationTime,
+                    quantizeTime = quantizeTime,
+                    factorBpm = factorBpm,
+                    seqIsPlaying = true,
+                    isRepeating = true,
+                    isStepView = isStepView,
+                    isStepRecord = false,
+                    customTime = repeatStartTime
+                )
+                changePlayingNotes(p, 100)
+                increaseNoteId()
+            }
+        }
+        return deltaTimeRepeat1
+    }
+
+    private fun eraseOrPlayInRepeat(
+        seqIsRecording: Boolean,
+        repeatEndTime: Double,
+        repeatStartTime: Double,
+        soloIsOn: Boolean,
+        isStepView: Boolean,
+        factorBpm: Double,
+    ): Boolean {
+        val noteToRepeat = channelState.value.notes[indexToRepeat]
+        val pressedNote = channelState.value.pressedNotes[noteToRepeat.pitch]
+        val overdubbing = seqIsRecording && pressedNote.isPressed
+        if (isErasing || overdubbing) {
+            // tie note
+            if (overdubbing && (getNotePairedIndexAndTime(indexToRepeat).time == repeatEndTime
+                    && channelState.value.notes[channelState.value.notes.indexOfLast { it.id == pressedNote.id }].time == repeatStartTime)
+            ) {
+                updatePressedNote(noteToRepeat.pitch, false)
+                recIntoArray(
+                    index = indexToRepeat,
+                    recordTime = noteToRepeat.time,
+                    pitch = noteToRepeat.pitch,
+                    velocity = 0,
+                    id = pressedNote.id
+                )
+                cancelPadInteraction()
+                indexToRepeat++
+                Log.d("ryjtyj", "tied note ${noteToRepeat.pitch}")
+            } else
+                if (!erasing(true, indexToRepeat, false)) return true
+        } else {
+            if (indexToRepeat != draggedNoteOffIndex) {
+                playing(
+                    indexToRepeat,
+                    !soloIsOn,
+                    isStepView
+                )
+                // StepView case:
+                if (indexToRepeat == draggedNoteOnIndex) {
+                    playingDraggedNoteOffInTime(factorBpm)
+                }
+            }
+            indexToRepeat++
+        }
+        return false
     }
 
 
@@ -288,7 +336,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             )
             Log.d("ryjtyj", "recordTime = $recordTime")
 
-            if (recordTime == repeatEndTime && isRepeating && velocity > 0) return // TODO change to recordTime = 0 instead of ignoring record?
+            if (recordTime == repeatEndTime && isRepeating && velocity > 0) return // TODO change to recordTime = repeatStartTime instead of ignoring record?
 
             if(seqIsPlaying) {
                 listOfNotesToRecord.add(RecordingPackage(recordTime, pitch, id, velocity, isStepView, isStepRecord, noteHeight))
@@ -375,30 +423,28 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         isStepView: Boolean,
         noteHeight: Float
     ) {
-        with(channelState.value) {
-            var index = notes.indexOfLast { it.time <= recordTime } + 1
-            Log.d("ryjtyj", "index to record: $index, record time = $recordTime")
+        var index = channelState.value.notes.indexOfLast { it.time <= recordTime } + 1
+        Log.d("ryjtyj", "index to record: $index, record time = $recordTime")
 
-            index = overdubPlayingNotes(pitch, recordTime, id, velocity, index)
+        index = overdubPlayingNotes(pitch, recordTime, id, velocity, index)
 
-            // if noteOff has the same time as some other note(ON) -> place it before:
-            val indexOfNoteOnAtTheSameTime =
-                notes.indexOfLast { it.time == recordTime && it.pitch == pitch && it.velocity > 0 && velocity == 0 }
-            if (indexOfNoteOnAtTheSameTime != -1) {
-                Log.d("ryjtyj", "indexOfNoteOnAtTheSameTime = $indexOfNoteOnAtTheSameTime")
-                index = indexOfNoteOnAtTheSameTime
-            }
+        // if noteOff has the same time as some other note(ON) -> place it before:
+        val indexOfNoteOnAtTheSameTime =
+            channelState.value.notes.indexOfLast { it.time == recordTime && it.pitch == pitch && it.velocity > 0 && velocity == 0 }
+        if (indexOfNoteOnAtTheSameTime != -1) {
+            Log.d("ryjtyj", "indexOfNoteOnAtTheSameTime = $indexOfNoteOnAtTheSameTime")
+            index = indexOfNoteOnAtTheSameTime
+        }
 
-            // RECORDING
-            Log.d("ryjtyj", "RECORDING index = $index, id = ${id - Int.MIN_VALUE}")
-            recIntoArray(index, recordTime, pitch, velocity, id)
+        // RECORDING
+        Log.d("ryjtyj", "RECORDING index = $index, id = ${id - Int.MIN_VALUE}")
+        recIntoArray(index, recordTime, pitch, velocity, id)
 
-            indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
-            indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
+        indexToPlay = channelState.value.notes.indexOfLast { it.time < channelState.value.deltaTime } + 1
+        indexToRepeat = channelState.value.notes.indexOfLast { it.time < channelState.value.deltaTimeRepeat } + 1
 
-            if (!isStepView) {
-                updateStepViewYScroll((noteHeight * (pitch - 5)).toInt().coerceAtLeast(0))
-            }
+        if (!isStepView) {
+            updateStepViewYScroll((noteHeight * (pitch - 5)).toInt().coerceAtLeast(0))
         }
     }
 
@@ -419,24 +465,42 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             noteOffAfterRec = -1
         }
 
-        // TODO simplify with a separate function with when (or ifs and returns)?
         if (noteOnBeforeRec != -1 || noteOffAfterRec != -1) {
             Log.d("ryjtyj", "OVERDUB: noteOnBeforeRec = $noteOnBeforeRec, noteOffAfterRec = $noteOffAfterRec")
-            if (velocity > 0) {
-                if (noteOnBeforeRec != -1 && notes[noteOnBeforeRec].time == recordTime) {
+
+            when {
+                velocity == 0 && noteOnBeforeRec == -1 -> {
+                    eraseFromArray(noteOffAfterRec, false)
+                }
+                velocity == 0 || (noteOnBeforeRec != -1 && notes[noteOnBeforeRec].time == recordTime) -> {
                     eraseOverdubbingNote(noteOnBeforeRec)
-                } else if (noteOffAfterRec != -1) {
+                }
+                noteOffAfterRec != -1 -> {
                     changeNoteTime(noteOffAfterRec, recordTime)
                     sortNotesByTime()
-                } else {
+                }
+                else -> {
                     recIntoArray(index, recordTime, pitch, 0, notes[noteOnBeforeRec].id)
                 }
-            } else if (noteOnBeforeRec != -1) {
-                eraseOverdubbingNote(noteOnBeforeRec)
-            } else {
-                eraseFromArray(noteOffAfterRec, false)
             }
-            index = notes.indexOfLast { it.time <= recordTime } + 1
+
+            // SAME AS ^^, before transforming to when{}:
+//            if (velocity > 0) {
+//                if (noteOnBeforeRec != -1 && notes[noteOnBeforeRec].time == recordTime) {
+//                    eraseOverdubbingNote(noteOnBeforeRec)
+//                } else if (noteOffAfterRec != -1) {
+//                    changeNoteTime(noteOffAfterRec, recordTime)
+//                    sortNotesByTime()
+//                } else {
+//                    recIntoArray(index, recordTime, pitch, 0, notes[noteOnBeforeRec].id)
+//                }
+//            } else if (noteOnBeforeRec != -1) {
+//                eraseOverdubbingNote(noteOnBeforeRec)
+//            } else {
+//                eraseFromArray(noteOffAfterRec, false)
+//            }
+
+            index = channelState.value.notes.indexOfLast { it.time <= recordTime } + 1
         }
         return index
     }
@@ -447,8 +511,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         id: Int
     ): Pair<Int, Int> {
         val notes = channelState.value.notes
-        var noteOnBeforeRec =
-            notes.indexOfLast { it.pitch == pitch && it.time <= recordTime && it.id != id }
+        var noteOnBeforeRec = notes.indexOfLast { it.pitch == pitch && it.time <= recordTime && it.id != id }
         var noteOffAfterRec: Int
 
         if (noteOnBeforeRec == -1 || notes[noteOnBeforeRec].velocity == 0) {
@@ -465,10 +528,9 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     }
 
     private fun eraseOverdubbingNote(noteOnBeforeRec: Int) {
-        val notes = channelState.value.notes
-        val noteOffId = notes[noteOnBeforeRec].id
+        val noteOffId = channelState.value.notes[noteOnBeforeRec].id
         eraseFromArray(noteOnBeforeRec, false)
-        val noteOffIndex = notes.indexOfFirst { it.id == noteOffId }
+        val noteOffIndex = channelState.value.notes.indexOfFirst { it.id == noteOffId }
         if (noteOffIndex != -1) eraseFromArray(noteOffIndex, false)
     }
 
@@ -523,7 +585,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
                 if (!pressedNotes[notes[index].pitch].isPressed && (isSoloed || (soloIsOff && !isMuted))) {
                     Log.d("ryjtyj", "playing() at channel $channelStateNumber: deltaTimeRepeat = $deltaTimeRepeat, index = $index, pitch = ${notes[index].pitch}")
                     kmmk.noteOn(
-                        channelStateNumber,
+                        channelNumber,
                         notes[index].pitch,
                         notes[index].velocity
                     )
@@ -611,7 +673,6 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             }
             // beginning of array
             index == 0 -> {
-                Log.d("ryjtyj", "erasing from beginning of array")
                 notes = notes.copyOfRange(1, notes.size)
             }
             // middle of array
@@ -667,7 +728,6 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
 
 
 
-    /** REPEAT */
     fun engageRepeatOnChannel(
         repeatLength: Double,
         isRepeating: Boolean,
@@ -733,6 +793,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             if(channelStateNumber == 0) Log.d("ryjtyj", "indexToStartRepeating = $indexToStartRepeating, repeatStartTime = ${channelState.value.repeatStartTime}, repeatEndTime = ${channelState.value.repeatEndTime}")
         }
     }
+
 
 
     fun changeKeyboardOctave(lowKeyboard: Boolean, increment: Int) {

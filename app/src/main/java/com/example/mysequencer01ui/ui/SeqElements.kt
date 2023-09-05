@@ -514,20 +514,17 @@ fun AllButton(
                     for(i in 0..15){
                         pressPad(i, 26, 100, 0, true)
                     }
-//                    updateSequencesUiState()
                     elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
                     for(i in 0..15){
                         pressPad(i, 26, 0, elapsedTime, true)
                     }
-//                    updateSequencesUiState()
                 }
                 is PressInteraction.Cancel -> {
                     for(i in 0..15){
                         pressPad(i, 26, 0, elapsedTime, true)
                     }
-//                    updateSequencesUiState()
                 }
             }
         }

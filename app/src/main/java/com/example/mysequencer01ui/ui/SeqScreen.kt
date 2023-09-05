@@ -41,7 +41,6 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
         ) {
             // to avoid unnecessary recompositions:
             val pressPad = remember {seqViewModel::pressPad}
-//            val updateSequencesUiState = remember {seqViewModel::updateSequencesUiState}
             val editCurrentPadsMode = remember {seqViewModel::editCurrentPadsMode}
             val switchPadsToQuantizingMode = remember {seqViewModel::switchPadsToQuantizingMode}
             val switchQuantization = remember {seqViewModel::switchQuantization}

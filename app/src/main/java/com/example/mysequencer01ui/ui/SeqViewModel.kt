@@ -141,7 +141,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     if (uiState.value.divisorState != previousDivisorValue && quantizeTime(deltaTime) <= deltaTime) {
 //                    Log.d("ryjtyj", "ENGAGE REPEAT(): deltaTimeRepeat = $deltaTimeRepeat, deltaTime = $deltaTime, quantizeTime(deltaTime) = ${quantizeTime(deltaTime)}")
                         engageRepeat(uiState.value.divisorState)
-//                        updateSequencesUiState()
                     }
                 }
 
@@ -156,7 +155,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         _uiState.update { it.copy(seqIsPlaying = false) }
         stopChannels(STOP_SEQ)
         kmmk.stopClock()
-//        updateSequencesUiState()
     }
 
     private fun stopChannels(mode: StopNotesMode) {
@@ -217,7 +215,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 kmmk.noteOn(c, p, 0)
             }
         }
-//        updateSequencesUiState()
     }
 
 
@@ -481,7 +478,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     _uiState.update { it.copy(selectedChannel = channel) }
                 }
             }
-        }//.also { if(!allButton) updateSequencesUiState() } // allButton recomposes by itself // TODO is it still needed here?
+        }
     }
 
 
@@ -596,14 +593,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             seqView = seqView
         ) }
     }
-
-//    fun updateSequencesUiState() {
-//        _uiState.update { it.copy(
-////            sequences = uiState.value.sequences, // FIXME this doesn't recompose (at least when seq is stopped)
-//            visualArrayRefresh = !uiState.value.visualArrayRefresh // that's why it's here TODO (get rid of)
-//        ) }
-////        Log.d("ryjtyj", "updateSequencesUiState()")
-//    }
 
     fun changeStepViewNoteHeight(noteHeight: Dp) { // future feature
         _uiState.update { a -> a.copy( stepViewNoteHeight = noteHeight ) }

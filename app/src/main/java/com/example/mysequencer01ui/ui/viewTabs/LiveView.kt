@@ -60,6 +60,7 @@ import com.example.mysequencer01ui.ui.theme.night
 import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.repeatButtons
 import com.example.mysequencer01ui.ui.theme.violet
+import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -233,19 +234,26 @@ fun ChannelScreen(
             for (i in notes.indices) {
                 if(notes[i].velocity > 0) {
                     val noteStart = (widthFactor * notes[i].time).toFloat()
-                    val noteOffIndexAndTime = getNotePairedIndexAndTime(i)
-                    val noteOffIndex = noteOffIndexAndTime.index
-                    val noteLength = widthFactor * (noteOffIndexAndTime.time - notes[i].time).toFloat()
+                    val (noteOffIndex, noteOffTime) = getNotePairedIndexAndTime(i)
+                    val noteLength = widthFactor * (noteOffTime - notes[i].time).toFloat()
+                    val deltaWidth = if (isRepeating) playheadRepeat - noteStart else playhead - noteStart
                     val noteWidth =
                         if (noteOffIndex != -1) {
-                            if(noteLength > 0f && noteLength <= size.height / 16) {
-                                size.height / 16
+                            if(noteLength > 0 && noteLength < size.height) {
+                                size.height
                             } else noteLength
+//                        } else if (abs(deltaWidth) <= size.width / 32) {
+//                            size.width / 32
                         } else {
-                            if (isRepeating) playheadRepeat - noteStart else playhead - noteStart  // live-writing note (grows in length)
+                            deltaWidth  // live-writing note (grows in length)
                         }
 
                     val fasterThanHalfOfQuantize = System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= quantizationTime / factorBpm / 2
+
+//                    val noteIsNotCorrupted = i in 0..notes.lastIndex && noteOffIndex in 0..notes.lastIndex && notes[i].id == notes[noteOffIndex].id
+//                    if ((noteWidth > 0 && noteIsNotCorrupted) || (noteOffIndex == -1 && (fasterThanHalfOfQuantize || noteWidth > 0))) {   // normal note (not wrap-around) [...]
+                    Log.d("ryjtyj", "size.height / 16 = ${size.height / 16}, noteLength = $noteLength, noteWidth = $noteWidth, noteOffIndex = $noteOffIndex, fasterThanHalfOfQuantize = $fasterThanHalfOfQuantize")
+
                     if (noteWidth > 0  || (noteOffIndex == -1 && fasterThanHalfOfQuantize)) {   // normal note (not wrap-around) [...]
                         drawRoundRect(
                             color = if (selectedChannel == channelStateNumber) violet else darkViolet,
@@ -255,6 +263,7 @@ fun ChannelScreen(
                                 height = height.toPx()),
                             cornerRadius = CornerRadius(size.height, size.height)
                         )
+//                    } else if (noteWidth <= 0 && (noteIsNotCorrupted || noteOffIndex == -1)) {   // wrap-around note
                     } else {   // wrap-around note
 
                         // [..

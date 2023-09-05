@@ -170,26 +170,19 @@ fun NotesGrid(
                         .background(buttonsBg)
                         .verticalScroll(
                             scrollState,
-//                            enabled = false,
                             reverseScrolling = true,
-                            flingBehavior = flingBehavior()
+//                            flingBehavior = flingBehavior()
                         )
                         .pointerInput(
                             seqUiState.selectedChannel, seqUiState.seqIsPlaying, channelState.notes
-//                            , seqUiState.sequences[seqUiState.selectedChannel]
                         ) {
                             with(channelState) {
                                 detectTapGestures(
                                     onTap = { offset ->
                                         val pitch = 127 - (offset.y / noteHeight.toPx()).toInt()
-                                        var time =
-                                            ((offset.x.toDp().value / gridWidth.value) * totalTime).toDouble()
+                                        var time = ((offset.x.toDp().value / gridWidth.value) * totalTime).toDouble()
 
-                                        val (noteOnIndex, noteOffIndex: Int) = findNoteIndicesAroundGivenTime(
-                                            pitch,
-                                            time,
-                                            Int.MAX_VALUE
-                                        )
+                                        val (noteOnIndex, noteOffIndex: Int) = findNoteIndicesAroundGivenTime(pitch, time, Int.MAX_VALUE)
 
                                         val noteExistsWhereWeTap =
                                             (noteOnIndex > -1 && noteOffIndex > -1) && (
@@ -197,31 +190,19 @@ fun NotesGrid(
                                                     || (noteOnIndex > noteOffIndex &&
                                                     (time in 0.0..notes[noteOffIndex].time || time in notes[noteOnIndex].time..totalTime.toDouble())) // ..] & [..
                                                 )
-                                        Log.d(
-                                            "ryjtyj",
-                                            "onTap: noteExistsWhereWeTap = $noteExistsWhereWeTap"
-                                        )
+                                        Log.d("ryjtyj", "onTap: noteExistsWhereWeTap = $noteExistsWhereWeTap")
 
                                         // if note exists where we tap - erase it, else record new note
                                         if (noteExistsWhereWeTap) {
-
-                                            erasing(
-                                                seqUiState.isRepeating,
-                                                noteOnIndex,
-                                                true
-                                            )
+                                            erasing(seqUiState.isRepeating, noteOnIndex, true)
 
                                             if (seqUiState.isRepeating) {
-                                                indexToRepeat =
-                                                    notes.indexOfLast { it.time < deltaTimeRepeat } + 1
+                                                indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
                                             } else {
-                                                indexToPlay =
-                                                    notes.indexOfLast { it.time < channelState.deltaTime } + 1
+                                                indexToPlay = notes.indexOfLast { it.time < channelState.deltaTime } + 1
                                             }
-
                                         } else {
-                                            time =
-                                                seqViewModel.quantizeTime(time - seqUiState.quantizationTime / 2)
+                                            time = seqViewModel.quantizeTime(time - seqUiState.quantizationTime / 2)
                                             val noteOffTime = time + seqUiState.quantizationTime
 
                                             recordNote(
@@ -254,7 +235,6 @@ fun NotesGrid(
 
                                             increaseNoteId()
                                         }
-//                                    seqViewModel.updateSequencesUiState()
                                     }
                                 )
                             }
@@ -263,7 +243,7 @@ fun NotesGrid(
                             seqUiState.selectedChannel,
                             seqUiState.seqIsPlaying,
                             seqUiState.isQuantizing,
-                            channelState.notes, //channelState.stepViewYScroll, //scrollState
+                            channelState.notes,
                         ) {
                             var noteDetected = false
                             var pitch = -1
@@ -282,20 +262,18 @@ fun NotesGrid(
                                         pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
                                         time = ((xOffset / gridWidth.toPx()) * totalTime).toDouble()
 
-                                        noteOnIndex = notes.indexOfLast {
-                                            it.pitch == pitch && it.time <= time
-                                        }
+                                        noteOnIndex = notes.indexOfLast { it.pitch == pitch && it.time <= time }
+
                                         if (noteOnIndex == -1 || notes[noteOnIndex].velocity == 0) {
                                             noteOffIndex = -1
-                                            noteOffIndex =
-                                                notes.indexOfFirst { it.pitch == pitch && it.time > time }
+                                            noteOffIndex = notes.indexOfFirst { it.pitch == pitch && it.time > time }
+
                                             if (noteOffIndex != -1 && notes[noteOffIndex].velocity == 0) {
                                                 noteOnIndex =
                                                     getNotePairedIndexAndTime(noteOffIndex).index
                                             } else noteOffIndex = -1
                                         } else {
-                                            noteOffIndex =
-                                                getNotePairedIndexAndTime(noteOnIndex).index
+                                            noteOffIndex = getNotePairedIndexAndTime(noteOnIndex).index
                                         }
 
 //                                Log.d("ryjtyj", "noteOnIndex = $noteOnIndex, noteOffIndex = $noteOffIndex")
@@ -305,24 +283,22 @@ fun NotesGrid(
 
                                         var widthOfChangeLengthArea =
                                             if (noteOnIndex < noteOffIndex) {   // normal case (not wrap-around)
-                                                (notes[noteOffIndex].time - notes[noteOnIndex].time) / 3
+                                                (notes[noteOffIndex].time - notes[noteOnIndex].time) / 2.5
                                             } else if (noteOnIndex > noteOffIndex) {   // wrap-around case
-                                                (notes[noteOffIndex].time - notes[noteOnIndex].time + channelState.totalTime) / 3
+                                                (notes[noteOffIndex].time - notes[noteOnIndex].time + channelState.totalTime) / 2.5
                                             } else 0.0
-                                        if (widthOfChangeLengthArea !in 0.0..channelState.totalTime / 16.0) widthOfChangeLengthArea =
-                                            channelState.totalTime / 16.0
+                                        if (widthOfChangeLengthArea !in 0.0..channelState.totalTime / 12.0) {
+                                            widthOfChangeLengthArea = channelState.totalTime / 12.0
+                                        }
 
                                         val rightmostAreaOfChangeLength =
                                             if (noteOffIndex == -1) 0.0 else {
-                                                (channelState.totalTime.toDouble() - widthOfChangeLengthArea + notes[noteOffIndex].time).coerceAtMost(
-                                                    channelState.totalTime.toDouble()
-                                                )
+                                                (channelState.totalTime.toDouble() - widthOfChangeLengthArea + notes[noteOffIndex].time)
+                                                    .coerceAtMost(channelState.totalTime.toDouble())
                                             }
                                         val leftmostAreaOfChangeLength =
                                             if (noteOffIndex == -1) 0.0 else {
-                                                (notes[noteOffIndex].time - widthOfChangeLengthArea).coerceAtLeast(
-                                                    0.0
-                                                )
+                                                (notes[noteOffIndex].time - widthOfChangeLengthArea).coerceAtLeast(0.0)
                                             }
 
                                         // does note exists where we start dragging?
@@ -352,40 +328,26 @@ fun NotesGrid(
                                             if (seqUiState.isQuantizing) {
                                                 if (!changeLengthAreaDetected) {
                                                     val tempTime = notes[noteOnIndex].time
-                                                    changeNoteTime(
-                                                        noteOnIndex,
-                                                        seqViewModel.quantizeTime(tempTime)
-                                                    )
-                                                    noteDeltaTime =
-                                                        notes[noteOnIndex].time - tempTime
-                                                    changeNoteTime(
-                                                        noteOffIndex,
-                                                        noteDeltaTime,
-                                                        true
-                                                    )
+                                                    changeNoteTime(noteOnIndex, seqViewModel.quantizeTime(tempTime))
+                                                    noteDeltaTime = notes[noteOnIndex].time - tempTime
+                                                    changeNoteTime(noteOffIndex, noteDeltaTime, true)
                                                 } else {
                                                     val tempTime = notes[noteOffIndex].time
-                                                    changeNoteTime(
-                                                        noteOffIndex,
-                                                        seqViewModel.quantizeTime(tempTime)
-                                                    )
-                                                    noteDeltaTime =
-                                                        notes[noteOffIndex].time - tempTime
+                                                    changeNoteTime(noteOffIndex, seqViewModel.quantizeTime(tempTime))
+                                                    noteDeltaTime = notes[noteOffIndex].time - tempTime
                                                 }
-                                                timeQuantized =
-                                                    seqViewModel.quantizeTime(time + noteDeltaTime)
+                                                timeQuantized = seqViewModel.quantizeTime(time + noteDeltaTime)
                                             }
 
                                             // if dragging note that is playing -> fire noteOff on time
                                             val currentIndex =
                                                 if (seqUiState.isRepeating) indexToRepeat else indexToPlay
                                             if (seqUiState.seqIsPlaying &&
-                                                (
-                                                    currentIndex in noteOnIndex + 1..noteOffIndex // normal case (not wrap-around)
-                                                        || noteOnIndex > noteOffIndex && (   // wrap-around case
+                                                (currentIndex in noteOnIndex + 1..noteOffIndex // normal case (not wrap-around)
+                                                    || noteOnIndex > noteOffIndex && (   // wrap-around case
                                                         currentIndex in noteOnIndex + 1 until notes.size || currentIndex in 0..noteOffIndex
-                                                        )
                                                     )
+                                                )
                                             ) {
                                                 val tempPitch = pitch
                                                 CoroutineScope(Dispatchers.Default).launch {
@@ -399,22 +361,14 @@ fun NotesGrid(
                                                         }
                                                     delay((delayTime / seqUiState.factorBpm).toLong())
                                                     kmmk.noteOn(channelStateNumber, tempPitch, 0)
-                                                    changePlayingNotes(
-                                                        tempPitch,
-                                                        0
-                                                    )
+                                                    changePlayingNotes(tempPitch, 0)
                                                 }
                                             }
                                         }
                                     },
                                     onDragEnd = {
-//                                if (noteDetected && seqUiState.seqIsPlaying) {
-//                                    val dt = if (seqUiState.isRepeating) deltaTimeRepeat else deltaTime
-//                                    if (dt in )
-//                                    notesDragEndOnRepeat[pitch] = true
                                         draggedNoteOnIndex = -1
                                         draggedNoteOffIndex = -1
-                                        // offsetY = noteHeight * (127 - note.pitch)
                                         // TODO if releasing on top of another note -> delete another
 //                                }
 
@@ -428,29 +382,24 @@ fun NotesGrid(
                                         if (!changeLengthAreaDetected) {
                                             yOffset += dragAmount.y
                                         }
-                                        time =
-                                            (xOffset * channelState.totalTime / gridWidth.toPx()).toInt() + noteDeltaTime
+                                        time = (xOffset * channelState.totalTime / gridWidth.toPx()).toInt() + noteDeltaTime
 
                                         if (seqUiState.isQuantizing) {
                                             if (seqViewModel.quantizeTime(time) != timeQuantized) {
                                                 val deltaQuantized =
                                                     seqViewModel.quantizeTime(time) - timeQuantized
-                                                if (!changeLengthAreaDetected) changeNoteTime(
-                                                    noteOnIndex,
-                                                    deltaQuantized,
-                                                    true
-                                                )
+                                                if (!changeLengthAreaDetected) {
+                                                    changeNoteTime(noteOnIndex, deltaQuantized, true)
+                                                }
                                                 changeNoteTime(noteOffIndex, deltaQuantized, true)
                                                 timeQuantized = seqViewModel.quantizeTime(time)
                                             }
                                         } else {
                                             dragDeltaTime =
                                                 (dragAmount.x.toDp() * BARTIME / gridWidth).toDouble()
-                                            if (!changeLengthAreaDetected) changeNoteTime(
-                                                noteOnIndex,
-                                                dragDeltaTime,
-                                                true
-                                            )
+                                            if (!changeLengthAreaDetected) {
+                                                changeNoteTime(noteOnIndex, dragDeltaTime, true)
+                                            }
                                             changeNoteTime(noteOffIndex, dragDeltaTime, true)
                                         }
 
@@ -492,7 +441,6 @@ fun NotesGrid(
 
                                     } else {
                                         CoroutineScope(Dispatchers.Main).launch {
-//                                            scrollState.scrollTo(seqViewModel.channelSequences[seqUiState.selectedChannel].channelState.value.stepViewYScroll + dragAmount.y.toInt())
                                             scrollState.scrollTo(scrollState.value + dragAmount.y.toInt())
                                         }
                                     }

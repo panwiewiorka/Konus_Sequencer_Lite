@@ -61,7 +61,7 @@ class KmmkComponentContext {
         if (key < 0 || key >= 128) // invalid operation
             return
 
-        val existingPlayingNotes = noteOnStates.any { it > 0 }
+//        val existingPlayingNotes = noteOnStates.any { it > 0 }
 
         noteOnStates[key]++
 
