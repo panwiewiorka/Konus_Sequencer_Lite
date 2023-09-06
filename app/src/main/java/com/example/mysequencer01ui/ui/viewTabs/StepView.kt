@@ -130,6 +130,7 @@ fun NotesGrid(
 ) {
     with(seqViewModel.channelSequences[seqUiState.selectedChannel]){
 
+        val channelSequence = this
         val noteHeight = seqUiState.stepViewNoteHeight
 
         BoxWithConstraints(
@@ -152,7 +153,7 @@ fun NotesGrid(
                             scrollState,
                             reverseScrolling = true,
                         ),
-                    interactionSources = interactionSources,
+                    interactionSources = channelState.interactionSources,
                     rememberInteraction = rememberInteraction,
                     selectedChannel = seqUiState.selectedChannel,
                     playingNotes = playingNotes,
@@ -234,6 +235,10 @@ fun NotesGrid(
                                             )
 
                                             increaseNoteId()
+                                            if(!seqUiState.seqIsPlaying) {
+                                                updateNotes(notes)
+                                                updateStepView()
+                                            }
                                         }
                                     }
                                 )
@@ -420,6 +425,7 @@ fun NotesGrid(
                                         }
 
                                         sortNotesByTime()
+                                        updateNotes(channelSequence.notes)
 
                                         val noteOnIndexAfterSort = notes.indexOfFirst { it.id == draggedNoteId && it.velocity > 0 }
                                         val noteOffIndexAfterSort = notes.indexOfFirst { it.id == draggedNoteId && it.velocity == 0 }

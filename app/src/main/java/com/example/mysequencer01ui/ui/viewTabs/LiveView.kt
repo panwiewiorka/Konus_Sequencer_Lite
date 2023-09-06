@@ -49,7 +49,6 @@ import com.example.mysequencer01ui.ui.buttonTextSize
 import com.example.mysequencer01ui.ui.buttonsPadding
 import com.example.mysequencer01ui.ui.nonScaledSp
 import com.example.mysequencer01ui.ui.playHeads
-import com.example.mysequencer01ui.ui.recomposeHighlighter
 import com.example.mysequencer01ui.ui.repeatBounds
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttons
@@ -60,7 +59,6 @@ import com.example.mysequencer01ui.ui.theme.night
 import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.repeatButtons
 import com.example.mysequencer01ui.ui.theme.violet
-import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -182,8 +180,9 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
             for(c in seqViewModel.channelSequences.indices) {
-                val channelState by seqViewModel.channelSequences[15 - c].channelState.collectAsState()
-                val getNotePairedIndexAndTime by remember { mutableStateOf(seqViewModel.channelSequences[15 - c]::getNotePairedIndexAndTime)}
+                val channelNumber = seqViewModel.channelSequences.lastIndex - c
+                val channelState by seqViewModel.channelSequences[channelNumber].channelState.collectAsState()
+                val getNotePairedIndexAndTime by remember { mutableStateOf(seqViewModel.channelSequences[channelNumber]::getNotePairedIndexAndTime)}
 
                 ChannelScreen(
                     channelState = channelState,
@@ -252,7 +251,7 @@ fun ChannelScreen(
 
 //                    val noteIsNotCorrupted = i in 0..notes.lastIndex && noteOffIndex in 0..notes.lastIndex && notes[i].id == notes[noteOffIndex].id
 //                    if ((noteWidth > 0 && noteIsNotCorrupted) || (noteOffIndex == -1 && (fasterThanHalfOfQuantize || noteWidth > 0))) {   // normal note (not wrap-around) [...]
-                    Log.d("ryjtyj", "size.height / 16 = ${size.height / 16}, noteLength = $noteLength, noteWidth = $noteWidth, noteOffIndex = $noteOffIndex, fasterThanHalfOfQuantize = $fasterThanHalfOfQuantize")
+//                    Log.d("ryjtyj", "noteWidth = $noteWidth, id = ${notes[i].id - Int.MIN_VALUE}, noteOn = $i, noteOff = $noteOffIndex, noteIsCorrupted = ${!noteIsNotCorrupted}, fasterThanHalfOfQuantize = $fasterThanHalfOfQuantize")
 
                     if (noteWidth > 0  || (noteOffIndex == -1 && fasterThanHalfOfQuantize)) {   // normal note (not wrap-around) [...]
                         drawRoundRect(
@@ -265,6 +264,7 @@ fun ChannelScreen(
                         )
 //                    } else if (noteWidth <= 0 && (noteIsNotCorrupted || noteOffIndex == -1)) {   // wrap-around note
                     } else {   // wrap-around note
+//                        Log.d("ryjtyj", "WRAPAROUND noteWidth = $noteWidth, id = ${notes[i].id - Int.MIN_VALUE}, noteOn = $i, noteOff = $noteOffIndex, noteIsCorrupted = ${!noteIsNotCorrupted}")
 
                         // [..
                         drawRoundRect(
@@ -353,12 +353,9 @@ fun VisualDebugger(seqViewModel: SeqViewModel, seqUiState: SeqUiState, height: D
             with(channelState) {
                 for (i in notes.indices) {
                     Text(
-                        text =
-                            when (seqUiState.debuggerViewSetting) {
-                                0 -> "$i"
-                                else-> "${notes[i].id - Int.MIN_VALUE}"
-                            }
-                        ,
+                        text = when (seqUiState.debuggerViewSetting) {
+                            0 -> "$i"
+                            else -> "${notes[i].id - Int.MIN_VALUE}" },
                         color = if(notes[i].velocity > 0) Color(0xFFFFFFFF) else Color(0xFF999999),
                         modifier = Modifier.offset(
                             (notes[i].time.toFloat() / totalTime * maxWidth.value).dp,

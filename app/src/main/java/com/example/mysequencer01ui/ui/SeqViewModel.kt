@@ -1,7 +1,6 @@
 package com.example.mysequencer01ui.ui
 
 import android.util.Log
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.ViewModel
@@ -11,7 +10,6 @@ import com.example.mysequencer01ui.PadsMode
 import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.ChannelSequence
-import com.example.mysequencer01ui.PressedNote
 import com.example.mysequencer01ui.StopNotesMode
 import com.example.mysequencer01ui.StopNotesMode.*
 import com.example.mysequencer01ui.data.Patterns
@@ -99,7 +97,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         }
 
         for(c in channelSequences.indices) {
-            channelSequences[c].updateStateWhenSequencerStarts()
+            channelSequences[c].resetChannelSequencerValues()
         }
 
         if (uiState.value.seqIsPlaying) return // needed for future implementing of reStart()
@@ -110,7 +108,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         if (uiState.value.transmitClock) kmmk.startClock()
 
         // ------====== MAIN CYCLE
-        CoroutineScope(Dispatchers.Default).launch {
+        CoroutineScope(Dispatchers.Main).launch {
             while (uiState.value.seqIsPlaying) {
                 for (c in channelSequences.indices) {
                     channelSequences[c].advanceChannelSequence(
@@ -126,7 +124,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     )
                 }
 
-                with(channelSequences[0].channelState.value) {
+                with(channelSequences[0]) {
                     // CLOCK
                     if (uiState.value.transmitClock) {
                         if (deltaTime >= totalTime) {
@@ -164,8 +162,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 idsOfNotesToIgnore.clear()
                 notesDragEndOnRepeat = Array(128){ false }
                 if(mode == STOP_SEQ) {
-                    updateDeltaTime(0.0)
-                    updateDeltaTimeRepeat(0.0)
+                    deltaTime = 0.0
+                    deltaTimeRepeat = 0.0
                     bpmDelta = 0.0
                     if(draggedNoteOffJob.isActive) {
                         draggedNoteOffJob.cancel()
@@ -186,11 +184,11 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 channelSequences[c].changePlayingNotes(p, 0)
             }
             with(uiState.value) {
-                if (seqIsRecording && channelSequences[c].channelState.value.pressedNotes[p].isPressed) {
+                if (seqIsRecording && channelSequences[c].pressedNotes[p].isPressed) {
                     channelSequences[c].recordNote(
                         pitch = p,
                         velocity = 0,
-                        id = channelSequences[c].channelState.value.pressedNotes[p].id,
+                        id = channelSequences[c].pressedNotes[p].id,
                         quantizationTime = quantizationTime,
                         quantizeTime = ::quantizeTime,
                         factorBpm = uiState.value.factorBpm,
@@ -198,15 +196,16 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         isRepeating = isRepeating,
                         isStepView = uiState.value.seqView == SeqView.STEP,
                         isStepRecord = false,
-                        customTime = if (mode == END_OF_REPEAT) channelSequences[c].channelState.value.repeatEndTime else -1.0
+                        customTime = if (mode == END_OF_REPEAT) channelSequences[c].repeatEndTime else -1.0
                     )
                     if (mode == END_OF_REPEAT) {
-                        channelSequences[c].channelState.value.pressedNotes[p] = PressedNote(true, channelSequences[c].noteId, System.currentTimeMillis()) // updating noteID for new note in beatRepeat (wrapAround case)
+                        channelSequences[c].updatePressedNote(p, true, channelSequences[c].noteId, System.currentTimeMillis()) // updating noteID for new note in beatRepeat (wrapAround case)
+//                        channelSequences[c].channelState.value.pressedNotes[p] = PressedNote(true, channelSequences[c].noteId, System.currentTimeMillis()) // updating noteID for new note in beatRepeat (wrapAround case)
                     }
                 }
             }
         }
-        channelSequences[c].updatePadUiState(channelSequences[c].channelState.value.channelIsPlayingNotes)
+        channelSequences[c].updatePadState()
     }
 
     fun stopAllNotes() {
@@ -222,12 +221,12 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         if(uiState.value.seqIsRecording) {
             for (c in channelSequences.indices) {
                 for (p in 0..127) {
-                    if (channelSequences[c].channelState.value.pressedNotes[p].isPressed) {
+                    if (channelSequences[c].pressedNotes[p].isPressed) {
                         kmmk.noteOn(c, p, 0)
                         channelSequences[c].recordNote(
                             pitch = p,
                             velocity = 0,
-                            id = channelSequences[c].channelState.value.pressedNotes[p].id,
+                            id = channelSequences[c].pressedNotes[p].id,
                             quantizationTime = uiState.value.quantizationTime,
                             factorBpm = uiState.value.factorBpm,
                             seqIsPlaying = uiState.value.seqIsPlaying,
@@ -320,11 +319,11 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         } else time
     }
 
-    fun quantizeChannel(channel: Int) {
+    private fun quantizeChannel(channel: Int) {
         with(channelSequences[channel]) {
-            for (i in channelState.value.notes.indices) {
-                if (channelState.value.notes[i].velocity > 0) {
-                    val tempTime = channelState.value.notes[i].time
+            for (i in notes.indices) {
+                if (notes[i].velocity > 0) {
+                    val tempTime = notes[i].time
                     val time = quantizeTime(tempTime)
                     changeNoteTime(i, time)
                     changeNoteTime(getNotePairedIndexAndTime(i).index, time - tempTime, true)
@@ -434,8 +433,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         updatePressedNote(
                             pitch = pitch,
                             isPressed = false,
-                            id = channelState.value.pressedNotes[pitch].id,
-                            noteOnTimestamp = channelState.value.pressedNotes[pitch].noteOnTimestamp
+                            id = pressedNotes[pitch].id,
+                            noteOnTimestamp = pressedNotes[pitch].noteOnTimestamp
                         )
 //                        PressedNote(false, pressedNotes[pitch].id, pressedNotes[pitch].noteOnTimestamp)
                     }
@@ -460,7 +459,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                                 recordNote(
                                     pitch = pitch,
                                     velocity = 0,
-                                    id = channelState.value.pressedNotes[pitch].id,
+                                    id = pressedNotes[pitch].id,
                                     quantizationTime = uiState.value.quantizationTime,
                                     quantizeTime = ::quantizeTime,
                                     factorBpm = uiState.value.factorBpm,
@@ -476,6 +475,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     }
                     if(!retrigger) changePlayingNotes(pitch, velocity)
                     _uiState.update { it.copy(selectedChannel = channel) }
+                    if(!uiState.value.seqIsPlaying) updateNotes(notes)
                 }
             }
         }
@@ -486,7 +486,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         CoroutineScope(Dispatchers.Default).launch {
             dao.deletePattern(pattern)
             for(c in channelSequences.indices) {
-                with(channelSequences[c].channelState.value) {
+                with(channelSequences[c]) {
                     patterns[pattern][c] = notes
                     for(i in notes.indices) {
                         dao.saveNoteToPattern(
@@ -509,14 +509,14 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private fun loadPattern(pattern: Int) {
         CoroutineScope(Dispatchers.Default).launch {
             for(c in channelSequences.indices) {
-                with(channelSequences[c].channelState.value) {
-                    channelSequences[c].idsOfNotesToIgnore.clear()
-                    channelSequences[c].updateNotes(patterns[pattern][c])
-                    channelSequences[c].indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
+                with(channelSequences[c]) {
+                    idsOfNotesToIgnore.clear()
+                    notes = patterns[pattern][c]
+                    indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
                     if(uiState.value.isRepeating) {
-                        channelSequences[c].indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
+                        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
                     }
-                    channelSequences[c].noteId = if(notes.isNotEmpty()) notes.maxOf { it.id } + 1 else Int.MIN_VALUE
+                    noteId = if(notes.isNotEmpty()) notes.maxOf { it.id } + 1 else Int.MIN_VALUE
                 }
             }
         }
@@ -618,7 +618,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
 
     fun rememberInteraction(channel: Int, pitch: Int, interaction: PressInteraction.Press) {
-        channelSequences[channel].interactionSources[pitch].pressInteraction = interaction
+        channelSequences[channel].channelState.value.interactionSources[pitch].pressInteraction = interaction
     }
 
     fun cancelAllPadsInteraction() {

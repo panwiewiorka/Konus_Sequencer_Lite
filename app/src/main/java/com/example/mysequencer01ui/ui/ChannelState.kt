@@ -1,8 +1,12 @@
 package com.example.mysequencer01ui.ui
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.ui.geometry.Offset
 import com.example.mysequencer01ui.Note
 import com.example.mysequencer01ui.PadsMode
 import com.example.mysequencer01ui.PressedNote
+import com.example.mysequencer01ui.RememberedPressInteraction
 
 data class ChannelState(
     val channelStateNumber: Int,
@@ -11,19 +15,21 @@ data class ChannelState(
     val isMuted: Boolean = false,
     val isSoloed: Boolean = false,
     val channelIsPlayingNotes: Int = 0,
-    var pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, Long.MIN_VALUE) }, // manually pressed notes that are muting same ones played by sequencer
+    var playingNotes: Array<Int> = Array(128){ 0 }, // TODO move to channelSequence?
+    val pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, Long.MIN_VALUE) }, // manually pressed notes that are muting same ones played by sequencer
     val onPressedMode: PadsMode = PadsMode.DEFAULT,
-//    var noteId: Int = Int.MIN_VALUE,
-
-//    var draggedNoteOnIndex: Int = -1,
-//    var draggedNoteOffIndex: Int = -1,
+    val interactionSources: Array<RememberedPressInteraction> = Array(128) { // TODO move to channelSequence?
+        RememberedPressInteraction(
+            MutableInteractionSource(),
+            PressInteraction.Press( Offset(0f,0f) )
+        )
+    },
 
     val stepViewYScroll: Int = 3300,
     val stepViewRefresh: Boolean = false,
     val pianoViewOctaveHigh: Int = 4,
     val pianoViewOctaveLow: Int = 2,
 
-//    var bpmDelta: Double = 0.0,
     val seqLength: Int = 4, // future feature
     val totalTime: Int = BARTIME, // TODO how are totalTime & seqLength correlated? Replace totalTime with relative one?
     val deltaTime: Double = 0.0,
