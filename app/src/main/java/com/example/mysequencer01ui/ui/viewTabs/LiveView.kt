@@ -23,7 +23,11 @@ import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
+import androidx.compose.material.ripple.LocalRippleTheme
+import androidx.compose.material.ripple.RippleAlpha
+import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,6 +66,15 @@ import com.example.mysequencer01ui.ui.theme.violet
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+private object NoRippleTheme : RippleTheme {
+    @Composable
+    override fun defaultColor() = Color.Unspecified
+
+    @Composable
+    override fun rippleAlpha(): RippleAlpha = RippleAlpha(0f,0f,0f,0f)
+}
+
+
 @Composable
 fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
     val spacerSize = 0.dp
@@ -79,6 +92,7 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 .weight(1f)
         ) {
             PatternsScreen(seqViewModel, seqUiState, buttonsSize)
+
             Spacer(modifier = Modifier.weight(1f))
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -148,6 +162,7 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
 //            ),
 //            label = "playhead"
 //        )
+        val channel0State by seqViewModel.channelSequences[0].channelState.collectAsState()
 
         Canvas(modifier = Modifier.fillMaxSize()) {
 
@@ -172,6 +187,12 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
                     strokeWidth = 2f,
                 )
             }
+
+            val widthFactor = size.width / channel0State.totalTime
+            val playhead = (widthFactor * channel0State.deltaTime).toFloat()
+            val playheadRepeat = (widthFactor * channel0State.deltaTimeRepeat).toFloat()
+            playHeads(seqUiState.seqIsPlaying, seqUiState.isRepeating, seqUiState.playHeadsColor, playhead, playheadRepeat)
+            if(seqUiState.isRepeating) repeatBounds(channel0State.totalTime, channel0State.repeatStartTime, channel0State.repeatEndTime, widthFactor, 0.65f)
         }
 
         val height = maxHeight / seqViewModel.channelSequences.size
@@ -186,13 +207,14 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
 
                 ChannelScreen(
                     channelState = channelState,
-                    getNotePairedIndexAndTime = getNotePairedIndexAndTime, // TODO by remember?
+                    getNotePairedIndexAndTime = getNotePairedIndexAndTime,
                     seqIsPlaying = seqUiState.seqIsPlaying,
                     isRepeating = seqUiState.isRepeating,
                     selectedChannel = seqUiState.selectedChannel,
                     quantizationTime = seqUiState.quantizationTime,
                     factorBpm = seqUiState.factorBpm,
                     playHeadsColor = seqUiState.playHeadsColor,
+                    soloIsOn = seqUiState.soloIsOn,
                     height = height,
                 )
             }
@@ -215,6 +237,7 @@ fun ChannelScreen(
     quantizationTime: Double,
     factorBpm: Double,
     playHeadsColor: Color,
+    soloIsOn: Boolean,
     height: Dp,
     ) {
 
@@ -241,43 +264,44 @@ fun ChannelScreen(
                             if(noteLength > 0 && noteLength < size.height) {
                                 size.height
                             } else noteLength
-//                        } else if (abs(deltaWidth) <= size.width / 32) {
-//                            size.width / 32
                         } else {
                             deltaWidth  // live-writing note (grows in length)
                         }
 
                     val fasterThanHalfOfQuantize = System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= quantizationTime / factorBpm / 2
-
-//                    val noteIsNotCorrupted = i in 0..notes.lastIndex && noteOffIndex in 0..notes.lastIndex && notes[i].id == notes[noteOffIndex].id
-//                    if ((noteWidth > 0 && noteIsNotCorrupted) || (noteOffIndex == -1 && (fasterThanHalfOfQuantize || noteWidth > 0))) {   // normal note (not wrap-around) [...]
-//                    Log.d("ryjtyj", "noteWidth = $noteWidth, id = ${notes[i].id - Int.MIN_VALUE}, noteOn = $i, noteOff = $noteOffIndex, noteIsCorrupted = ${!noteIsNotCorrupted}, fasterThanHalfOfQuantize = $fasterThanHalfOfQuantize")
+                    val radius = CornerRadius(size.height, size.height)
+                    val channelIsNotSilent = !((channelState.isMuted && !channelState.isSoloed) || (soloIsOn && !channelState.isSoloed))
+                    val channelIsSelected = selectedChannel == channelStateNumber
+                    val color = when {
+                        channelIsSelected && channelIsNotSilent -> violet
+                        channelIsSelected -> selectedButton
+                        channelIsNotSilent -> darkViolet
+                        else -> repeatButtons
+                    }
 
                     if (noteWidth > 0  || (noteOffIndex == -1 && fasterThanHalfOfQuantize)) {   // normal note (not wrap-around) [...]
                         drawRoundRect(
-                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            color = color,
                             topLeft = Offset(noteStart, 0f),
                             size = Size(
                                 width = noteWidth,
                                 height = height.toPx()),
-                            cornerRadius = CornerRadius(size.height, size.height)
+                            cornerRadius = radius
                         )
-//                    } else if (noteWidth <= 0 && (noteIsNotCorrupted || noteOffIndex == -1)) {   // wrap-around note
                     } else {   // wrap-around note
-//                        Log.d("ryjtyj", "WRAPAROUND noteWidth = $noteWidth, id = ${notes[i].id - Int.MIN_VALUE}, noteOn = $i, noteOff = $noteOffIndex, noteIsCorrupted = ${!noteIsNotCorrupted}")
 
                         // [..
                         drawRoundRect(
-                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            color = color,
                             topLeft = Offset(noteStart,0f),
                             size = Size(
                                 width = size.width - noteStart,
                                 height = height.toPx()),
-                            cornerRadius = CornerRadius(size.height, size.height)
+                            cornerRadius = radius
                         )
                         val halfTheLength = noteStart + (size.width - noteStart) / 2
                         drawRect(
-                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            color = color,
                             topLeft = Offset(halfTheLength,0f),
                             size = Size(
                                 width = size.width - halfTheLength,
@@ -286,15 +310,15 @@ fun ChannelScreen(
 
                         // ..]
                         drawRoundRect(
-                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            color = color,
                             topLeft = Offset(0f,0f),
                             size = Size(
                                 width = noteWidth + noteStart,  // noteWidth is negative here
                                 height = height.toPx()),
-                            cornerRadius = CornerRadius(size.height, size.height)
+                            cornerRadius = radius
                         )
                         drawRect(
-                            color = if (selectedChannel == channelStateNumber) violet else darkViolet,
+                            color = color,
                             topLeft = Offset(0f,0f),
                             size = Size(
                                 width = (noteWidth + noteStart) / 2,  // noteWidth is negative here
@@ -304,21 +328,21 @@ fun ChannelScreen(
                 }
             }
 
-            playHeads(
-                seqIsPlaying = seqIsPlaying,
-                isRepeating = isRepeating,
-                playHeadsColor = playHeadsColor,
-                playhead = playhead,
-                playheadRepeat = playheadRepeat
-            )
-
-            if (isRepeating) repeatBounds(
-                totalTime = totalTime,
-                repeatStartTime = repeatStartTime,
-                repeatEndTime = repeatEndTime,
-                widthFactor = widthFactor,
-                alpha = 0.65f
-            )
+//            playHeads(
+//                seqIsPlaying = seqIsPlaying,
+//                isRepeating = isRepeating,
+//                playHeadsColor = playHeadsColor,
+//                playhead = playhead,
+//                playheadRepeat = playheadRepeat
+//            )
+//
+//            if (isRepeating) repeatBounds(
+//                totalTime = totalTime,
+//                repeatStartTime = repeatStartTime,
+//                repeatEndTime = repeatEndTime,
+//                widthFactor = widthFactor,
+//                alpha = 0.65f
+//            )
         }
     }
 }
@@ -435,43 +459,44 @@ fun RepeatButton(
             }
         }
     }
-
-    Button(
-        interactionSource = interactionSource,
-        //elevation = null,
-        onClick = {  },
-        shape = if(triplet) rightToHexShape else leftToHexShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(divisor == divisorState) dusk else repeatButtons
-        ),
-        modifier = Modifier
-            .height(width)
-            .width(width)
-            //.clip(if(triplet) rightToHexShape else leftToHexShape)
-            //.border(BorderStroke(0.3.dp, buttonsColor))
-            .padding(buttonsPadding),
-    ) {
-        Box(
-            modifier = Modifier.offset(offset, 0.dp)
+    CompositionLocalProvider(LocalRippleTheme provides NoRippleTheme) {
+        Button(
+            interactionSource = interactionSource,
+            //elevation = null,
+            onClick = {  },
+            shape = if(triplet) rightToHexShape else leftToHexShape,
+            contentPadding = PaddingValues(0.dp),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = if(divisor == divisorState) dusk else repeatButtons
+            ),
+            modifier = Modifier
+                .height(width)
+                .width(width)
+                //.clip(if(triplet) rightToHexShape else leftToHexShape)
+                //.border(BorderStroke(0.3.dp, buttonsColor))
+                .padding(buttonsPadding),
         ) {
-            if (divisor != divisorState) {
+            Box(
+                modifier = Modifier.offset(offset, 0.dp)
+            ) {
+                if (divisor != divisorState) {
+                    Text(
+                        divisor.toString(),
+                        fontSize = buttonTextSize.nonScaledSp,
+                        color = if (triplet) night else dusk,
+                        modifier = Modifier
+                            .blur(6.dp, BlurredEdgeTreatment.Unbounded)
+                            .alpha(0.6f)
+                    )
+                }
                 Text(
                     divisor.toString(),
                     fontSize = buttonTextSize.nonScaledSp,
-                    color = if (triplet) night else dusk,
-                    modifier = Modifier
-                        .blur(6.dp, BlurredEdgeTreatment.Unbounded)
-                        .alpha(0.6f)
+                    color = if (divisor != divisorState) {
+                        if (triplet) night else dusk
+                    } else buttons,
                 )
             }
-            Text(
-                divisor.toString(),
-                fontSize = buttonTextSize.nonScaledSp,
-                color = if (divisor != divisorState) {
-                    if (triplet) night else dusk
-                } else buttons,
-            )
         }
     }
 }

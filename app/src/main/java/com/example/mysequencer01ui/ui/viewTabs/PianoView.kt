@@ -86,10 +86,10 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 modifier = Modifier.fillMaxSize()
             ) {
                 PianoKeyboard(
-                    interactionSources = channelState.interactionSources,
+                    interactionSources = interactionSources,
                     rememberInteraction = rememberInteraction,
                     selectedChannel = seqUiState.selectedChannel,
-                    playingNotes = playingNotes,
+                    playingNotes = channelState.playingNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
@@ -148,10 +148,10 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     }
                 }
                 PianoKeyboard(
-                    interactionSources = channelState.interactionSources,
+                    interactionSources = interactionSources,
                     rememberInteraction = rememberInteraction,
                     selectedChannel = seqUiState.selectedChannel,
-                    playingNotes = playingNotes,
+                    playingNotes = channelState.playingNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
@@ -191,7 +191,7 @@ fun PianoKeyboard(
             repeat(24) {
                 val key = getKeyColorAndNumber(startPitch, it)
                 val keyIsWhite = !key.isBlack
-                val pitch = key.number + (octave + 1) * 12 // TODO bounds
+                val pitch = key.number + (octave + 1) * 12
                 Box(
                     contentAlignment = Alignment.BottomCenter
                 ) {
@@ -220,7 +220,7 @@ fun PianoKeyboard(
             repeat(24) {
                 val key = getKeyColorAndNumber(startPitch, it)
                 val keyIsBlack = key.isBlack
-                val pitch = key.number + (octave + 1) * 12 // TODO bounds
+                val pitch = key.number + (octave + 1) * 12
 
                 if(keyIsBlack) PianoKey(
                     interactionSource = interactionSources[pitch].interactionSource,

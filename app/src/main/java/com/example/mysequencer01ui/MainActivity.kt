@@ -2,6 +2,7 @@ package com.example.mysequencer01ui
 
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
@@ -43,6 +44,11 @@ class MainActivity : ComponentActivity() {
 //            val dao: SeqDao
             val kmmk = KmmkComponentContext()
             kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
+//            kmmk.updateMidiDeviceList()
+//            if (kmmk.midiOutputPorts.any()) {
+//                Log.d("ryjtyj", "MIDI output = ${kmmk.midiOutputPorts[0].id}")
+//                kmmk.setOutputDevice(kmmk.midiOutputPorts[0].id)
+//            }
             MySequencer01UiTheme(darkTheme = true) {
                 SeqScreen(kmmk, SeqViewModel(kmmk, db.dao))
             }
@@ -50,11 +56,19 @@ class MainActivity : ComponentActivity() {
         hideSystemUI()
     }
 
+//    override fun onResume() {
+//        super.onResume()
+//        val kmmk = KmmkComponentContext()
+//        kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
+//        kmmk.updateMidiDeviceList()
+//    }
+
+
     private fun hideSystemUI() {
-        //Hides the ugly action bar at the top
+        //Hides action bar at the top
         actionBar?.hide()
 
-        //Hide the status bars
+        //Hide status bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {

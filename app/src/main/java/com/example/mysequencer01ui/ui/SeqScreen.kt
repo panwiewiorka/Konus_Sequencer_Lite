@@ -27,7 +27,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
 ) {
     val seqUiState by seqViewModel.uiState.collectAsState()
 
-    if (seqUiState.seqIsPlaying) KeepScreenOn()
+    if (seqUiState.seqIsPlaying || seqUiState.keepScreenOn) KeepScreenOn()
 
     BoxWithConstraints(
         modifier = Modifier
@@ -120,11 +120,16 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 modifier = Modifier
                     .fillMaxHeight()
             ) {
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == LIVE, LIVE, buttonsSize, "ϴ", seqViewModel.toggleTime)
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == PIANO, PIANO, buttonsSize, "ϡ", seqViewModel.toggleTime)
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == STEP, STEP, buttonsSize, "ʭ", seqViewModel.toggleTime)
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == AUTOMATION, AUTOMATION, buttonsSize, "֎", seqViewModel.toggleTime)
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == SETTINGS, SETTINGS, buttonsSize, "╪", seqViewModel.toggleTime)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == LIVE, LIVE, buttonsSize, seqViewModel.toggleTime, dusk)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == PIANO, PIANO, buttonsSize, seqViewModel.toggleTime, dusk)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == STEP, STEP, buttonsSize, seqViewModel.toggleTime, dusk)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == AUTOMATION, AUTOMATION, buttonsSize, seqViewModel.toggleTime, dusk)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == SETTINGS, SETTINGS, buttonsSize, seqViewModel.toggleTime, dusk)
+//                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == LIVE, LIVE, buttonsSize, "ϴ", seqViewModel.toggleTime)
+//                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == PIANO, PIANO, buttonsSize, "ϡ", seqViewModel.toggleTime)
+//                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == STEP, STEP, buttonsSize, "ʭ", seqViewModel.toggleTime)
+//                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == AUTOMATION, AUTOMATION, buttonsSize, "֎", seqViewModel.toggleTime)
+//                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView == SETTINGS, SETTINGS, buttonsSize, "╪", seqViewModel.toggleTime)
             }
         }
     }

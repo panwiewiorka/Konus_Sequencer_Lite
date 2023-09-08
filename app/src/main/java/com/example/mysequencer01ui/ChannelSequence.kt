@@ -24,7 +24,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     val channelState: StateFlow<ChannelState> = _channelState.asStateFlow()
 
     var isErasing: Boolean = false
-    var notesDragEndOnRepeat: Array<Boolean> = Array(128){ false } // remembering notes that shouldn't play on release/cancel // FIXME currently always false. Remove?
+    var notesDragEndOnRepeat: Array<Boolean> = Array(128){ false } // remembering noteOFFs that shouldn't play on release/cancel
     var idsOfNotesToIgnore: MutableList<Int> = mutableListOf()
     private var listOfNotesToRecord: MutableList<RecordingPackage> = mutableListOf()
     var pitchTempSavedForCancel: Int = 0
@@ -42,24 +42,30 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     var indexToRepeat: Int = 0
     private var previousDeltaTime: Double = 0.0
 
-
+    val interactionSources: Array<RememberedPressInteraction> = Array(128) {
+        RememberedPressInteraction(
+            MutableInteractionSource(),
+            PressInteraction.Press( Offset(0f,0f) )
+        )
+    }
 
 
     var notes = channelState.value.notes
 
+    var pressedNotes = channelState.value.pressedNotes
     var playingNotes: Array<Int> = channelState.value.playingNotes
     private var channelIsPlayingNotes = channelState.value.channelIsPlayingNotes
-    var pressedNotes = channelState.value.pressedNotes
 
     var totalTime = channelState.value.totalTime
     var deltaTime = channelState.value.deltaTime
 
-    var deltaTimeRepeat = channelState.value.deltaTimeRepeat
     private var repeatStartTime = channelState.value.repeatStartTime
     var repeatEndTime = channelState.value.repeatEndTime
+    var deltaTimeRepeat = channelState.value.deltaTimeRepeat
 
 
 
+/** MAIN CYCLE **/
     fun advanceChannelSequence(
         seqIsPlaying: Boolean,
         seqIsRecording: Boolean,
@@ -306,7 +312,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     }
 
 
-
+/** RECORD **/
     fun recordNote(
         pitch: Int,
         velocity: Int,
@@ -443,8 +449,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         Log.d("ryjtyj", "RECORDING index = $index, id = ${id - Int.MIN_VALUE}")
         recIntoArray(index, recordTime, pitch, velocity, id)
 
-        indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
-        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
+        refreshIndices()
 
         if (!isStepView) {
             updateStepViewYScroll((noteHeight * (pitch - 5)).toInt().coerceAtLeast(0))
@@ -485,23 +490,6 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
                     recIntoArray(index, recordTime, pitch, 0, notes[noteOnBeforeRec].id)
                 }
             }
-
-            // SAME AS ^^, before transforming to when{}:
-//            if (velocity > 0) {
-//                if (noteOnBeforeRec != -1 && notes[noteOnBeforeRec].time == recordTime) {
-//                    eraseOverdubbingNote(noteOnBeforeRec)
-//                } else if (noteOffAfterRec != -1) {
-//                    changeNoteTime(noteOffAfterRec, recordTime)
-//                    sortNotesByTime()
-//                } else {
-//                    recIntoArray(index, recordTime, pitch, 0, notes[noteOnBeforeRec].id)
-//                }
-//            } else if (noteOnBeforeRec != -1) {
-//                eraseOverdubbingNote(noteOnBeforeRec)
-//            } else {
-//                eraseFromArray(noteOffAfterRec, false)
-//            }
-
             index = notes.indexOfLast { it.time <= recordTime } + 1
         }
         return index
@@ -562,7 +550,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     }
 
 
-
+/** PLAY **/
     private fun playing(index: Int, soloIsOff: Boolean, stepView: Boolean) {
 
         if(notes.size <= index) Log.e("ryjtyj", "start of playing(): channel $channelNumber, index = $index, indexToPlay = $indexToPlay, notes.size = ${notes.size}")
@@ -592,7 +580,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         }
     }
 
-    var draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch { } // TODO change to IO?
+    var draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch { }
 
     private fun playingDraggedNoteOffInTime(factorBpm: Double) {
         Log.d("ryjtyj", "playingDraggedNoteOffInTime()")
@@ -619,7 +607,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     }
 
 
-
+/** ERASE **/
     fun erasing(isRepeating: Boolean, index: Int, stepViewCase: Boolean): Boolean {
         val noteToErase = notes[index]
         val pressedNote = pressedNotes[noteToErase.pitch]
@@ -654,7 +642,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         return true
     }
 
-    private fun eraseFromArray(index: Int, breakFlag: Boolean): Boolean {
+    fun eraseFromArray(index: Int, breakFlag: Boolean): Boolean {
         var breakFlag1 = breakFlag
         when {
             // no paired noteOFF found
@@ -692,7 +680,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
                 changePlayingNotes(p, 0)
             }
         }
-        updateNotes(notes)
+        updateNotes()
         Log.d("emptyTag", " ") // to hold in imports
     }
 
@@ -718,7 +706,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     }
 
 
-
+/** REPEAT **/
     fun engageRepeatOnChannel(
         repeatLength: Double,
         isRepeating: Boolean,
@@ -773,6 +761,189 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
 
 
 
+/** STEP VIEW **/
+// on Drag Start:
+    fun getNoteOnAndNoteOffIndices(pitch: Int, time: Double): Pair<Int, Int> {
+        var noteOnIndex = notes.indexOfLast { it.pitch == pitch && it.time <= time }
+        var noteOffIndex: Int
+
+        if (noteOnIndex == -1 || notes[noteOnIndex].velocity == 0) {
+//            noteOffIndex = -1 // FIXME why it's here?
+            noteOffIndex = notes.indexOfFirst { it.pitch == pitch && it.time > time }
+
+            if (noteOffIndex != -1 && notes[noteOffIndex].velocity == 0) {
+                noteOnIndex =
+                    getNotePairedIndexAndTime(noteOffIndex).index
+            } else noteOffIndex = -1
+        } else {
+            noteOffIndex = getNotePairedIndexAndTime(noteOnIndex).index
+        }
+    //                                Log.d("ryjtyj", "noteOnIndex = $noteOnIndex, noteOffIndex = $noteOffIndex")
+
+        if (noteOnIndex == -1) noteOffIndex = -1
+        if (noteOffIndex == -1) noteOnIndex = -1
+
+        return Pair(noteOnIndex, noteOffIndex)
+    }
+
+    private fun getChangeLengthArea(noteOnIndex: Int, noteOffIndex: Int): Triple<Double, Double, Double> {
+//        var widthOfChangeLengthArea =
+//            if (noteOnIndex < noteOffIndex) {   // normal case (not wrap-around)
+//                (notes[noteOffIndex].time - notes[noteOnIndex].time) / 2.5
+//            } else if (noteOnIndex > noteOffIndex) {   // wrap-around case
+//                (notes[noteOffIndex].time - notes[noteOnIndex].time + totalTime) / 2.5
+//            } else 0.0
+//        if (widthOfChangeLengthArea !in 0.0..totalTime / 12.0) {
+//            widthOfChangeLengthArea = totalTime / 12.0
+//        }
+
+//                                        val rightmostAreaOfChangeLength =
+//                                            if (noteOffIndex == -1) 0.0 else {
+//                                                (channelState.totalTime.toDouble() - widthOfChangeLengthArea + notes[noteOffIndex].time)
+//                                                    .coerceAtMost(channelState.totalTime.toDouble())
+//                                            }
+//                                        val leftmostAreaOfChangeLength =
+//                                            if (noteOffIndex == -1) 0.0 else {
+//                                                (notes[noteOffIndex].time - widthOfChangeLengthArea).coerceAtLeast(0.0)
+//                                            }
+
+        val widthOfChangeLengthArea =
+            (if (noteOnIndex < noteOffIndex) {
+                (notes[noteOffIndex].time - notes[noteOnIndex].time) / 2.5
+            } else {
+                (notes[noteOffIndex].time - notes[noteOnIndex].time + totalTime) / 2.5
+            }).coerceAtMost(totalTime / 12.0)
+
+        // wrap-around case
+        val rightmostArea = (totalTime.toDouble() - widthOfChangeLengthArea + notes[noteOffIndex].time).coerceAtMost(totalTime.toDouble())
+        val leftmostArea = (notes[noteOffIndex].time - widthOfChangeLengthArea).coerceAtLeast(0.0)
+
+        return Triple(widthOfChangeLengthArea, rightmostArea, leftmostArea)
+    }
+
+    fun isNoteDetected(noteOnIndex: Int, noteOffIndex: Int, time: Double): Boolean {
+        return (noteOnIndex > -1 && noteOffIndex > -1) && (
+                (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
+                    || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
+                    (time in notes[noteOnIndex].time..totalTime.toDouble()) || (time in 0.0..notes[noteOffIndex].time))
+                )
+    }
+
+    fun isChangeLengthAreaDetected(noteOnIndex: Int, noteOffIndex: Int, time: Double): Boolean {
+        val (widthOfChangeLengthArea, rightmostArea, leftmostArea) = getChangeLengthArea(noteOnIndex, noteOffIndex)
+
+        return (noteOnIndex > -1 && noteOffIndex > -1) && (
+                (time in (notes[noteOffIndex].time - widthOfChangeLengthArea)..notes[noteOffIndex].time)  // normal case (not wrap-around)
+                    || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
+                    (time in rightmostArea..totalTime.toDouble()) || (time in leftmostArea..notes[noteOffIndex].time))
+                )
+    }
+
+    fun getNoteDeltaTime(changeLengthAreaDetected: Boolean, noteOnIndex: Int, noteOffIndex: Int, quantizeTime: (Double) -> Double): Double {
+        return if (!changeLengthAreaDetected) {
+            val tempTime = notes[noteOnIndex].time
+            changeNoteTime(noteOnIndex, quantizeTime(tempTime))
+            val noteDeltaTime = notes[noteOnIndex].time - tempTime
+            changeNoteTime(noteOffIndex, noteDeltaTime, true)
+            noteDeltaTime
+        } else {
+            val tempTime = notes[noteOffIndex].time
+            changeNoteTime(noteOffIndex, quantizeTime(tempTime))
+            notes[noteOffIndex].time - tempTime
+        }
+    }
+
+    fun fireNoteOffOnTime(seqIsPlaying: Boolean, isRepeating: Boolean, factorBpm: Double, noteOnIndex: Int, noteOffIndex: Int, pitch: Int) {
+        val currentIndex =
+            if (isRepeating) indexToRepeat else indexToPlay
+
+        if (seqIsPlaying &&
+            (currentIndex in noteOnIndex + 1..noteOffIndex // normal case (not wrap-around)
+                || noteOnIndex > noteOffIndex && (   // wrap-around case
+                    currentIndex in noteOnIndex + 1 .. notes.size || currentIndex in 0..noteOffIndex
+                )
+            )
+        ) {
+            CoroutineScope(Dispatchers.Default).launch {
+                val dt =
+                    if (isRepeating) deltaTimeRepeat else deltaTime
+                val delayTime =
+                    if (dt > notes[noteOffIndex].time) {
+                        notes[noteOffIndex].time - dt + totalTime
+                    } else {
+                        notes[noteOffIndex].time - dt
+                    }
+                delay((delayTime / factorBpm).toLong())
+                kmmk.noteOn(channelNumber, pitch, 0)
+                changePlayingNotes(pitch, 0)
+            }
+        }
+    }
+
+// on Drag:
+    fun updateIndices(changeLengthAreaDetected: Boolean, noteOnIndex: Int, noteOffIndex: Int, draggedNoteId: Int): Pair<Int, Int> {
+        if (changeLengthAreaDetected && notes[noteOffIndex].time == notes[noteOnIndex].time && noteOffIndex > noteOnIndex) {
+            notes[noteOffIndex] = notes[noteOnIndex].also {
+                notes[noteOnIndex] = notes[noteOffIndex]
+            } // swapping two elements for wrap-around note when length = 0
+        }
+
+        sortNotesByTime()
+        updateNotes()
+
+        val noteOnIndexAfterSort = notes.indexOfFirst { it.id == draggedNoteId && it.velocity > 0 }
+        val noteOffIndexAfterSort = notes.indexOfFirst { it.id == draggedNoteId && it.velocity == 0 }
+
+        return if (noteOnIndexAfterSort != noteOnIndex || noteOffIndexAfterSort != noteOffIndex) {
+            draggedNoteOnIndex = noteOnIndexAfterSort
+            draggedNoteOffIndex = noteOffIndexAfterSort
+            refreshIndices()
+            Pair(noteOnIndexAfterSort, noteOffIndexAfterSort)
+        } else Pair(noteOnIndex, noteOffIndex)
+    }
+
+// on Drag End:
+    fun eraseOverlappingNotes(noteOnIndex: Int, noteOffIndex: Int, pitch: Int, isRepeating: Boolean) {
+        draggedNoteOnIndex = -1
+        draggedNoteOffIndex = -1
+
+        val noteOnTime = notes[noteOnIndex].time
+        val noteOffTime = notes[noteOffIndex].time
+        val noteId = notes[noteOnIndex].id
+
+        while (true) {
+            val indexToErase = if (noteOnIndex < noteOffIndex) {  // not wrap-around [..]
+                notes.indexOfFirst {
+                    it.pitch == pitch && it.id != noteId && (
+                        (it.time > noteOnTime && it.time < noteOffTime)
+                            || (it.time == noteOnTime && it.velocity > 0)
+                            || (it.time == noteOffTime && it.velocity == 0)
+                        )
+                }
+            } else {                                            // wrap-around
+                notes.indexOfFirst {
+                    it.pitch == pitch && it.id != noteId && (
+                        (it.time > noteOnTime && it.time <= totalTime)
+                            || (it.time >= 0 && it.time < noteOffTime)
+                            || (it.time == noteOnTime && it.velocity > 0)
+                            || (it.time == noteOffTime && it.velocity == 0)
+                        )
+                }
+            }
+
+            if (indexToErase == -1) break else {
+                erasing(
+                    isRepeating,
+                    if (notes[indexToErase].velocity > 0) indexToErase else getNotePairedIndexAndTime(indexToErase).index,
+                    false
+                )
+            }
+        }
+    }
+
+
+
+/** MISC **/
     fun changeKeyboardOctave(lowKeyboard: Boolean, increment: Int) {
         val newValue = ((if(lowKeyboard) channelState.value.pianoViewOctaveLow else channelState.value.pianoViewOctaveHigh) + increment).coerceIn(-1..7)
 
@@ -810,6 +981,11 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
 
     fun sortNotesByTime(){
         notes.sortBy { it.time }
+    }
+
+    fun refreshIndices() {
+        indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
+        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
     }
 
     fun increaseNoteId() {
@@ -852,7 +1028,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         runBlocking {
             for (p in 0..127) {
                 if(pressedNotes[p].isPressed) {
-                    channelState.value.interactionSources[p].interactionSource.emit (PressInteraction.Cancel (channelState.value.interactionSources[p].pressInteraction))
+                    interactionSources[p].interactionSource.emit (PressInteraction.Cancel (interactionSources[p].pressInteraction))
                 }
             }
         }
@@ -865,9 +1041,9 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         deltaTime = 0.0
     }
 
-    fun updateNotes(notes: Array<Note>) {
+    fun updateNotes() {
         _channelState.update { it.copy(notes = notes) }
-        if (channelNumber == 0) Log.d("ryjtyj", "updateNotes()")
+//        if (channelNumber == 0) Log.d("ryjtyj", "updateNotes()")
     }
 
     fun updateStepView() {

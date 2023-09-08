@@ -1,8 +1,9 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
 import android.util.Log
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.ScrollableDefaults.flingBehavior
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -35,7 +36,6 @@ import com.example.mysequencer01ui.ui.repeatBounds
 import com.example.mysequencer01ui.ui.theme.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
@@ -87,7 +87,7 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                     .border(0.5.dp, selectedButton)
                     .background(BackGray)
             ){
-                val keyboardWidth = 42.dp
+                val keyboardWidth = 48.dp
                 val gridWidth = maxWidth - keyboardWidth
 
                 NotesGrid(seqViewModel, seqUiState, channelState, scrollState, gridWidth, keyboardWidth)
@@ -153,10 +153,10 @@ fun NotesGrid(
                             scrollState,
                             reverseScrolling = true,
                         ),
-                    interactionSources = channelState.interactionSources,
+                    interactionSources = interactionSources,
                     rememberInteraction = rememberInteraction,
                     selectedChannel = seqUiState.selectedChannel,
-                    playingNotes = playingNotes,
+                    playingNotes = channelState.playingNotes,
                     pressedNotes = channelState.pressedNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
                     keyWidth = keyboardWidth - 1.dp, // 1.dp for parent's padding
@@ -195,13 +195,11 @@ fun NotesGrid(
 
                                         // if note exists where we tap - erase it, else record new note
                                         if (noteExistsWhereWeTap) {
-                                            erasing(seqUiState.isRepeating, noteOnIndex, true)
 
-                                            if (seqUiState.isRepeating) {
-                                                indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
-                                            } else {
-                                                indexToPlay = notes.indexOfLast { it.time < channelState.deltaTime } + 1
-                                            }
+                                            erasing(seqUiState.isRepeating, noteOnIndex, true)
+                                            updateNotes()
+                                            refreshIndices()
+
                                         } else {
                                             time = seqViewModel.quantizeTime(time - seqUiState.quantizationTime / 2)
                                             val noteOffTime = time + seqUiState.quantizationTime
@@ -235,10 +233,7 @@ fun NotesGrid(
                                             )
 
                                             increaseNoteId()
-                                            if(!seqUiState.seqIsPlaying) {
-                                                updateNotes(notes)
-                                                updateStepView()
-                                            }
+                                            if(!seqUiState.seqIsPlaying) updateNotes()
                                         }
                                     }
                                 )
@@ -247,12 +242,13 @@ fun NotesGrid(
                         .pointerInput(
                             seqUiState.selectedChannel,
                             seqUiState.seqIsPlaying,
+                            seqUiState.isRepeating,
                             seqUiState.isQuantizing,
                             channelState.notes,
                         ) {
                             var noteDetected = false
                             var pitch = -1
-                            var time: Double
+                            var time = -1.0
                             var timeQuantized = -1.0
                             var noteDeltaTime = -1.0
                             var dragDeltaTime: Double
@@ -267,116 +263,38 @@ fun NotesGrid(
                                         pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
                                         time = ((xOffset / gridWidth.toPx()) * totalTime).toDouble()
 
-                                        noteOnIndex = notes.indexOfLast { it.pitch == pitch && it.time <= time }
+                                        val (getNoteOn, getNoteOff) = getNoteOnAndNoteOffIndices(pitch, time)
+                                        noteOnIndex = getNoteOn
+                                        noteOffIndex = getNoteOff
 
-                                        if (noteOnIndex == -1 || notes[noteOnIndex].velocity == 0) {
-                                            noteOffIndex = -1
-                                            noteOffIndex = notes.indexOfFirst { it.pitch == pitch && it.time > time }
-
-                                            if (noteOffIndex != -1 && notes[noteOffIndex].velocity == 0) {
-                                                noteOnIndex =
-                                                    getNotePairedIndexAndTime(noteOffIndex).index
-                                            } else noteOffIndex = -1
-                                        } else {
-                                            noteOffIndex = getNotePairedIndexAndTime(noteOnIndex).index
-                                        }
-
-//                                Log.d("ryjtyj", "noteOnIndex = $noteOnIndex, noteOffIndex = $noteOffIndex")
-
-                                        if (noteOnIndex == -1) noteOffIndex = -1
-                                        if (noteOffIndex == -1) noteOnIndex = -1
-
-                                        var widthOfChangeLengthArea =
-                                            if (noteOnIndex < noteOffIndex) {   // normal case (not wrap-around)
-                                                (notes[noteOffIndex].time - notes[noteOnIndex].time) / 2.5
-                                            } else if (noteOnIndex > noteOffIndex) {   // wrap-around case
-                                                (notes[noteOffIndex].time - notes[noteOnIndex].time + channelState.totalTime) / 2.5
-                                            } else 0.0
-                                        if (widthOfChangeLengthArea !in 0.0..channelState.totalTime / 12.0) {
-                                            widthOfChangeLengthArea = channelState.totalTime / 12.0
-                                        }
-
-                                        val rightmostAreaOfChangeLength =
-                                            if (noteOffIndex == -1) 0.0 else {
-                                                (channelState.totalTime.toDouble() - widthOfChangeLengthArea + notes[noteOffIndex].time)
-                                                    .coerceAtMost(channelState.totalTime.toDouble())
-                                            }
-                                        val leftmostAreaOfChangeLength =
-                                            if (noteOffIndex == -1) 0.0 else {
-                                                (notes[noteOffIndex].time - widthOfChangeLengthArea).coerceAtLeast(0.0)
-                                            }
-
-                                        // does note exists where we start dragging?
-                                        noteDetected =
-                                            (noteOnIndex > -1 && noteOffIndex > -1) &&
-                                                (
-                                                    (time in notes[noteOnIndex].time..notes[noteOffIndex].time)  // normal case (not wrap-around)
-                                                        || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
-                                                        (time in notes[noteOnIndex].time..channelState.totalTime.toDouble()) || (time in 0.0..notes[noteOffIndex].time))
-                                                    )
-
+                                        noteDetected = isNoteDetected(noteOnIndex, noteOffIndex, time)
                                         changeLengthAreaDetected =
-                                            (noteOnIndex > -1 && noteOffIndex > -1) &&
-                                                (
-                                                    (time in (notes[noteOffIndex].time - widthOfChangeLengthArea)..notes[noteOffIndex].time)  // normal case (not wrap-around)
-                                                        || ((noteOnIndex > noteOffIndex) &&                            // wrap-around case
-                                                        (time in rightmostAreaOfChangeLength..channelState.totalTime.toDouble()) || (time in leftmostAreaOfChangeLength..notes[noteOffIndex].time))
-                                                    )
+                                            if (noteOnIndex == -1 || noteOffIndex == -1) false
+                                            else {
+                                                isChangeLengthAreaDetected(noteOnIndex, noteOffIndex, time)
+                                            }
 
                                         Log.d("ryjtyj", "onDragStart: noteDetected = $noteDetected")
 
                                         if (noteDetected) {
-
                                             draggedNoteOnIndex = noteOnIndex
                                             draggedNoteOffIndex = noteOffIndex
 
                                             if (seqUiState.isQuantizing) {
-                                                if (!changeLengthAreaDetected) {
-                                                    val tempTime = notes[noteOnIndex].time
-                                                    changeNoteTime(noteOnIndex, seqViewModel.quantizeTime(tempTime))
-                                                    noteDeltaTime = notes[noteOnIndex].time - tempTime
-                                                    changeNoteTime(noteOffIndex, noteDeltaTime, true)
-                                                } else {
-                                                    val tempTime = notes[noteOffIndex].time
-                                                    changeNoteTime(noteOffIndex, seqViewModel.quantizeTime(tempTime))
-                                                    noteDeltaTime = notes[noteOffIndex].time - tempTime
-                                                }
+                                                noteDeltaTime = getNoteDeltaTime(changeLengthAreaDetected, noteOnIndex, noteOffIndex, seqViewModel::quantizeTime)
                                                 timeQuantized = seqViewModel.quantizeTime(time + noteDeltaTime)
                                             }
 
                                             // if dragging note that is playing -> fire noteOff on time
-                                            val currentIndex =
-                                                if (seqUiState.isRepeating) indexToRepeat else indexToPlay
-                                            if (seqUiState.seqIsPlaying &&
-                                                (currentIndex in noteOnIndex + 1..noteOffIndex // normal case (not wrap-around)
-                                                    || noteOnIndex > noteOffIndex && (   // wrap-around case
-                                                        currentIndex in noteOnIndex + 1 until notes.size || currentIndex in 0..noteOffIndex
-                                                    )
-                                                )
-                                            ) {
-                                                val tempPitch = pitch
-                                                CoroutineScope(Dispatchers.Default).launch {
-                                                    val dt =
-                                                        if (seqUiState.isRepeating) deltaTimeRepeat else channelState.deltaTime
-                                                    val delayTime =
-                                                        if (dt > notes[noteOffIndex].time) {
-                                                            notes[noteOffIndex].time - dt + channelState.totalTime
-                                                        } else {
-                                                            notes[noteOffIndex].time - dt
-                                                        }
-                                                    delay((delayTime / seqUiState.factorBpm).toLong())
-                                                    kmmk.noteOn(channelStateNumber, tempPitch, 0)
-                                                    changePlayingNotes(tempPitch, 0)
-                                                }
-                                            }
+                                            fireNoteOffOnTime(seqUiState.seqIsPlaying, seqUiState.isRepeating, seqUiState.factorBpm, noteOnIndex, noteOffIndex, pitch)
                                         }
                                     },
                                     onDragEnd = {
-                                        draggedNoteOnIndex = -1
-                                        draggedNoteOffIndex = -1
-                                        // TODO if releasing on top of another note -> delete another
-//                                }
-
+                                        if (noteDetected) {
+                                            eraseOverlappingNotes(noteOnIndex, noteOffIndex, pitch, seqUiState.isRepeating)
+                                            if(!seqUiState.seqIsPlaying) updateNotes()
+                                        }
+//                                        notesDragEndOnRepeat[pitch] = true
                                     }
                                 ) { change, dragAmount ->
                                     change.consume()
@@ -389,59 +307,33 @@ fun NotesGrid(
                                         }
                                         time = (xOffset * channelState.totalTime / gridWidth.toPx()).toInt() + noteDeltaTime
 
-                                        if (seqUiState.isQuantizing) {
-                                            if (seqViewModel.quantizeTime(time) != timeQuantized) {
-                                                val deltaQuantized =
-                                                    seqViewModel.quantizeTime(time) - timeQuantized
-                                                if (!changeLengthAreaDetected) {
-                                                    changeNoteTime(noteOnIndex, deltaQuantized, true)
-                                                }
+                                        // horizontal drag
+                                        when {
+                                            !seqUiState.isQuantizing -> {
+                                                dragDeltaTime = (dragAmount.x.toDp() * BARTIME / gridWidth).toDouble()
+                                                if (!changeLengthAreaDetected) changeNoteTime(noteOnIndex, dragDeltaTime, true)
+                                                changeNoteTime(noteOffIndex, dragDeltaTime, true)
+                                            }
+                                            seqViewModel.quantizeTime(time) != timeQuantized -> {
+                                                val deltaQuantized = seqViewModel.quantizeTime(time) - timeQuantized
+                                                if (!changeLengthAreaDetected) changeNoteTime(noteOnIndex, deltaQuantized, true)
                                                 changeNoteTime(noteOffIndex, deltaQuantized, true)
                                                 timeQuantized = seqViewModel.quantizeTime(time)
                                             }
-                                        } else {
-                                            dragDeltaTime =
-                                                (dragAmount.x.toDp() * BARTIME / gridWidth).toDouble()
-                                            if (!changeLengthAreaDetected) {
-                                                changeNoteTime(noteOnIndex, dragDeltaTime, true)
-                                            }
-                                            changeNoteTime(noteOffIndex, dragDeltaTime, true)
                                         }
 
                                         val draggedNoteId = notes[noteOnIndex].id
 
-                                        if (!changeLengthAreaDetected) {
-                                            if (pitch != 127 - (yOffset / noteHeight.toPx()).toInt()) {
-                                                pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
-                                                changeNotePitch(noteOnIndex, pitch)
-                                                changeNotePitch(noteOffIndex, pitch)
-                                            }
-                                        } else {
-                                            if (notes[noteOffIndex].time == notes[noteOnIndex].time && noteOffIndex > noteOnIndex) {
-                                                notes[noteOffIndex] = notes[noteOnIndex].also {
-                                                    notes[noteOnIndex] = notes[noteOffIndex]
-                                                } // swapping two elements for wrap-around note when length = 0
-                                            }
+                                        // vertical drag
+                                        if (!changeLengthAreaDetected && (pitch != 127 - (yOffset / noteHeight.toPx()).toInt())) {
+                                            pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
+                                            changeNotePitch(noteOnIndex, pitch)
+                                            changeNotePitch(noteOffIndex, pitch)
                                         }
 
-                                        sortNotesByTime()
-                                        updateNotes(channelSequence.notes)
-
-                                        val noteOnIndexAfterSort = notes.indexOfFirst { it.id == draggedNoteId && it.velocity > 0 }
-                                        val noteOffIndexAfterSort = notes.indexOfFirst { it.id == draggedNoteId && it.velocity == 0 }
-
-                                        if (noteOnIndexAfterSort != noteOnIndex || noteOffIndexAfterSort != noteOffIndex) {
-                                            noteOnIndex = noteOnIndexAfterSort
-                                            draggedNoteOnIndex = noteOnIndex
-                                            noteOffIndex = noteOffIndexAfterSort
-                                            draggedNoteOffIndex = noteOffIndex
-
-                                            if (seqUiState.isRepeating) {
-                                                indexToRepeat = (notes.indexOfLast { it.time < deltaTimeRepeat } + 1).coerceAtLeast(0)
-                                            } else {
-                                                indexToPlay = (notes.indexOfLast { it.time < channelState.deltaTime } + 1).coerceAtLeast(0)
-                                            }
-                                        }
+                                        val getNoteIndices = updateIndices(changeLengthAreaDetected, noteOnIndex, noteOffIndex, draggedNoteId)
+                                        noteOnIndex = getNoteIndices.first
+                                        noteOffIndex = getNoteIndices.second
 
                                         if (!seqUiState.seqIsPlaying) updateStepView()
 
@@ -506,7 +398,7 @@ fun NotesGrid(
                                         if (noteOffIndex == -1) {
                                             if (seqUiState.isRepeating) playheadRepeat - offsetX else playhead - offsetX  // live-writing note (grows in length)
                                         } else noteWidth
-                                    val fasterThanHalfOfQuantize = System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= halfOfQuantize
+                                    val fasterThanHalfOfQuantize = seqUiState.seqIsPlaying && (System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= halfOfQuantize)
 
                                     if (noteLength <= 0.dp && !fasterThanHalfOfQuantize) noteLength += gridWidth
 
@@ -699,7 +591,7 @@ fun StepViewKey(  // TODO merge with PianoKey()?
         modifier = Modifier
             .padding(notesPadding, 0.dp)
             .border(
-                if (noteIsPlaying) BorderStroke(2.dp, color) else BorderStroke(
+                if (noteIsPlaying) BorderStroke(3.dp, color) else BorderStroke(
                     0.3.dp,
                     stepViewBlackRows
                 )

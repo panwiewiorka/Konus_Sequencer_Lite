@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.util.Log
 import android.view.WindowManager
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -70,6 +70,7 @@ import com.example.mysequencer01ui.ChannelSequence
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.buttons
+import com.example.mysequencer01ui.ui.theme.darkViolet
 import com.example.mysequencer01ui.ui.theme.dusk
 import com.example.mysequencer01ui.ui.theme.night
 import com.example.mysequencer01ui.ui.theme.notWhite
@@ -183,6 +184,8 @@ fun PadButton(
                 when {
                     buttonIsPressed && padsMode == SELECTING -> selectedButton
                     buttonIsPressed -> color
+//                    isSoloed && selectedChannel == channel -> violet
+//                    isSoloed -> darkViolet
                     else -> notActiveColor
                 }
             )
@@ -219,7 +222,7 @@ fun PadButton(
             Canvas(modifier = Modifier
                 .fillMaxSize()
                 .rotate(24f)) {
-                soloSymbol(padsMode == SOLOING && buttonIsPressed)
+                soloSymbol((padsMode == SOLOING && buttonIsPressed)) // || selectedChannel == channel)
             }
         } else if (isMuted) {
             Canvas(modifier = Modifier
@@ -415,7 +418,7 @@ fun PadsGrid(
                             val channel = x + (3 - y) * 4
                             val channelState by channelSequences[channel].channelState.collectAsState()
                             PadButton(
-                                interactionSource = channelState.interactionSources[pitch].interactionSource,
+                                interactionSource = channelSequences[channel].interactionSources[pitch].interactionSource,
                                 channel = channel,
                                 pitch = pitch,
                                 pressPad = pressPad,
@@ -687,6 +690,7 @@ fun StopButton(stopAllNotes: () -> Unit, buttonsSize: Dp) {
                 interactionSource = buttonInteraction(
                     0,
                     { stopAllNotes() },
+                    { }
                 ),
                 indication = LocalIndication.current
             ) { }
@@ -706,6 +710,64 @@ fun StopButton(stopAllNotes: () -> Unit, buttonsSize: Dp) {
 
 @Composable
 fun SeqViewButton(
+    changeSeqViewState: (SeqView) -> Unit,
+    cancelAllPadsInteraction: () -> Unit, // TODO remove, use seqViewModel.cancelPadInteraction() instead
+    seqViewIsSelected: Boolean,
+    buttonSeqView: SeqView,
+    buttonsSize: Dp,
+    toggleTime: Int,
+    tabColor: Color,
+){
+    Box(
+        modifier = Modifier
+            .size(buttonsSize)
+            .padding(top = 1.dp)
+            .background(if (seqViewIsSelected) night else buttons)
+            .clickable(
+                interactionSource = buttonInteraction(
+                    toggleTime,
+                    {
+                        changeSeqViewState(buttonSeqView)
+                        cancelAllPadsInteraction()
+                    },
+                    { },
+                ),
+                indication = null
+            ) { },
+        contentAlignment = Alignment.Center
+    ) {
+        val color = if (seqViewIsSelected) buttons else tabColor
+
+        if (!seqViewIsSelected) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(6.dp)
+                    .alpha(0.6f)
+            ) {
+                when (buttonSeqView) {
+                    SeqView.LIVE -> tabLiveSymbol(color)
+                    SeqView.PIANO -> tabPianoSymbol(color)
+                    SeqView.STEP -> tabStepSymbol(color)
+                    SeqView.AUTOMATION -> tabAutomationSymbol(color)
+                    SeqView.SETTINGS -> tabSettingsSymbol(color)
+                }
+            }
+        }
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            when (buttonSeqView) {
+                SeqView.LIVE -> tabLiveSymbol(color)
+                SeqView.PIANO -> tabPianoSymbol(color)
+                SeqView.STEP -> tabStepSymbol(color)
+                SeqView.AUTOMATION -> tabAutomationSymbol(color)
+                SeqView.SETTINGS -> tabSettingsSymbol(color)
+            }
+        }
+    }
+}
+
+@Composable
+fun SeqViewButtonOld(
     changeSeqViewState: (SeqView) -> Unit,
     cancelAllPadsInteraction: () -> Unit, // TODO remove, use seqViewModel.cancelPadInteraction() instead
     seqViewIsSelected: Boolean,

@@ -16,14 +16,8 @@ data class ChannelState(
     val isSoloed: Boolean = false,
     val channelIsPlayingNotes: Int = 0,
     var playingNotes: Array<Int> = Array(128){ 0 }, // TODO move to channelSequence?
-    val pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, Long.MIN_VALUE) }, // manually pressed notes that are muting same ones played by sequencer
+    val pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, 0) }, // manually pressed notes that are muting same ones played by sequencer
     val onPressedMode: PadsMode = PadsMode.DEFAULT,
-    val interactionSources: Array<RememberedPressInteraction> = Array(128) { // TODO move to channelSequence?
-        RememberedPressInteraction(
-            MutableInteractionSource(),
-            PressInteraction.Press( Offset(0f,0f) )
-        )
-    },
 
     val stepViewYScroll: Int = 3300,
     val stepViewRefresh: Boolean = false,

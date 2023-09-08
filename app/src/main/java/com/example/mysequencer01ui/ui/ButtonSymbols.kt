@@ -5,13 +5,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
-import com.example.mysequencer01ui.PadsMode
-import com.example.mysequencer01ui.PadsMode.*
 import com.example.mysequencer01ui.ui.theme.*
 
 
 const val thickness = 4f
-
+val style = Stroke( width = thickness, cap = StrokeCap.Round, join = StrokeJoin.Round )
 
 fun DrawScope.shiftSymbol(selecting: Boolean) {
     val l = size.height / 22f
@@ -47,11 +45,7 @@ fun DrawScope.allSymbol(buttonPressed: Boolean) {
         color = if (buttonPressed) buttons else dusk,
         topLeft = Offset(center.x - m, center.y - m),
         size = Size(l, l),
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round
-        )
+        style = style
     )
     val path = Path()
     path.moveTo(center.x, center.y - m)
@@ -61,10 +55,7 @@ fun DrawScope.allSymbol(buttonPressed: Boolean) {
     drawPath(
         path = path,
         color = if (buttonPressed) buttons else dusk,
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round
-        )
+        style = style
     )
 }
 
@@ -155,11 +146,7 @@ fun DrawScope.saveArrow(saving: Boolean) {
     drawPath(
         path = path,
         color = if(saving) buttons else dusk,
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round
-        )
+        style = style
     )
     saveLoadSymbol()
 }
@@ -179,11 +166,7 @@ fun DrawScope.loadArrow(loading: Boolean) {
     drawPath(
         path = path,
         color = if(loading) buttons else dusk,
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round
-        )
+        style = style
     )
     saveLoadSymbol()
 }
@@ -211,7 +194,7 @@ fun DrawScope.soloSymbol(soloing: Boolean) {
         useCenter = false,
         topLeft = Offset(center.x - s, center.y - m),
         size = size / 8f,
-        style = Stroke(width = thickness, cap = StrokeCap.Round))
+        style = style)
     drawArc(
         color = if(soloing) buttons else violet,
         startAngle = -90f,
@@ -219,7 +202,7 @@ fun DrawScope.soloSymbol(soloing: Boolean) {
         useCenter = false,
         topLeft = Offset(center.x - s, center.y),
         size = size / 8f,
-        style = Stroke(width = thickness, cap = StrokeCap.Round))
+        style = style)
 }
 
 fun DrawScope.strikeStrip() {
@@ -240,7 +223,6 @@ fun DrawScope.strikeStrip() {
     )
 }
 
-
 fun DrawScope.muteSymbol(muting: Boolean) {
     val l = size.height / 8
     val m = size.height / 12
@@ -255,7 +237,7 @@ fun DrawScope.muteSymbol(muting: Boolean) {
     drawPath(
         path = path,
         color = if (muting) buttons else violet,
-        style = Stroke( width = thickness, join = StrokeJoin.Round, cap = StrokeCap.Round )
+        style = style
     )
 }
 
@@ -278,11 +260,7 @@ fun DrawScope.eraseSymbol(erasing: Boolean) {
     drawPath(
         path = pathX,
         color = warmRed,
-        style = Stroke(
-            width = thickness,
-            join = StrokeJoin.Round,
-            cap = StrokeCap.Round
-        )
+        style = style
     )
 
     val pathV = Path()
@@ -294,11 +272,7 @@ fun DrawScope.eraseSymbol(erasing: Boolean) {
     drawPath(
         path = pathV,
         color = if (erasing) warmRed else notWhite,
-        style = Stroke(
-            width = thickness,
-            join = StrokeJoin.Round,
-            cap = StrokeCap.Round
-        )
+        style = style
     )
 }
 
@@ -315,10 +289,7 @@ fun DrawScope.clearSymbol(clearing: Boolean) {
     drawPath(
         path = path,
         color = if (clearing) buttons else notWhite,
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round
-        )
+        style = style
     )
 }
 
@@ -343,17 +314,10 @@ fun DrawScope.playSymbol(seqIsPlaying: Boolean) {
     path.lineTo(third, center.y)
     path.lineTo(second, first)
 
-    if (seqIsPlaying) {
-        drawPath(
-            path = path,
-            color = notWhite,
-            style = Fill
-        )
-    }
     drawPath(
         path = path,
         color = notWhite,
-        style = Stroke( width = thickness, cap = StrokeCap.Round, join = StrokeJoin.Round )
+        style = if (seqIsPlaying) Fill else style
     )
 }
 
@@ -364,10 +328,115 @@ fun DrawScope.stopSymbol() {
         color =  notWhite,
         topLeft = Offset(center.x - m, center.y - m),
         size = Size(l, l),
-        style = Stroke(
-            width = thickness,
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round
-        )
+        style = style
     )
 }
+
+
+fun DrawScope.tabLiveSymbol(color: Color) {
+    val m = size.height / 8f
+    drawLine(color, Offset(center.x, center.y - m/1.5f), Offset(center.x, center.y + m/1.5f), thickness)
+    drawLine(color, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
+}
+
+
+
+fun DrawScope.tabPianoSymbol(color: Color) {
+    val m = size.height / 8f
+    drawLine(color, Offset(center.x - m, center.y + m/2), Offset(center.x, center.y + m/2), thickness)
+    drawLine(color, Offset(center.x - m/2, center.y), Offset(center.x + m/2, center.y), thickness)
+    drawLine(color, Offset(center.x, center.y - m/2), Offset(center.x + m, center.y - m/2), thickness)
+}
+
+fun DrawScope.tabPianoSymboliii(color: Color) {
+    val m = size.height / 8f
+    drawLine(color, Offset(center.x - m, center.y + m/2), Offset(center.x - m, center.y - m/4), thickness)
+    drawLine(color, Offset(center.x, center.y + m/3), Offset(center.x, center.y - m/3), thickness)
+    drawLine(color, Offset(center.x + m, center.y + m/4), Offset(center.x + m, center.y - m/2), thickness)
+}
+
+fun DrawScope.tabPianoSymbollll(color: Color) {
+    val m = size.height / 8f
+    drawLine(color, Offset(center.x - m, center.y - m/2), Offset(center.x - m, center.y + m/2), thickness)
+    drawLine(color, Offset(center.x - m/3, center.y - m/2), Offset(center.x - m/3, center.y + m/2), thickness)
+    drawLine(color, Offset(center.x + m/3, center.y - m/2), Offset(center.x + m/3, center.y + m/2), thickness)
+    drawLine(color, Offset(center.x + m, center.y - m/2), Offset(center.x + m, center.y + m/2), thickness)
+}
+
+fun DrawScope.tabStepSymbol(color: Color) {
+    val m = size.height / 8f
+    drawLine(color, Offset(center.x - m, center.y - m/2), Offset(center.x - m, center.y + m/2), thickness)
+    drawLine(color, Offset(center.x - m, center.y - m/2), Offset(center.x + m, center.y - m/2), thickness)
+    drawLine(color, Offset(center.x - m, center.y + m/2), Offset(center.x + m, center.y + m/2), thickness)
+    drawLine(color, Offset(center.x + m, center.y + m/2), Offset(center.x + m, center.y - m/2), thickness)
+}
+
+fun DrawScope.tabAutomationSymbol(color: Color) {
+    val m = size.height / 8f
+    drawArc(color, 180f, 180f, false, Offset(center.x - m, center.y - m/2 + 1), Size(m, m), style = style)
+    drawArc(color, 180f, -180f, false, Offset(center.x, center.y - m/2), Size(m, m), style = style)
+}
+
+fun DrawScope.tabSettingsSymbol(color: Color) {
+    val m = size.height / 8f
+    drawLine(color, Offset(center.x - m, center.y - m/2), Offset(center.x + m, center.y - m/2), thickness)
+    drawLine(color, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
+    drawLine(color, Offset(center.x - m, center.y + m/2), Offset(center.x + m, center.y + m/2), thickness)
+}
+
+
+/*
+fun DrawScope.tabLiveSymbol(tabSelected: Boolean, color: Color) {
+    val m = size.height / 8f
+
+    drawRect(color, Offset(center.x - m, center.y - m), Size(m * 2, m * 2), style = Fill)
+
+    if (tabSelected) drawRect(buttons, Offset(center.x - m, center.y - m), Size(m * 2, m * 2), style = style)
+    drawLine(buttons, Offset(center.x, center.y - m), Offset(center.x, center.y + m), thickness)
+    drawLine(buttons, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
+}
+
+fun DrawScope.tabPianoSymbol(tabSelected: Boolean, color: Color) {
+    val m = size.height / 8f
+
+    drawRect(color, Offset(center.x - m, center.y - m), Size(m * 2, m * 2), style = Fill)
+    drawRect(buttons, Offset(center.x - m / 1.6f, center.y - m), Size(m / 2.2f, m), style = Fill)
+    drawRect(buttons, Offset(center.x + m / 1.6f - m / 2.2f, center.y - m), Size(m / 2.2f, m), style = Fill)
+
+    if (tabSelected) drawRect(buttons, Offset(center.x - m, center.y - m), Size(m * 2, m * 2), style = style)
+    drawLine(buttons, Offset(center.x - m / 2.8f, center.y), Offset(center.x - m / 2.8f, center.y + m), thickness)
+    drawLine(buttons, Offset(center.x + m / 2.8f, center.y), Offset(center.x + m / 2.8f, center.y + m), thickness)
+}
+
+fun DrawScope.tabStepSymbol(tabSelected: Boolean, color: Color) {
+    val m = size.height / 8f
+
+    drawRect(color, Offset(center.x - m, center.y), Size(m * 1.5f, m), style = Fill)
+    drawRect(color, Offset(center.x - m / 2, center.y - m), Size(m * 1.5f, m), style = Fill)
+    drawLine(buttons, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
+
+    if (tabSelected) {
+        drawRect(buttons, Offset(center.x - m, center.y), Size(m * 1.5f, m), style = style)
+        drawRect(buttons, Offset(center.x - m / 2, center.y - m), Size(m * 1.5f, m), style = style)
+    }
+}
+
+fun DrawScope.tabAutomationSymbol(tabSelected: Boolean, color: Color) {
+    val m = size.height / 8f
+
+    val path = Path()
+    path.moveTo(center.x - m, center.y - m / 2)
+    path.lineTo(center.x - m / 2, center.y - m)
+    path.lineTo(center.x + m / 2, center.y)
+    path.lineTo(center.x + m, center.y - m / 2)
+    path.lineTo(center.x + m, center.y + m)
+    path.lineTo(center.x - m, center.y + m)
+    path.lineTo(center.x - m, center.y - m / 2)
+
+    drawPath(
+        path = path,
+        color = if (tabSelected) buttons else color,
+        style = if (tabSelected) style else Fill
+    )
+}
+*/

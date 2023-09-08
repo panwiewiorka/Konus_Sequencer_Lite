@@ -8,7 +8,7 @@ val Purple700 = Color(0xFF3700B3)
 val Teal200 = Color(0xFF03DAC5)
 val BackGray = Color(0xFF222222)
 
-val selectedButton = Color(0xff665c5f)
+val selectedButton = Color(0xff706468)
 val buttons = Color(0xff494344)
 val repeatButtons = Color(0xff3f3b3c)
 val buttonsBg = Color(0xff353031)

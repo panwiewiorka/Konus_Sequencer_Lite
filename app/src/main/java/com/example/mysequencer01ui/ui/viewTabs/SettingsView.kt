@@ -3,6 +3,8 @@ package com.example.mysequencer01ui.ui.viewTabs
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +24,10 @@ import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.RadioButton
+import androidx.compose.material.RadioButtonDefaults
 import androidx.compose.material.Switch
+import androidx.compose.material.SwitchColors
+import androidx.compose.material.SwitchDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -45,8 +51,10 @@ import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.nonScaledSp
 import com.example.mysequencer01ui.ui.recomposeHighlighter
 import com.example.mysequencer01ui.ui.theme.buttons
+import com.example.mysequencer01ui.ui.theme.darkViolet
 import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.selectedButton
+import com.example.mysequencer01ui.ui.theme.violet
 import com.example.mysequencer01ui.ui.theme.warmRed
 import com.example.mysequencer01ui.ui.thickness
 import kotlin.math.atan2
@@ -117,11 +125,13 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            MidiSelector(kmmk)
+            Box { MidiSelector(kmmk) }
 
             Knob(buttonsSize, seqUiState.bpm, seqViewModel::changeBPM)
 
-            TextAndSwitch("Clock transmit", seqUiState.transmitClock) { seqViewModel.switchClockTransmitting() }
+            TextAndSwitch("Transmit clock", seqUiState.transmitClock) { seqViewModel.switchClockTransmitting() }
+
+            TextAndSwitch("Keep screen on when stopped", seqUiState.keepScreenOn) { seqViewModel.switchKeepScreenOn() }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -135,12 +145,16 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
                     RadioButton(
                         selected = seqUiState.debuggerViewSetting == 0,
                         onClick = { seqViewModel.selectDebuggerSetting(0) },
-                        modifier = Modifier.padding(end = 10.dp))
+                        modifier = Modifier.padding(end = 10.dp),
+                        colors = RadioButtonDefaults.colors(selectedColor = violet)
+                    )
                     Text("noteId", color = notWhite)
                     RadioButton(
                         selected = seqUiState.debuggerViewSetting == 1,
                         onClick = { seqViewModel.selectDebuggerSetting(1) },
-                        modifier = Modifier.padding(end = 10.dp))
+                        modifier = Modifier.padding(end = 10.dp),
+                        colors = RadioButtonDefaults.colors(selectedColor = violet)
+                    )
                 }
             }
         }
@@ -153,7 +167,18 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
 fun TextAndSwitch(text: String, switchState: Boolean, toDo: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(text, color = notWhite, modifier = Modifier.padding(end = 10.dp))
-        Switch(checked = switchState, onCheckedChange = {toDo()})
+        Switch(
+            checked = switchState,
+            onCheckedChange = {toDo()},
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = violet,
+                checkedTrackColor = violet,
+                checkedTrackAlpha = 0.5f,
+                uncheckedThumbColor = selectedButton,
+                uncheckedTrackColor = selectedButton,
+                uncheckedTrackAlpha = 0.5f
+            )
+        )
     }
 }
 
@@ -168,6 +193,7 @@ fun Knob(buttonsSize: Dp, bpm: Float, changeBPM: (Float) -> Unit) {
     Box(
 //        contentAlignment = Alignment.BottomCenter,
         modifier = Modifier
+            .padding(top = 20.dp, bottom = 10.dp)
             .size(buttonsSize)
             .pointerInput(true) {
                 detectDragGestures(
@@ -313,3 +339,42 @@ fun MidiDeviceSelector(kmmk: KmmkComponentContext) {
         Text(kmmk.midiDeviceManager.midiOutput?.details?.name ?: "-- Select MIDI output --")
     }
 }
+
+/*
+@Composable
+fun MidiDeviceSelector(kmmk: KmmkComponentContext) {
+    var midiOutputDialogState by remember { mutableStateOf(false) }
+
+    DropdownMenu(
+        expanded = midiOutputDialogState,
+        onDismissRequest = { midiOutputDialogState = false},
+    ) {
+        val onClick: (String) -> Unit = { id ->
+            if (id.isNotEmpty()) {
+                kmmk.setOutputDevice(id)
+            }
+            midiOutputDialogState = false
+        }
+        if (kmmk.midiOutputPorts.any()) {
+            for (d in kmmk.midiOutputPorts) {
+                DropdownMenuItem(onClick = { onClick(d.id) }) { Text(d.name ?: "(unnamed)") }
+
+            }
+//            DropdownMenuItem(onClick = { onClick("") }) { Text("(Cancel)") }
+        } else {
+            DropdownMenuItem(onClick = { onClick("") }) { Text("(no MIDI output)") }
+        }
+    }
+    Card(
+        modifier = Modifier
+            .clickable(onClick = {
+                kmmk.updateMidiDeviceList()
+                midiOutputDialogState = true
+            })
+            .border(1.dp, violet)
+            .padding(12.dp)
+    ) {
+        Text(kmmk.midiDeviceManager.midiOutput?.details?.name ?: "-- Select MIDI output --")
+    }
+}
+ */

@@ -21,6 +21,7 @@ import com.example.mysequencer01ui.ui.theme.violet
 import com.example.mysequencer01ui.ui.theme.warmRed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.system.measureTimeMillis
 import kotlin.time.Duration.Companion.milliseconds
 
 const val BARTIME = 2000
@@ -87,6 +89,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
+
     fun startSeq() {
         if(
             uiState.value.seqIsPlaying
@@ -137,7 +140,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
                     // ENGAGE REPEAT()
                     if (uiState.value.divisorState != previousDivisorValue && quantizeTime(deltaTime) <= deltaTime) {
-//                    Log.d("ryjtyj", "ENGAGE REPEAT(): deltaTimeRepeat = $deltaTimeRepeat, deltaTime = $deltaTime, quantizeTime(deltaTime) = ${quantizeTime(deltaTime)}")
                         engageRepeat(uiState.value.divisorState)
                     }
                 }
@@ -209,10 +211,17 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
     fun stopAllNotes() {
-        for (c in channelSequences.indices) {
-            for (p in 0..127) {
-                kmmk.noteOn(c, p, 0)
+        CoroutineScope(Dispatchers.Default).launch {
+            for (c in channelSequences.indices) {
+                async {stopAllNotesOnChannel(c)}
             }
+        }
+    }
+
+    private suspend fun stopAllNotesOnChannel(c: Int) {
+        for (p in 0..127) {
+            kmmk.noteOn(c, p, 0)
+            delay(1) // sometimes weird behaviour in audio channel occurs without delay (some stuck note)
         }
     }
 
@@ -412,7 +421,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 MUTING -> muteChannel(channel, velocity, elapsedTime, allButton)
                 ERASING -> isErasing = velocity > 0
                 CLEARING -> {
-                    if(velocity > 0) clearChannel(channel) // TODO implement UNDO CLEAR
+                    if(velocity > 0) clearChannel(channel)
                 }
                 // PLAYING & RECORDING
                 else -> {
@@ -475,7 +484,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     }
                     if(!retrigger) changePlayingNotes(pitch, velocity)
                     _uiState.update { it.copy(selectedChannel = channel) }
-                    if(!uiState.value.seqIsPlaying) updateNotes(notes)
+                    if(!uiState.value.seqIsPlaying) updateNotes()
                 }
             }
         }
@@ -512,10 +521,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 with(channelSequences[c]) {
                     idsOfNotesToIgnore.clear()
                     notes = patterns[pattern][c]
-                    indexToPlay = notes.indexOfLast { it.time < deltaTime } + 1
-                    if(uiState.value.isRepeating) {
-                        indexToRepeat = notes.indexOfLast { it.time < deltaTimeRepeat } + 1
-                    }
+                    if (!uiState.value.seqIsPlaying) updateNotes()
+                    refreshIndices()
                     noteId = if(notes.isNotEmpty()) notes.maxOf { it.id } + 1 else Int.MIN_VALUE
                 }
             }
@@ -552,21 +559,23 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-    fun editCurrentPadsMode(mode: PadsMode, switchOn: Boolean, momentary: Boolean = false){ // TODO simplify with when?
-        if(switchOn) {
-            if(mode != uiState.value.padsMode) {
+    fun editCurrentPadsMode(mode: PadsMode, switchOn: Boolean, momentary: Boolean = false) {
+        when {
+            (!switchOn && !momentary) || (switchOn && mode == uiState.value.padsMode) -> {
+                _uiState.update { it.copy(padsMode = DEFAULT) }
+            }
+            momentary -> {
+                if(previousPadsMode == mode) {
+                    previousPadsMode = uiState.value.padsMode
+                }
+                if(mode != uiState.value.padsMode) return else {
+                    _uiState.update { it.copy(padsMode = if(previousPadsMode != uiState.value.padsMode && previousPadsMode != mode) previousPadsMode else DEFAULT) }
+                }
+            }
+            else -> {
                 previousPadsMode = uiState.value.padsMode
                 _uiState.update { it.copy(padsMode = mode) }
-            } else _uiState.update { it.copy(padsMode = DEFAULT) }
-        } else if(momentary) {
-            if(previousPadsMode == mode) {
-                previousPadsMode = uiState.value.padsMode
             }
-            if(mode != uiState.value.padsMode) return else {
-                _uiState.update { it.copy(padsMode = if(previousPadsMode != uiState.value.padsMode && previousPadsMode != mode) previousPadsMode else DEFAULT) }
-            }
-        } else {
-            _uiState.update { it.copy(padsMode = DEFAULT) }
         }
         changePlayHeadsColor()
     }
@@ -618,7 +627,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
 
     fun rememberInteraction(channel: Int, pitch: Int, interaction: PressInteraction.Press) {
-        channelSequences[channel].channelState.value.interactionSources[pitch].pressInteraction = interaction
+        channelSequences[channel].interactionSources[pitch].pressInteraction = interaction
     }
 
     fun cancelAllPadsInteraction() {
@@ -628,6 +637,12 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     fun switchClockTransmitting() {
         _uiState.update { it.copy(
             transmitClock = !uiState.value.transmitClock
+        ) }
+    }
+
+    fun switchKeepScreenOn() {
+        _uiState.update { it.copy(
+            keepScreenOn = !uiState.value.keepScreenOn
         ) }
     }
 
