@@ -43,6 +43,10 @@ class MidiDeviceManager {
             runBlocking {
                 midiInput?.close()
                 midiInput = if (id != null) midiAccessValue.openInput(id) else emptyMidiInput
+                // ryjtyj
+//                midiInputError.value = null
+//                virtualMidiInputError.value = null
+
                 midiInputOpened()
             }
         }
@@ -68,6 +72,10 @@ class MidiDeviceManager {
 
     var midiOutputError = mutableStateOf<Exception?>(null)
     var virtualMidiOutputError = mutableStateOf<Exception?>(null)
+
+     // ryjtyj
+    var midiInputError = mutableStateOf<Exception?>(null)
+    var virtualMidiInputError = mutableStateOf<Exception?>(null)
 
     fun sendToAll(bytes: ByteArray, timestamp: Long) {
         try {

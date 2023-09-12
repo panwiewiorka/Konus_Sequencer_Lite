@@ -51,12 +51,13 @@ import com.example.mysequencer01ui.PressedNote
 import com.example.mysequencer01ui.RememberedPressInteraction
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
-import com.example.mysequencer01ui.ui.recomposeHighlighter
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.dusk
 import com.example.mysequencer01ui.ui.theme.notWhite
 import com.example.mysequencer01ui.ui.theme.playGreen
+import com.example.mysequencer01ui.ui.theme.repeatButtons
+import com.example.mysequencer01ui.ui.theme.stepViewBlackRows
 import com.example.mysequencer01ui.ui.theme.warmRed
 import com.example.mysequencer01ui.ui.thickness
 
@@ -196,6 +197,7 @@ fun PianoKeyboard(
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     if(keyIsWhite) PianoKey(
+                        stepView = false,
                         interactionSource = interactionSources[pitch].interactionSource,
                         rememberInteraction = rememberInteraction,
                         seqIsRecording = seqIsRecording,
@@ -223,6 +225,7 @@ fun PianoKeyboard(
                 val pitch = key.number + (octave + 1) * 12
 
                 if(keyIsBlack) PianoKey(
+                    stepView = false,
                     interactionSource = interactionSources[pitch].interactionSource,
                     rememberInteraction = rememberInteraction,
                     seqIsRecording = seqIsRecording,
@@ -251,6 +254,7 @@ fun getKeyColorAndNumber(startPitch: Int, keyIndex: Int): KeyColorAndNumber {
 
 @Composable
 fun PianoKey(
+    stepView: Boolean,
     interactionSource: MutableInteractionSource,
     rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
     seqIsRecording: Boolean,
@@ -265,23 +269,23 @@ fun PianoKey(
     whiteKey: Boolean,
     halfOfQuantize: Double,
 ) {
-//    val keyIsPressed by interactionSource.collectIsPressedAsState()
-//    val interactionSource = remember { MutableInteractionSource() }
-    var elapsedTime = 0L
+//    var elapsedTime = 0L
     LaunchedEffect(interactionSource, selectedChannel, pitch, isPressed) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     pressPad(selectedChannel, pitch, 100, 0, false)
                     rememberInteraction(selectedChannel, pitch, interaction)
-                    elapsedTime = System.currentTimeMillis()
+//                    elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
                     // second condition needed for slow smartphones skipping noteOff due to 'isPressed' not updating in time
-                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0, 0, false)
+//                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize)
+                        pressPad(selectedChannel, pitch, 0, 0, false)
                 }
                 is PressInteraction.Cancel -> {
-                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0, 0, false)
+//                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize)
+                        pressPad(selectedChannel, pitch, 0, 0, false)
                 }
             }
         }
@@ -290,16 +294,26 @@ fun PianoKey(
     Box(
         modifier = Modifier
             .padding(notesPadding, 0.dp)
-            .border(4.dp, if (noteIsPlaying) color else Color.Transparent)
-            .background(
-                if (isPressed) {
-                    color
-                } else {
-                    if (whiteKey) notWhite else BackGray
+            .border(
+                width = when {
+                    stepView && noteIsPlaying -> 3.dp
+                    stepView -> 0.3.dp
+                    else -> 4.dp
+                },
+                color = when {
+                    noteIsPlaying -> color
+                    stepView -> stepViewBlackRows
+                    else -> Color.Transparent
                 }
             )
+            .background( when {
+                isPressed -> color
+                whiteKey -> notWhite
+                stepView -> repeatButtons
+                else -> BackGray
+            })
             .width(keyWidth)
-            .height(if (whiteKey) keyHeight else keyHeight / 2)
+            .height(if (!whiteKey && !stepView) keyHeight/2 else keyHeight)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null

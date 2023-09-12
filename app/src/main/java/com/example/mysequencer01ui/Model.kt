@@ -32,6 +32,9 @@ class KmmkComponentContext {
 
     var midiOutputPorts = mutableStateListOf<MidiPortDetails>()
 
+    // ryjtyj
+    var midiInputPorts = mutableStateListOf<MidiPortDetails>()
+
     // non-states
 
     val noteNames = arrayOf("c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b")
@@ -249,6 +252,11 @@ class KmmkComponentContext {
         midiDeviceManager.midiOutputDeviceId = id
     }
 
+    // ryjtyj
+    fun setInputDevice(id: String) {
+        midiDeviceManager.midiInputDeviceId = id
+    }
+
     fun onMidiProtocolUpdated() {
         midiProtocol.value =
             if (midiProtocol.value == MidiCIProtocolType.MIDI2) MidiCIProtocolType.MIDI1 else MidiCIProtocolType.MIDI2
@@ -286,5 +294,11 @@ class KmmkComponentContext {
     fun updateMidiDeviceList() {
         midiOutputPorts.clear()
         midiOutputPorts.addAll(midiDeviceManager.midiOutputPorts)
+    }
+
+    // ryjtyj
+    fun updateMidiInputDeviceList() {
+        midiInputPorts.clear()
+        midiInputPorts.addAll(midiDeviceManager.midiInputPorts)
     }
 }

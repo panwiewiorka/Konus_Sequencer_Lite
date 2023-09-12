@@ -1,8 +1,6 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
 import android.util.Log
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -22,6 +20,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,10 +39,10 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp) {
-    Log.d("emptyTag", "for holding Log in import")
+fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, maxHeight: Dp) {
 
     val channelState by seqViewModel.channelSequences[seqUiState.selectedChannel].channelState.collectAsState()
+    val maxScroll = (seqUiState.stepViewNoteHeight * 128 - (maxHeight - seqUiState.stepViewNoteHeight - 2.dp)).value * LocalDensity.current.density
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -72,7 +71,7 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
                     .height(50.dp),
-                valueRange = 0f..scrollState.maxValue.toFloat(), // TODO calculate before composing and remember
+                valueRange = 0f..maxScroll,
                 colors = SliderDefaults.colors(
                     thumbColor = violet,
                     activeTrackColor = darkViolet,
@@ -130,7 +129,6 @@ fun NotesGrid(
 ) {
     with(seqViewModel.channelSequences[seqUiState.selectedChannel]){
 
-        val channelSequence = this
         val noteHeight = seqUiState.stepViewNoteHeight
 
         BoxWithConstraints(
@@ -172,7 +170,6 @@ fun NotesGrid(
                         .verticalScroll(
                             scrollState,
                             reverseScrolling = true,
-//                            flingBehavior = flingBehavior()
                         )
                         .pointerInput(
                             seqUiState.selectedChannel, seqUiState.seqIsPlaying, channelState.notes
@@ -241,7 +238,7 @@ fun NotesGrid(
                         }
                         .pointerInput(
                             seqUiState.selectedChannel,
-                            seqUiState.seqIsPlaying,
+//                            seqUiState.seqIsPlaying,
                             seqUiState.isRepeating,
                             seqUiState.isQuantizing,
                             channelState.notes,
@@ -357,11 +354,7 @@ fun NotesGrid(
                                         .height(noteHeight)
                                         .padding(vertical = 0.3.dp)
                                         .background(
-                                            if (getKeyColorAndNumber(
-                                                    0,
-                                                    127 - i
-                                                ).isBlack
-                                            ) stepViewBlackRows else BackGray
+                                            if (getKeyColorAndNumber(0, 127 - i).isBlack) stepViewBlackRows else BackGray
                                         )
                                 )
                             }
@@ -391,14 +384,14 @@ fun NotesGrid(
                             for(i in notes.indices) {
                                 if(notes[i].velocity > 0) {
                                     val offsetX = widthFactor * notes[i].time.toInt()
-                                    val noteOffIndexAndTime = getNotePairedIndexAndTime(i)
-                                    val noteOffIndex = noteOffIndexAndTime.index
-                                    val noteWidth = widthFactor * (noteOffIndexAndTime.time - notes[i].time).toInt()
+                                    val (noteOffIndex, noteOffTime) = getNotePairedIndexAndTime(i, true)
+                                    val noteWidth = widthFactor * (noteOffTime - notes[i].time).toInt()
                                     var noteLength =
-                                        if (noteOffIndex == -1) {
+                                        if (noteOffIndex != -1) noteWidth else {
                                             if (seqUiState.isRepeating) playheadRepeat - offsetX else playhead - offsetX  // live-writing note (grows in length)
-                                        } else noteWidth
-                                    val fasterThanHalfOfQuantize = seqUiState.seqIsPlaying && (System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= halfOfQuantize)
+                                        }
+                                    val fasterThanHalfOfQuantize =
+                                        (System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= halfOfQuantize) && noteOffIndex == -1
 
                                     if (noteLength <= 0.dp && !fasterThanHalfOfQuantize) noteLength += gridWidth
 
@@ -419,7 +412,6 @@ fun NotesGrid(
                                 }
                             }
                         }
-
                         if(channelState.stepViewRefresh) Box(modifier = Modifier.size(0.1.dp).background(Color(0x01000000)))
                     }
                 }
@@ -490,20 +482,17 @@ fun NoteBox(
                 modifier = Modifier
                     .height(noteHeight)
                     .width(changeLengthArea)
-                    .border(0.6.dp, buttonsBg)
                     .background(changeLengthAreaColor)
             )
 //        Text(text = "$indexNoteOn")
         }
         if (wrapAround) {
             Canvas (modifier = Modifier.fillMaxSize()) {
-                val endOfScreen = offsetX != 0.dp
-                val x = if (endOfScreen) size.width else 0f
-                drawLine(if (endOfScreen) changeLengthAreaColor else buttonsBg, Offset(x, 0.6.dp.toPx()), Offset(x, size.height - 0.6.dp.toPx()), 2.dp.toPx())
+                val x = if (offsetX != 0.dp) size.width else 1.dp.toPx()
+                drawLine( buttonsBg, Offset(x, 0.6.dp.toPx()), Offset(x, size.height - 0.6.dp.toPx()), 2.dp.toPx())
             }
         }
     }
-
 }
 
 
@@ -528,7 +517,8 @@ fun StepViewKeyboard(
             Box(
                 contentAlignment = Alignment.BottomCenter
             ) {
-                StepViewKey(
+                PianoKey(
+                    stepView = true,
                     interactionSource = interactionSources[pitch].interactionSource,
                     rememberInteraction = rememberInteraction,
                     seqIsRecording = seqIsRecording,
@@ -547,69 +537,6 @@ fun StepViewKeyboard(
             }
         }
     }
-}
-
-@Composable
-fun StepViewKey(  // TODO merge with PianoKey()?
-    interactionSource: MutableInteractionSource,
-    rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
-    seqIsRecording: Boolean,
-    noteIsPlaying: Boolean,
-    isPressed: Boolean,
-    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
-    selectedChannel: Int,
-    pitch: Int,
-    keyWidth: Dp,
-    keyHeight: Dp,
-    notesPadding: Dp,
-    whiteKey: Boolean,
-    halfOfQuantize: Double,
-) {
-//    val keyIsPressed by interactionSource.collectIsPressedAsState()
-//    val interactionSource = remember { MutableInteractionSource() }
-    var elapsedTime = 0L
-    LaunchedEffect(interactionSource, selectedChannel, pitch, isPressed) {
-        interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is PressInteraction.Press -> {
-                    pressPad(selectedChannel, pitch, 100, 0, false)
-                    rememberInteraction(selectedChannel, pitch, interaction)
-                    elapsedTime = System.currentTimeMillis()
-                }
-                is PressInteraction.Release -> {
-                    // second condition needed for slow smartphones skipping noteOff due to 'isPressed' not updating in time // TODO test PAD_record on Xiaomi
-                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0, 0, false)
-                }
-                is PressInteraction.Cancel -> {
-                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) pressPad(selectedChannel, pitch, 0, 0, false)
-                }
-            }
-        }
-    }
-    val color = if (seqIsRecording) warmRed else playGreen
-    Box(
-        modifier = Modifier
-            .padding(notesPadding, 0.dp)
-            .border(
-                if (noteIsPlaying) BorderStroke(3.dp, color) else BorderStroke(
-                    0.3.dp,
-                    stepViewBlackRows
-                )
-            )
-            .background(
-                if (isPressed) {
-                    color
-                } else {
-                    if (whiteKey) notWhite else repeatButtons
-                }
-            )
-            .width(keyWidth)
-            .height(keyHeight)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) { }
-    ) { }
 }
 
 
@@ -655,4 +582,5 @@ fun VerticalSlider(
             }
             .then(modifier)
     )
+    Log.d("emptyTag", "for holding Log in import")
 }

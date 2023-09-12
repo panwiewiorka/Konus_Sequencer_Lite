@@ -15,8 +15,8 @@ data class ChannelState(
     val isMuted: Boolean = false,
     val isSoloed: Boolean = false,
     val channelIsPlayingNotes: Int = 0,
-    var playingNotes: Array<Int> = Array(128){ 0 }, // TODO move to channelSequence?
-    val pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, 0) }, // manually pressed notes that are muting same ones played by sequencer
+    var playingNotes: Array<Int> = Array(128){ 0 },
+    val pressedNotes: Array<PressedNote> = Array(128){ PressedNote(false, Int.MAX_VALUE, 0) },
     val onPressedMode: PadsMode = PadsMode.DEFAULT,
 
     val stepViewYScroll: Int = 3300,
@@ -25,7 +25,7 @@ data class ChannelState(
     val pianoViewOctaveLow: Int = 2,
 
     val seqLength: Int = 4, // future feature
-    val totalTime: Int = BARTIME, // TODO how are totalTime & seqLength correlated? Replace totalTime with relative one?
+    val totalTime: Int = BARTIME,
     val deltaTime: Double = 0.0,
 
     val deltaTimeRepeat: Double = 0.0,

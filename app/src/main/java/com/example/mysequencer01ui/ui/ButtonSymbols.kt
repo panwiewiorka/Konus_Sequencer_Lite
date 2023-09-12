@@ -60,40 +60,6 @@ fun DrawScope.allSymbol(buttonPressed: Boolean) {
 }
 
 
-fun DrawScope.quantizeSymbolColor(quantizing: Boolean) {
-    val m = size.height / 8
-    val s = size.height / 16
-    drawArc(warmRed, 0f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-    drawArc(if (quantizing) night else dusk, 90f, 90f, false, Offset(center.x - m, center.y - m), size / 4f, style = Stroke(width = thickness, cap = StrokeCap.Round))
-
-    val pathRed = Path()
-    pathRed.moveTo(center.x + m, center.y)
-    pathRed.lineTo(center.x + m, center.y - m)
-    drawPath(
-        path = pathRed,
-        color = if (false) night else warmRed,
-        style = Stroke( width = thickness, join = StrokeJoin.Round )
-    )
-    val pathBlue = Path()
-    pathBlue.moveTo(center.x - m, center.y)
-    pathBlue.lineTo(center.x - m, center.y - m)
-    drawPath(
-        path = pathBlue,
-        color = if (quantizing) night else dusk,
-        style = Stroke( width = thickness, join = StrokeJoin.Round )
-    )
-    val pathWhite = Path()
-    pathWhite.moveTo(center.x + m, center.y - s)
-    pathWhite.lineTo(center.x + m, center.y - m)
-    pathWhite.moveTo(center.x - m, center.y - s)
-    pathWhite.lineTo(center.x - m, center.y - m)
-    drawPath(
-        path = pathWhite,
-        color = if (quantizing) buttons else notWhite,
-        style = Stroke( width = thickness, join = StrokeJoin.Round )
-    )
-}
-
 fun DrawScope.quantizeSymbol(quantizingPadsMode: Boolean, isQuantizing: Boolean) {
     val m = size.height / 8
     val s = size.height / 16
@@ -335,108 +301,40 @@ fun DrawScope.stopSymbol() {
 
 fun DrawScope.tabLiveSymbol(color: Color) {
     val m = size.height / 8f
-    drawLine(color, Offset(center.x, center.y - m/1.5f), Offset(center.x, center.y + m/1.5f), thickness)
+    val s = m/1.5f
+    drawLine(color, Offset(center.x, center.y - s), Offset(center.x, center.y + s), thickness)
     drawLine(color, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
 }
 
-
-
 fun DrawScope.tabPianoSymbol(color: Color) {
     val m = size.height / 8f
-    drawLine(color, Offset(center.x - m, center.y + m/2), Offset(center.x, center.y + m/2), thickness)
-    drawLine(color, Offset(center.x - m/2, center.y), Offset(center.x + m/2, center.y), thickness)
-    drawLine(color, Offset(center.x, center.y - m/2), Offset(center.x + m, center.y - m/2), thickness)
-}
-
-fun DrawScope.tabPianoSymboliii(color: Color) {
-    val m = size.height / 8f
-    drawLine(color, Offset(center.x - m, center.y + m/2), Offset(center.x - m, center.y - m/4), thickness)
-    drawLine(color, Offset(center.x, center.y + m/3), Offset(center.x, center.y - m/3), thickness)
-    drawLine(color, Offset(center.x + m, center.y + m/4), Offset(center.x + m, center.y - m/2), thickness)
-}
-
-fun DrawScope.tabPianoSymbollll(color: Color) {
-    val m = size.height / 8f
-    drawLine(color, Offset(center.x - m, center.y - m/2), Offset(center.x - m, center.y + m/2), thickness)
-    drawLine(color, Offset(center.x - m/3, center.y - m/2), Offset(center.x - m/3, center.y + m/2), thickness)
-    drawLine(color, Offset(center.x + m/3, center.y - m/2), Offset(center.x + m/3, center.y + m/2), thickness)
-    drawLine(color, Offset(center.x + m, center.y - m/2), Offset(center.x + m, center.y + m/2), thickness)
+    val s = m/2
+    drawLine(color, Offset(center.x - m, center.y + s), Offset(center.x, center.y + s), thickness)
+    drawLine(color, Offset(center.x - s, center.y), Offset(center.x + s, center.y), thickness)
+    drawLine(color, Offset(center.x, center.y - s), Offset(center.x + m, center.y - s), thickness)
 }
 
 fun DrawScope.tabStepSymbol(color: Color) {
     val m = size.height / 8f
-    drawLine(color, Offset(center.x - m, center.y - m/2), Offset(center.x - m, center.y + m/2), thickness)
-    drawLine(color, Offset(center.x - m, center.y - m/2), Offset(center.x + m, center.y - m/2), thickness)
-    drawLine(color, Offset(center.x - m, center.y + m/2), Offset(center.x + m, center.y + m/2), thickness)
-    drawLine(color, Offset(center.x + m, center.y + m/2), Offset(center.x + m, center.y - m/2), thickness)
+    val s = m/2
+    drawLine(color, Offset(center.x - m, center.y - s), Offset(center.x - m, center.y + s), thickness)
+    drawLine(color, Offset(center.x - m, center.y - s), Offset(center.x + m, center.y - s), thickness)
+    drawLine(color, Offset(center.x - m, center.y + s), Offset(center.x + m, center.y + s), thickness)
+    drawLine(color, Offset(center.x + m, center.y + s), Offset(center.x + m, center.y - s), thickness)
 }
 
 fun DrawScope.tabAutomationSymbol(color: Color) {
     val m = size.height / 8f
-    drawArc(color, 180f, 180f, false, Offset(center.x - m, center.y - m/2 + 1), Size(m, m), style = style)
-    drawArc(color, 180f, -180f, false, Offset(center.x, center.y - m/2), Size(m, m), style = style)
+    val s = m/2
+    drawArc(color, 180f, 180f, false, Offset(center.x - m, center.y - s + 1), Size(m, m), style = style)
+    drawArc(color, 180f, -180f, false, Offset(center.x, center.y - s), Size(m, m), style = style)
 }
 
 fun DrawScope.tabSettingsSymbol(color: Color) {
     val m = size.height / 8f
-    drawLine(color, Offset(center.x - m, center.y - m/2), Offset(center.x + m, center.y - m/2), thickness)
-    drawLine(color, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
-    drawLine(color, Offset(center.x - m, center.y + m/2), Offset(center.x + m, center.y + m/2), thickness)
+    val r = m/5
+    val s = m/8
+    drawCircle(color, r, Offset(center.x - m + s, center.y), style = style)
+    drawCircle(color, r, Offset(center.x, center.y), style = style)
+    drawCircle(color, r, Offset(center.x + m - s, center.y), style = style)
 }
-
-
-/*
-fun DrawScope.tabLiveSymbol(tabSelected: Boolean, color: Color) {
-    val m = size.height / 8f
-
-    drawRect(color, Offset(center.x - m, center.y - m), Size(m * 2, m * 2), style = Fill)
-
-    if (tabSelected) drawRect(buttons, Offset(center.x - m, center.y - m), Size(m * 2, m * 2), style = style)
-    drawLine(buttons, Offset(center.x, center.y - m), Offset(center.x, center.y + m), thickness)
-    drawLine(buttons, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
-}
-
-fun DrawScope.tabPianoSymbol(tabSelected: Boolean, color: Color) {
-    val m = size.height / 8f
-
-    drawRect(color, Offset(center.x - m, center.y - m), Size(m * 2, m * 2), style = Fill)
-    drawRect(buttons, Offset(center.x - m / 1.6f, center.y - m), Size(m / 2.2f, m), style = Fill)
-    drawRect(buttons, Offset(center.x + m / 1.6f - m / 2.2f, center.y - m), Size(m / 2.2f, m), style = Fill)
-
-    if (tabSelected) drawRect(buttons, Offset(center.x - m, center.y - m), Size(m * 2, m * 2), style = style)
-    drawLine(buttons, Offset(center.x - m / 2.8f, center.y), Offset(center.x - m / 2.8f, center.y + m), thickness)
-    drawLine(buttons, Offset(center.x + m / 2.8f, center.y), Offset(center.x + m / 2.8f, center.y + m), thickness)
-}
-
-fun DrawScope.tabStepSymbol(tabSelected: Boolean, color: Color) {
-    val m = size.height / 8f
-
-    drawRect(color, Offset(center.x - m, center.y), Size(m * 1.5f, m), style = Fill)
-    drawRect(color, Offset(center.x - m / 2, center.y - m), Size(m * 1.5f, m), style = Fill)
-    drawLine(buttons, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
-
-    if (tabSelected) {
-        drawRect(buttons, Offset(center.x - m, center.y), Size(m * 1.5f, m), style = style)
-        drawRect(buttons, Offset(center.x - m / 2, center.y - m), Size(m * 1.5f, m), style = style)
-    }
-}
-
-fun DrawScope.tabAutomationSymbol(tabSelected: Boolean, color: Color) {
-    val m = size.height / 8f
-
-    val path = Path()
-    path.moveTo(center.x - m, center.y - m / 2)
-    path.lineTo(center.x - m / 2, center.y - m)
-    path.lineTo(center.x + m / 2, center.y)
-    path.lineTo(center.x + m, center.y - m / 2)
-    path.lineTo(center.x + m, center.y + m)
-    path.lineTo(center.x - m, center.y + m)
-    path.lineTo(center.x - m, center.y - m / 2)
-
-    drawPath(
-        path = path,
-        color = if (tabSelected) buttons else color,
-        style = if (tabSelected) style else Fill
-    )
-}
-*/

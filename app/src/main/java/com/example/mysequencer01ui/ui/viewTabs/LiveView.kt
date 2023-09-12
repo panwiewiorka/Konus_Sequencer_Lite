@@ -174,7 +174,6 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
                     start = Offset(i * horizontalStep, 0f),
                     end = Offset(i * horizontalStep, size.height),
                     strokeWidth = 2f,
-//                    pathEffect = if((i + 4) % 4 == 0) null else PathEffect.dashPathEffect(floatArrayOf(size.height / 32, (size.height / 4 - size.height / 32)), size.height / 64)
                 )
             }
 
@@ -230,7 +229,7 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
 @Composable
 fun ChannelScreen(
     channelState: ChannelState,
-    getNotePairedIndexAndTime: (Int) -> NoteIndexAndTime,
+    getNotePairedIndexAndTime: (Int, Boolean) -> NoteIndexAndTime,
     seqIsPlaying: Boolean,
     isRepeating: Boolean,
     selectedChannel: Int,
@@ -256,7 +255,7 @@ fun ChannelScreen(
             for (i in notes.indices) {
                 if(notes[i].velocity > 0) {
                     val noteStart = (widthFactor * notes[i].time).toFloat()
-                    val (noteOffIndex, noteOffTime) = getNotePairedIndexAndTime(i)
+                    val (noteOffIndex, noteOffTime) = getNotePairedIndexAndTime(i, true)
                     val noteLength = widthFactor * (noteOffTime - notes[i].time).toFloat()
                     val deltaWidth = if (isRepeating) playheadRepeat - noteStart else playhead - noteStart
                     val noteWidth =
@@ -268,9 +267,10 @@ fun ChannelScreen(
                             deltaWidth  // live-writing note (grows in length)
                         }
 
+                    val noteHeight = height.toPx() - 1
                     val fasterThanHalfOfQuantize = System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= quantizationTime / factorBpm / 2
                     val radius = CornerRadius(size.height, size.height)
-                    val channelIsNotSilent = !((channelState.isMuted && !channelState.isSoloed) || (soloIsOn && !channelState.isSoloed))
+                    val channelIsNotSilent = !(!isSoloed && (isMuted || soloIsOn))
                     val channelIsSelected = selectedChannel == channelStateNumber
                     val color = when {
                         channelIsSelected && channelIsNotSilent -> violet
@@ -285,7 +285,7 @@ fun ChannelScreen(
                             topLeft = Offset(noteStart, 0f),
                             size = Size(
                                 width = noteWidth,
-                                height = height.toPx()),
+                                height = noteHeight),
                             cornerRadius = radius
                         )
                     } else {   // wrap-around note
@@ -296,7 +296,7 @@ fun ChannelScreen(
                             topLeft = Offset(noteStart,0f),
                             size = Size(
                                 width = size.width - noteStart,
-                                height = height.toPx()),
+                                height = noteHeight),
                             cornerRadius = radius
                         )
                         val halfTheLength = noteStart + (size.width - noteStart) / 2
@@ -305,7 +305,7 @@ fun ChannelScreen(
                             topLeft = Offset(halfTheLength,0f),
                             size = Size(
                                 width = size.width - halfTheLength,
-                                height = height.toPx()),
+                                height = noteHeight),
                         )
 
                         // ..]
@@ -314,7 +314,7 @@ fun ChannelScreen(
                             topLeft = Offset(0f,0f),
                             size = Size(
                                 width = noteWidth + noteStart,  // noteWidth is negative here
-                                height = height.toPx()),
+                                height = noteHeight),
                             cornerRadius = radius
                         )
                         drawRect(
@@ -322,7 +322,7 @@ fun ChannelScreen(
                             topLeft = Offset(0f,0f),
                             size = Size(
                                 width = (noteWidth + noteStart) / 2,  // noteWidth is negative here
-                                height = height.toPx()),
+                                height = noteHeight),
                         )
                     }
                 }
@@ -360,19 +360,23 @@ fun VisualDebugger(seqViewModel: SeqViewModel, seqUiState: SeqUiState, height: D
         contentAlignment = Alignment.TopStart
     ) {
         Column() {
-            with(seqViewModel.channelSequences[0]) {
+            with(seqViewModel.channelSequences[seqUiState.selectedChannel]) {
                 Text(
-                    "noteId = ${noteId - Int.MIN_VALUE},    " +
+                    "Channel ${seqUiState.selectedChannel}:   noteId = ${noteId - Int.MIN_VALUE},    " +
                         "notes ON: ${playingNotes[60]},     ",
-                    color = selectedButton)
+                    color = selectedButton,
+                    fontSize = 14.nonScaledSp,
+                    )
                 Text(
-                    "#toPlay = $indexToPlay,     " +
-                        "#toRepeat = $indexToRepeat      " +
+                    "Channel ${seqUiState.selectedChannel}:   #toPlay = $indexToPlay,   " +
+                        "#toRepeat = $indexToRepeat    " +
                         "#toStartRepeating = $indexToStartRepeating",
-                    color = selectedButton)
+                    color = selectedButton,
+                    fontSize = 14.nonScaledSp,
+                    )
             }
         }
-        for(c in 0..3){
+        for(c in seqViewModel.channelSequences.indices){
             val channelState by seqViewModel.channelSequences[c].channelState.collectAsState()
             with(channelState) {
                 for (i in notes.indices) {
@@ -381,9 +385,10 @@ fun VisualDebugger(seqViewModel: SeqViewModel, seqUiState: SeqUiState, height: D
                             0 -> "$i"
                             else -> "${notes[i].id - Int.MIN_VALUE}" },
                         color = if(notes[i].velocity > 0) Color(0xFFFFFFFF) else Color(0xFF999999),
+                        fontSize = 12.nonScaledSp,
                         modifier = Modifier.offset(
                             (notes[i].time.toFloat() / totalTime * maxWidth.value).dp,
-                            height - height / 4 * (c + 1) - 2.dp
+                            height - height / seqViewModel.channelSequences.size * (c + 4) + 3.dp
                         )
                     )
                 }

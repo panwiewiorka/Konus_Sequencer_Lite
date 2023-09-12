@@ -33,6 +33,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
 
     var draggedNoteOnIndex: Int = -1
     var draggedNoteOffIndex: Int = -1
+    var draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch { }
 
     var indexToPlay: Int = 0
     var startTimeStamp: Long = 0
@@ -113,14 +114,6 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             }
             listOfNotesToRecord.removeAt(0)
         }
-
-        _channelState.update { it.copy(
-            notes = notes,
-            deltaTime = deltaTime,
-            deltaTimeRepeat = deltaTimeRepeat,
-            playingNotes = playingNotes,
-            channelIsPlayingNotes = channelIsPlayingNotes
-        ) }
     }
 
     private fun eraseOrPlay(
@@ -136,7 +129,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         val overdubbing = seqIsRecording && pressedNote.isPressed
         val noteShouldBeTiedToItself = System.currentTimeMillis() - pressedNote.noteOnTimestamp > quantizationTime / factorBpm * 1.5
 
-        if (!isRepeating && (isErasing || overdubbing)) {
+        if (!isRepeating && ((isErasing && noteToPlay.velocity > 0) || overdubbing)) {
             if (overdubbing && pressedNote.id == noteToPlay.id && noteShouldBeTiedToItself) { // tie note
                 updatePressedNote(noteToPlay.pitch, false)
                 recIntoArray(
@@ -219,15 +212,15 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         factorBpm: Double,
         isStepView: Boolean,
     ) {
-        stopNotesOnChannel(channelNumber, END_OF_REPEAT)  // notesOFF on the end of loop // TODO activate only if channelIsPlayingNotes?
+        if(channelIsPlayingNotes > 0) stopNotesOnChannel(channelNumber, END_OF_REPEAT)  // notesOFF on the end of loop
 
-        indexToStartRepeating = searchIndexInTimeBoundaries()
+        indexToStartRepeating = notes.indexOfLast { it.time < repeatStartTime } + 1
         indexToRepeat = indexToStartRepeating
 
         deltaTimeRepeat -= (repeatEndTime - repeatStartTime)
         idsOfNotesToIgnore.clear()
 
-        for (p in 0..127) { // TODO change pressedNotes[] to mutableList?
+        for (p in 0..127) {
             // ignore noteOff if we start repeatLoop in the middle of the note
             var hangingNoteOffIndex = notes.indexOfFirst {
                 it.pitch == p && (it.time in repeatStartTime..repeatEndTime || (repeatStartTime > repeatEndTime && it.time >= repeatStartTime))
@@ -311,6 +304,16 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         return false
     }
 
+    fun updateChannelState() {
+        _channelState.update { it.copy(
+            notes = notes,
+            deltaTime = deltaTime,
+            deltaTimeRepeat = deltaTimeRepeat,
+            playingNotes = playingNotes,
+            channelIsPlayingNotes = channelIsPlayingNotes
+        ) }
+    }
+
 
 /** RECORD **/
     fun recordNote(
@@ -329,13 +332,13 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     ) {
         Log.d("ryjtyj", "recording() at channel $channelNumber, id = ${id - Int.MIN_VALUE}, velocity = $velocity")
 
-        if(velocity == 0 && notes.indexOfFirst { it.id == id && it.velocity > 0 } == -1
-            && !isStepRecord // added because of delayed recording in main cycle
-        ) {}//return // TODO uncomment 'return' or delete whole condition?
+//        if(velocity == 0 && notes.indexOfFirst { it.id == id && it.velocity > 0 } == -1
+//            && !isStepRecord // added because of delayed recording in main cycle
+//        ) return
 
         val customRecTime = if (customTime > totalTime) customTime - totalTime else customTime
 
-        val recordTime = getRecordTime(
+        var recordTime = getRecordTime(
             quantizeTime,
             id,
             quantizationTime,
@@ -348,7 +351,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         )
         Log.d("ryjtyj", "recordTime = $recordTime")
 
-        if (recordTime == repeatEndTime && isRepeating && velocity > 0) return // TODO change to recordTime = repeatStartTime instead of ignoring record?
+        if (recordTime == repeatEndTime && isRepeating && velocity > 0) recordTime = repeatStartTime
 
         if(seqIsPlaying) {
             listOfNotesToRecord.add(RecordingPackage(recordTime, pitch, id, velocity, isStepView, isStepRecord, noteHeight))
@@ -376,20 +379,13 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         }
         Log.d("ryjtyj", "time = $time")
 
-        if (velocity > 0
-//                && seqIsPlaying
-            ) {
+        if (velocity > 0) {
             time = quantizeTime(time)
-//            idOfNotesToIgnore.add(id)
         } else {
             val indexOfQuantizedNoteOn =
                 notes.indexOfFirst { it.id == pressedNotes[pitch].id }
             val notBigWrapAround =
                 System.currentTimeMillis() - pressedNotes[pitch].noteOnTimestamp <= quantizationTime / factorBpm  // catching rare case of almost self-tied note  ..]_[..
-
-            if (notBigWrapAround && indexOfQuantizedNoteOn != -1 && notes[indexOfQuantizedNoteOn].time == 0.0) { // TODO needed?
-                time = quantizationTime
-            }
 
             val pairedNoteOn = listOfNotesToRecord.indexOfFirst { it.id == id }
             val noteOnTime = when {
@@ -580,8 +576,6 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         }
     }
 
-    var draggedNoteOffJob = CoroutineScope(Dispatchers.Default).launch { }
-
     private fun playingDraggedNoteOffInTime(factorBpm: Double) {
         Log.d("ryjtyj", "playingDraggedNoteOffInTime()")
         val delayTime = if (draggedNoteOnIndex < draggedNoteOffIndex) {
@@ -623,26 +617,28 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             if(pairedNoteOffIndex > index) pairedNoteOffIndex--
 
             // erasing noteON
-            var breakFlag = eraseFromArray(index, false) // FIXME inside there's an updateNotes(), which is necessary only lower (when erasing noteOff) vv
+            var breakFlag = eraseFromArray(index, false)
 
             Log.d("ryjtyj", "erasing paired noteOff at $pairedNoteOffIndex")
             // erasing paired noteOFF
             breakFlag = eraseFromArray(pairedNoteOffIndex, breakFlag)
 
             // updating index when erasing note before it
-            if (pairedNoteOffIndex < index && pairedNoteOffIndex > -1) {
-                if(isRepeating) if(indexToRepeat > 0) indexToRepeat-- else if(indexToPlay > 0) indexToPlay-- // TODO why we don't indexToPlay-- in other conditions, if else if..
+            if (pairedNoteOffIndex in 0 until index) {
+                if(isRepeating && indexToRepeat > 0) indexToRepeat--
+                if(indexToPlay > 0) indexToPlay--
             }
             if (breakFlag) return false // break out of while() when erased last note in array
 
         } else {  // skipping noteOFFs
-            if(isRepeating) indexToRepeat++ else indexToPlay++
+            if(isRepeating) indexToRepeat++
+            indexToPlay++
             changePlayingNotes(notes[index].pitch, 0)
         }
         return true
     }
 
-    fun eraseFromArray(index: Int, breakFlag: Boolean): Boolean {
+    private fun eraseFromArray(index: Int, breakFlag: Boolean): Boolean {
         var breakFlag1 = breakFlag
         when {
             // no paired noteOFF found
@@ -725,7 +721,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         repeatEndTime = if(tempRepeatEnd > totalTime) tempRepeatEnd - totalTime else tempRepeatEnd
 
         if (!isRepeating) {
-            indexToStartRepeating = searchIndexInTimeBoundaries()
+            indexToStartRepeating = notes.indexOfLast { it.time < repeatStartTime } + 1
             indexToRepeat = indexToPlay
         } else {
             stopNotesOnChannel(channelNumber, STOP_NOTES)
@@ -743,12 +739,7 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
                 val tempDelta = deltaTimeRepeat - (repeatLength * multiplier)
                 deltaTimeRepeat = if(tempDelta < 0) tempDelta + totalTime else tempDelta
 
-//                    deltaTimeRepeat -= repeatLength * multiplier
-//                    if (deltaTimeRepeat < 0) {
-//                        deltaTimeRepeat += totalTime
-//                    }
-
-                if(channelNumber == 0) Log.d("ryjtyj", "not_init / change MULTIPLIER: deltaTimeRepeat = ${deltaTimeRepeat}, deltaTime = ${deltaTime}")
+                if(channelNumber == 0) Log.d("ryjtyj", "not_init / change MULTIPLIER: deltaTimeRepeat = $deltaTimeRepeat, deltaTime = $deltaTime")
                 indexToRepeat = notes.indexOfLast { it.time <= deltaTimeRepeat } + 1
             }
         }
@@ -768,7 +759,6 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         var noteOffIndex: Int
 
         if (noteOnIndex == -1 || notes[noteOnIndex].velocity == 0) {
-//            noteOffIndex = -1 // FIXME why it's here?
             noteOffIndex = notes.indexOfFirst { it.pitch == pitch && it.time > time }
 
             if (noteOffIndex != -1 && notes[noteOffIndex].velocity == 0) {
@@ -787,26 +777,6 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
     }
 
     private fun getChangeLengthArea(noteOnIndex: Int, noteOffIndex: Int): Triple<Double, Double, Double> {
-//        var widthOfChangeLengthArea =
-//            if (noteOnIndex < noteOffIndex) {   // normal case (not wrap-around)
-//                (notes[noteOffIndex].time - notes[noteOnIndex].time) / 2.5
-//            } else if (noteOnIndex > noteOffIndex) {   // wrap-around case
-//                (notes[noteOffIndex].time - notes[noteOnIndex].time + totalTime) / 2.5
-//            } else 0.0
-//        if (widthOfChangeLengthArea !in 0.0..totalTime / 12.0) {
-//            widthOfChangeLengthArea = totalTime / 12.0
-//        }
-
-//                                        val rightmostAreaOfChangeLength =
-//                                            if (noteOffIndex == -1) 0.0 else {
-//                                                (channelState.totalTime.toDouble() - widthOfChangeLengthArea + notes[noteOffIndex].time)
-//                                                    .coerceAtMost(channelState.totalTime.toDouble())
-//                                            }
-//                                        val leftmostAreaOfChangeLength =
-//                                            if (noteOffIndex == -1) 0.0 else {
-//                                                (notes[noteOffIndex].time - widthOfChangeLengthArea).coerceAtLeast(0.0)
-//                                            }
-
         val widthOfChangeLengthArea =
             (if (noteOnIndex < noteOffIndex) {
                 (notes[noteOffIndex].time - notes[noteOnIndex].time) / 2.5
@@ -954,10 +924,11 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
         }
     }
 
-    fun getNotePairedIndexAndTime(index: Int): NoteIndexAndTime {
-        if(notes.lastIndex < index) return NoteIndexAndTime(-1, Double.MIN_VALUE) // FIXME that was introduces because app was occasionally crashing when erasing/overdubbing notes. Now visuals glitch for a moment bc of note with only noteON (of noteOFF).
-        val notePairedIndex = notes.indexOfFirst { it.id == notes[index].id && it.velocity != notes[index].velocity}
-        return if(notePairedIndex > -1) NoteIndexAndTime(notePairedIndex, notes[notePairedIndex].time) else NoteIndexAndTime(-1, Double.MIN_VALUE)
+    fun getNotePairedIndexAndTime(index: Int, uiUpdate: Boolean = false): NoteIndexAndTime {
+        val localNotes = if (uiUpdate) channelState.value.notes else notes
+        if(localNotes.lastIndex < index) return NoteIndexAndTime(-1, Double.MIN_VALUE)
+        val notePairedIndex = localNotes.indexOfFirst { it.id == localNotes[index].id && it.velocity != localNotes[index].velocity}
+        return if(notePairedIndex > -1) NoteIndexAndTime(notePairedIndex, localNotes[notePairedIndex].time) else NoteIndexAndTime(-1, Double.MIN_VALUE)
     }
 
     fun changeNotePitch(index: Int, pitch: Int) {
@@ -1010,18 +981,6 @@ class ChannelSequence(val channelNumber: Int, val kmmk: KmmkComponentContext) {
             Log.d("ryjtyj", "channelIsPlayingNotes = $channelIsPlayingNotes, fixing to 0")
             channelIsPlayingNotes = 0
         }
-    }
-
-    private fun searchIndexInTimeBoundaries(): Int {
-        var index =
-            notes.indexOfFirst { it.time >= repeatStartTime && it.time < repeatEndTime } // normal search  [...]
-        if (index == -1 && repeatStartTime > repeatEndTime) {
-            index = notes.indexOfFirst { it.time >= repeatStartTime } // wrap-around  [..   (we don't search in 0..repeatEnd)
-        }
-        if (index == -1) {
-            index = if(repeatStartTime > repeatEndTime) notes.size else indexToPlay // TODO check whether notes.size could be changed to indexToPlay
-        }
-        return index
     }
 
     fun cancelPadInteraction() {

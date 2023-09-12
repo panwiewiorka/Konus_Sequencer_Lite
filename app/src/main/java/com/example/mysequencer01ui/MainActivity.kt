@@ -44,11 +44,6 @@ class MainActivity : ComponentActivity() {
 //            val dao: SeqDao
             val kmmk = KmmkComponentContext()
             kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
-//            kmmk.updateMidiDeviceList()
-//            if (kmmk.midiOutputPorts.any()) {
-//                Log.d("ryjtyj", "MIDI output = ${kmmk.midiOutputPorts[0].id}")
-//                kmmk.setOutputDevice(kmmk.midiOutputPorts[0].id)
-//            }
             MySequencer01UiTheme(darkTheme = true) {
                 SeqScreen(kmmk, SeqViewModel(kmmk, db.dao))
             }
@@ -56,24 +51,16 @@ class MainActivity : ComponentActivity() {
         hideSystemUI()
     }
 
-//    override fun onResume() {
-//        super.onResume()
-//        val kmmk = KmmkComponentContext()
-//        kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
-//        kmmk.updateMidiDeviceList()
-//    }
-
 
     private fun hideSystemUI() {
-        //Hides action bar at the top
         actionBar?.hide()
-
-        //Hide status bars
-        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         } else {
+            //Hide status bars
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+
             window.insetsController?.apply {
                 hide(WindowInsets.Type.systemBars())
                 systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
