@@ -4,7 +4,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(entities = [
-    Patterns::class
+    Patterns::class,
+    Settings::class
 ], version = 1, exportSchema = false)
 abstract class SeqDatabase: RoomDatabase() {
     abstract val dao: SeqDao

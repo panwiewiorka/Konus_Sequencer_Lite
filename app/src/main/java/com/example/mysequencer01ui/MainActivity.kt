@@ -2,19 +2,16 @@ package com.example.mysequencer01ui
 
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.core.view.WindowCompat
 import androidx.room.Room
-import com.example.mysequencer01ui.data.SeqDao
 import com.example.mysequencer01ui.data.SeqDatabase
-import com.example.mysequencer01ui.ui.theme.MySequencer01UiTheme
 import com.example.mysequencer01ui.ui.SeqScreen
 import com.example.mysequencer01ui.ui.SeqViewModel
+import com.example.mysequencer01ui.ui.theme.MySequencer01UiTheme
 import dev.atsushieno.ktmidi.AndroidMidiAccess
 
 class MainActivity : ComponentActivity() {
@@ -51,6 +48,12 @@ class MainActivity : ComponentActivity() {
         hideSystemUI()
     }
 
+//    override fun onStop() {
+//        super.onStop()
+//        val kmmk = KmmkComponentContext()
+//        kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
+//        SeqViewModel(kmmk, db.dao).saveSettingsToDatabase()
+//    }
 
     private fun hideSystemUI() {
         actionBar?.hide()
@@ -58,11 +61,11 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         } else {
-            //Hide status bars
-            WindowCompat.setDecorFitsSystemWindows(window, false)
+//            WindowCompat.setDecorFitsSystemWindows(window, false)
 
             window.insetsController?.apply {
-                hide(WindowInsets.Type.systemBars())
+//                hide(WindowInsets.Type.systemBars())
+                hide(WindowInsets.Type.statusBars())
                 systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }

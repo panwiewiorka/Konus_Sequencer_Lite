@@ -3,9 +3,21 @@ package com.example.mysequencer01ui
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import dev.atsushieno.ktmidi.Midi1Player
+import dev.atsushieno.ktmidi.Midi2Music
+import dev.atsushieno.ktmidi.Midi2Player
+import dev.atsushieno.ktmidi.MidiCC
+import dev.atsushieno.ktmidi.MidiCIProtocolType
+import dev.atsushieno.ktmidi.MidiChannelStatus
+import dev.atsushieno.ktmidi.MidiMusic
+import dev.atsushieno.ktmidi.MidiPlayer
+import dev.atsushieno.ktmidi.MidiPortDetails
+import dev.atsushieno.ktmidi.MidiSystemStatus
+import dev.atsushieno.ktmidi.Ump
+import dev.atsushieno.ktmidi.UmpFactory
 import dev.atsushieno.ktmidi.ci.CIFactory
 import dev.atsushieno.ktmidi.ci.MidiCIProtocolTypeInfo
-import dev.atsushieno.ktmidi.*
+import dev.atsushieno.ktmidi.toPlatformNativeBytes
 import kotlinx.coroutines.Runnable
 
 class KmmkComponentContext {
@@ -32,7 +44,7 @@ class KmmkComponentContext {
 
     var midiOutputPorts = mutableStateListOf<MidiPortDetails>()
 
-    // ryjtyj
+    // my edits
     var midiInputPorts = mutableStateListOf<MidiPortDetails>()
 
     // non-states
@@ -252,7 +264,7 @@ class KmmkComponentContext {
         midiDeviceManager.midiOutputDeviceId = id
     }
 
-    // ryjtyj
+    // my edits
     fun setInputDevice(id: String) {
         midiDeviceManager.midiInputDeviceId = id
     }
@@ -296,7 +308,7 @@ class KmmkComponentContext {
         midiOutputPorts.addAll(midiDeviceManager.midiOutputPorts)
     }
 
-    // ryjtyj
+    // my edits
     fun updateMidiInputDeviceList() {
         midiInputPorts.clear()
         midiInputPorts.addAll(midiDeviceManager.midiInputPorts)

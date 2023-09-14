@@ -1,7 +1,12 @@
 package com.example.mysequencer01ui
 
 import androidx.compose.runtime.mutableStateOf
-import dev.atsushieno.ktmidi.*
+import dev.atsushieno.ktmidi.EmptyMidiAccess
+import dev.atsushieno.ktmidi.MidiAccess
+import dev.atsushieno.ktmidi.MidiInput
+import dev.atsushieno.ktmidi.MidiOutput
+import dev.atsushieno.ktmidi.MidiPortDetails
+import dev.atsushieno.ktmidi.PortCreatorContext
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -43,7 +48,7 @@ class MidiDeviceManager {
             runBlocking {
                 midiInput?.close()
                 midiInput = if (id != null) midiAccessValue.openInput(id) else emptyMidiInput
-                // ryjtyj
+                // my edits
 //                midiInputError.value = null
 //                virtualMidiInputError.value = null
 
@@ -73,7 +78,7 @@ class MidiDeviceManager {
     var midiOutputError = mutableStateOf<Exception?>(null)
     var virtualMidiOutputError = mutableStateOf<Exception?>(null)
 
-     // ryjtyj
+     // my edits
     var midiInputError = mutableStateOf<Exception?>(null)
     var virtualMidiInputError = mutableStateOf<Exception?>(null)
 

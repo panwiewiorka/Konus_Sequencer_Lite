@@ -21,4 +21,15 @@ interface SeqDao {
 
 //    @Query("SELECT COUNT(*) FROM Patterns WHERE pattern = :pattern AND channel = :channel")
 //    suspend fun countNotes(pattern: Int, channel: Int): Int
+
+    //======================
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun populateSettings(settings: Settings)
+
+    @Upsert
+    suspend fun saveSettings(settings: Settings)
+
+    @Query("SELECT * from Settings WHERE id = 1")
+    fun loadSettings(): Settings
 }

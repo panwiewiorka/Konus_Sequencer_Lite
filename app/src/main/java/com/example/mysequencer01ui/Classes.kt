@@ -15,6 +15,11 @@ data class NoteIndexAndTime (
     var time: Double,
 )
 
+data class NoteIdAndVelocity (
+    var id: Int,
+    val velocity: Int
+)
+
 data class PressedNote (
     var isPressed: Boolean,
     var id: Int,
@@ -31,15 +36,6 @@ data class KeyColorAndNumber (
     var number: Int,
 )
 
-data class RecordingPackage (
-    val recordTime: Double,
-    val pitch: Int,
-    val id: Int,
-    val velocity: Int,
-    val isStepView: Boolean,
-    val isStepRecord: Boolean,
-    val noteHeight: Float
-)
 
 //-------------------------------------
 

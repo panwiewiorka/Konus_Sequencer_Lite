@@ -60,8 +60,8 @@ import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.darkViolet
 import com.example.mysequencer01ui.ui.theme.dusk
 import com.example.mysequencer01ui.ui.theme.night
-import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.repeatButtons
+import com.example.mysequencer01ui.ui.theme.selectedButton
 import com.example.mysequencer01ui.ui.theme.violet
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -110,7 +110,8 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                     padsMode = seqUiState.padsMode,
                     selectedChannel = seqUiState.selectedChannel,
                     seqIsRecording = seqUiState.seqIsRecording,
-                    padsSize = buttonsSize
+                    padsSize = buttonsSize,
+                    showChannelNumber = seqUiState.showChannelNumberOnPads
                 )
             }
         }
@@ -191,7 +192,14 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
             val playhead = (widthFactor * channel0State.deltaTime).toFloat()
             val playheadRepeat = (widthFactor * channel0State.deltaTimeRepeat).toFloat()
             playHeads(seqUiState.seqIsPlaying, seqUiState.isRepeating, seqUiState.playHeadsColor, playhead, playheadRepeat)
-            if(seqUiState.isRepeating) repeatBounds(channel0State.totalTime, channel0State.repeatStartTime, channel0State.repeatEndTime, widthFactor, 0.65f)
+            if(seqUiState.isRepeating) repeatBounds(
+                channel0State.totalTime,
+                channel0State.repeatStartTime,
+                channel0State.repeatEndTime,
+                widthFactor,
+                0.65f,
+                false
+            )
         }
 
         val height = maxHeight / seqViewModel.channelSequences.size
@@ -219,7 +227,7 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
             }
         }
 
-        if (seqUiState.visualDebugger) {
+        if (seqUiState.showVisualDebugger) {
             VisualDebugger(seqViewModel, seqUiState, buttonsSize)
         }
     }

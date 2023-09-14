@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
@@ -44,7 +41,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -56,6 +52,7 @@ import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mysequencer01ui.ChannelSequence
 import com.example.mysequencer01ui.PadsMode
 import com.example.mysequencer01ui.PadsMode.CLEARING
 import com.example.mysequencer01ui.PadsMode.DEFAULT
@@ -66,9 +63,9 @@ import com.example.mysequencer01ui.PadsMode.SAVING
 import com.example.mysequencer01ui.PadsMode.SELECTING
 import com.example.mysequencer01ui.PadsMode.SOLOING
 import com.example.mysequencer01ui.SeqView
-import com.example.mysequencer01ui.ChannelSequence
-import com.example.mysequencer01ui.ui.theme.buttonsBg
+import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttons
+import com.example.mysequencer01ui.ui.theme.buttonsBg
 import com.example.mysequencer01ui.ui.theme.dusk
 import com.example.mysequencer01ui.ui.theme.night
 import com.example.mysequencer01ui.ui.theme.notWhite
@@ -86,7 +83,6 @@ val Int.nonScaledSp
     get() = (this / LocalDensity.current.fontScale).sp
 
 val buttonsPadding = PaddingValues(top = 1.dp, end = 1.dp)
-val buttonsShape = RectangleShape
 const val buttonTextSize = 12
 
 
@@ -104,7 +100,7 @@ fun PadButton(
     channelIsPlayingNotes: Boolean,
     isPressed: Boolean,
     isMuted: Boolean,
-    isSoloed: Boolean
+    isSoloed: Boolean,
 ){
     var elapsedTime = remember { 0L }
     val buttonIsPressed by interactionSource.collectIsPressedAsState()
@@ -171,7 +167,6 @@ fun PadButton(
         ),
         label = "padBorder"
     )
-
      */
 
     Box (
@@ -241,7 +236,8 @@ fun PadsGrid(
     padsMode: PadsMode,
     selectedChannel: Int,
     seqIsRecording: Boolean,
-    padsSize: Dp
+    padsSize: Dp,
+    showChannelNumber: Boolean,
 ){
     Box(
         modifier = Modifier.background(buttonsBg),
@@ -270,7 +266,16 @@ fun PadsGrid(
                                 isMuted = channelState.isMuted,
                                 isSoloed = channelState.isSoloed
                             )
-//                            Text("$channel")
+                            if (showChannelNumber) {
+                                Text(
+                                    text = "${channel + 1}",
+                                    color = BackGray,
+                                    fontSize = 14.nonScaledSp,
+                                    modifier = Modifier
+                                        .padding(start = 9.dp, bottom = 6.dp)
+                                        .align(Alignment.BottomStart)
+                                )
+                            }
                         }
                     }
                 }
@@ -624,41 +629,6 @@ fun SeqViewButton(
 }
 
 
-@Composable
-fun TextButton(
-    seqViewModel: SeqViewModel,
-    padsMode: PadsMode,
-    buttonsSize: Dp,
-    text: String = " ",
-    textColor: Color = notWhite,
-    fontSize: Int = buttonTextSize,
-){
-    Button(
-        interactionSource = buttonInteraction(
-            seqViewModel.toggleTime,
-            {  },
-            {  }
-        ),
-        onClick = {  },
-        shape = buttonsShape,
-        contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = if(false) notWhite else buttons
-        ),
-        modifier = Modifier
-            .size(buttonsSize)
-            .padding(buttonsPadding),
-    ) {
-        Box{
-            Text(text, fontSize = fontSize.nonScaledSp, color = textColor, modifier = Modifier
-                .blur(6.dp, BlurredEdgeTreatment.Unbounded)
-                .alpha(0.6f))
-            Text(text, fontSize = fontSize.nonScaledSp, color = textColor)
-        }
-    }
-}
-
-
 fun DrawScope.playHeads(
     seqIsPlaying: Boolean,
     isRepeating: Boolean,
@@ -691,11 +661,12 @@ fun DrawScope.repeatBounds(
     repeatEndTime: Double,
     widthFactor: Float,
     alpha: Float,
+    stepView: Boolean,
 ) {
     if (repeatStartTime < repeatEndTime) {
         drawRect(
             color = buttons,
-            topLeft = Offset(0f, 0f),
+            topLeft = Offset(if(stepView) -1.dp.toPx() else 0f, 0f),
             size = Size(
                 width = widthFactor * repeatStartTime.toFloat(),
                 height = size.height
@@ -732,7 +703,7 @@ fun buttonInteraction(
 ): MutableInteractionSource {
     val interactionSource = remember { MutableInteractionSource() }
     var elapsedTime = 0L
-    LaunchedEffect(interactionSource) {
+    LaunchedEffect(interactionSource, toggleTime) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
@@ -742,7 +713,7 @@ fun buttonInteraction(
                     if ((System.currentTimeMillis() - elapsedTime) > toggleTime) function2()
                 }
                 is PressInteraction.Cancel -> {
-                    Log.d("ryjtyj", "PressInteraction.Cancel")
+                    Log.d(TAG, "PressInteraction.Cancel")
                     if ((System.currentTimeMillis() - elapsedTime) > toggleTime) function2()
                 }
             }

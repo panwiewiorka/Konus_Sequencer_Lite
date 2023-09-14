@@ -32,10 +32,18 @@ data class SeqUiState (
     val divisorState: Int = 0,
     val repeatLength: Double = 0.0,
 
+    val settingsScrollPosition: Int = Int.MAX_VALUE,
     val transmitClock: Boolean = false,
     val keepScreenOn: Boolean = false,
-    val visualDebugger: Boolean = false,
+    val showChannelNumberOnPads: Boolean = false,
+    val allowRecordShortNotes: Boolean = false,
+    val fullScreen: Boolean = true,
+    val toggleTime: Int = 300,
+    val uiRefreshRate: Int = 3,
+    val dataRefreshRate: Int = 3,
+    val showVisualDebugger: Boolean = false,
     val debuggerViewSetting: Int = 0,
+
     val stepViewNoteHeight: Dp = 20.dp,
     val visualArrayRefresh: Boolean = false,
     )
