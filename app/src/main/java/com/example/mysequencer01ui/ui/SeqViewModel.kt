@@ -45,7 +45,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 
 const val TAG = "myTag"
@@ -64,7 +63,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private var previousDivisorValue = 0
 
     private var patterns: Array<Array<Array<Note>>> = Array(16){ Array(16) { emptyArray() } }
-    private var jobQuantizeSwitch = CoroutineScope(EmptyCoroutineContext).launch { }
+    private var jobQuantizeSwitch = CoroutineScope(Dispatchers.Main).launch { }
 
     init {
         CoroutineScope(Dispatchers.Default).launch {
@@ -107,7 +106,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-/** MAIN CYCLE **/
+    /** MAIN CYCLE **/
     fun startSeq() {
         if(
             uiState.value.seqIsPlaying
@@ -133,7 +132,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             while (uiState.value.seqIsPlaying) {
                 for (c in channelSequences.indices) {
                     channelSequences[c].advanceChannelSequence(
-                        seqIsPlaying = uiState.value.seqIsPlaying,
                         seqIsRecording = uiState.value.seqIsRecording,
                         factorBpm = uiState.value.factorBpm,
                         soloIsOn = uiState.value.soloIsOn,
@@ -178,7 +176,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-/** REPEAT **/
+    /** REPEAT **/
     private fun engageRepeat(divisor: Int) {
         if (divisor == 0) {
             stopChannels(STOP_NOTES)
@@ -218,7 +216,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-/** PRESS PAD */
+    /** PRESS PAD */
     fun pressPad(channel: Int, pitch: Int, velocity: Int, elapsedTime: Long, allButton: Boolean) {
         with(channelSequences[channel]) {
             val padsModeOnPress: PadsMode
@@ -338,7 +336,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-/** MODE BUTTONS **/
+    /** MODE BUTTONS **/
     fun quantizeTime(time: Double, ): Double {
         return if(uiState.value.isQuantizing) {
             val remainder = (time + uiState.value.quantizationTime / 2) % uiState.value.quantizationTime
@@ -367,24 +365,26 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
     fun switchPadsToQuantizingMode(switchOn: Boolean) {
-        if(switchOn) {
-            if(uiState.value.seqView != SeqView.LIVE) {
+        when {
+            !switchOn -> {
+                if(jobQuantizeSwitch.isActive) jobQuantizeSwitch.cancel()
+                if(uiState.value.quantizeModeTimer == 0) editCurrentPadsMode(QUANTIZING, false)
+                _uiState.update { it.copy(quantizeModeTimer = 0) }
+            }
+            uiState.value.seqView == SeqView.LIVE -> {
+                editCurrentPadsMode(QUANTIZING, true)
+            }
+            else -> {
                 jobQuantizeSwitch = CoroutineScope(Dispatchers.Main).launch {
                     val time = System.currentTimeMillis()
                     while (uiState.value.quantizeModeTimer < uiState.value.toggleTime) {
                         delay(5)
-                        _uiState.update { it.copy(quantizeModeTimer = uiState.value.quantizeModeTimer + (System.currentTimeMillis() - time).toInt()) }
+                        _uiState.update { it.copy(quantizeModeTimer = (System.currentTimeMillis() - time).toInt()) }
                     }
                     _uiState.update { it.copy(quantizeModeTimer = 0) }
                     editCurrentPadsMode(QUANTIZING, true)
                 }
-            } else editCurrentPadsMode(QUANTIZING, true)
-        } else {
-            if(jobQuantizeSwitch.isActive) jobQuantizeSwitch.cancel()
-            if(uiState.value.quantizeModeTimer == 0) {
-                editCurrentPadsMode(QUANTIZING, false)
             }
-            _uiState.update { it.copy(quantizeModeTimer = 0) }
         }
     }
 
@@ -540,9 +540,8 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             with(channelSequences[c]) {
                 stopNotesOnChannel(c, mode)
                 idsOfNotesToIgnore.clear()
-//                notesOffToIgnoreOnDragEnd = Array(128){ false }
                 if(mode == STOP_SEQ) {
-                    deltaTime = uiState.value.quantizationTime // for static recording
+                    deltaTime = 0.0
                     deltaTimeRepeat = 0.0
                     bpmDelta = 0.0
                     if(draggedNoteOffJob.isActive) {
@@ -617,7 +616,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-/** MISC **/
+    /** MISC **/
     private fun changePlayHeadsColor() {
         val playHeadsColor = when (uiState.value.padsMode) {
             QUANTIZING -> dusk
@@ -655,7 +654,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     }
 
 
-/** SETTINGS **/
+    /** SETTINGS **/
     fun saveSettingsScrollPosition(y: Int) {
         _uiState.update { it.copy(settingsScrollPosition = y) }
     }

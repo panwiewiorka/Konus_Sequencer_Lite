@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mysequencer01ui.KmmkComponentContext
 import com.example.mysequencer01ui.PadsMode.CLEARING
@@ -56,7 +55,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
     val seqUiState by seqViewModel.uiState.collectAsState()
     val view = LocalView.current
 
-    SideEffect {
+    LaunchedEffect(key1 = seqUiState.fullScreen) {
         if (seqUiState.fullScreen) seqViewModel.goFullScreen(view)
     }
 
@@ -122,7 +121,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                     LIVE -> LiveView(seqViewModel, seqUiState, buttonsSize)
                     PIANO -> PianoView(seqViewModel, seqUiState, buttonsSize)
                     STEP -> StepView(seqViewModel, seqUiState, maxHeight)
-                    AUTOMATION -> { Text("// TODO =)", color = playGreen, fontSize = 20.sp, fontStyle = FontStyle.Italic, modifier = Modifier.align(Alignment.Center)) }
+                    AUTOMATION -> { Text("// TODO =)", color = playGreen, fontSize = 20.nonScaledSp, fontStyle = FontStyle.Italic, modifier = Modifier.align(Alignment.Center)) }
                     SETTINGS -> SettingsView(seqViewModel, seqUiState, buttonsSize, kmmk)
                 }
 
@@ -148,11 +147,11 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                 modifier = Modifier
                     .fillMaxHeight()
             ) {
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, LIVE, buttonsSize, Int.MAX_VALUE, dusk)
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, PIANO, buttonsSize, Int.MAX_VALUE, dusk)
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, STEP, buttonsSize, Int.MAX_VALUE, dusk)
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, AUTOMATION, buttonsSize, Int.MAX_VALUE, dusk)
-                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, SETTINGS, buttonsSize, Int.MAX_VALUE, dusk)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, LIVE, buttonsSize, Int.MAX_VALUE)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, PIANO, buttonsSize, Int.MAX_VALUE)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, STEP, buttonsSize, Int.MAX_VALUE)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, AUTOMATION, buttonsSize, Int.MAX_VALUE)
+                SeqViewButton(changeSeqViewState, cancelAllPadsInteraction, seqUiState.seqView, SETTINGS, buttonsSize, Int.MAX_VALUE)
             }
         }
     }

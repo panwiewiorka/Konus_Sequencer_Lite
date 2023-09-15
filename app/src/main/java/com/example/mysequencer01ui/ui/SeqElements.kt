@@ -557,7 +557,6 @@ fun SeqViewButton(
     buttonSeqView: SeqView,
     buttonsSize: Dp,
     toggleTime: Int, // potential momentary behaviour, need to speed up composition of StepView (& PianoView)
-    tabColor: Color,
 ){
     val seqViewIsSelected = (seqView == buttonSeqView)
     var savedSeqView by remember { mutableStateOf(seqView) }
@@ -598,7 +597,7 @@ fun SeqViewButton(
             ) { },
         contentAlignment = Alignment.Center
     ) {
-        val color = if (seqViewIsSelected) repeatButtons else tabColor
+        val color = if (seqViewIsSelected) repeatButtons else dusk
 
         if (!seqViewIsSelected) {
             Canvas(
@@ -661,12 +660,12 @@ fun DrawScope.repeatBounds(
     repeatEndTime: Double,
     widthFactor: Float,
     alpha: Float,
-    stepView: Boolean,
 ) {
+    val repeatEnd = widthFactor * repeatEndTime.toFloat()
     if (repeatStartTime < repeatEndTime) {
         drawRect(
             color = buttons,
-            topLeft = Offset(if(stepView) -1.dp.toPx() else 0f, 0f),
+            topLeft = Offset(0f, 0f),
             size = Size(
                 width = widthFactor * repeatStartTime.toFloat(),
                 height = size.height
@@ -675,7 +674,7 @@ fun DrawScope.repeatBounds(
         )
         drawRect(
             color = buttons,
-            topLeft = Offset(widthFactor * repeatEndTime.toFloat(), 0f),
+            topLeft = Offset(repeatEnd, 0f),
             size = Size(
                 width = widthFactor * (totalTime - repeatEndTime).toFloat(),
                 height = size.height
@@ -685,7 +684,7 @@ fun DrawScope.repeatBounds(
     } else
         drawRect(
             color = buttons,
-            topLeft = Offset(widthFactor * repeatEndTime.toFloat(), 0f),
+            topLeft = Offset(repeatEnd, 0f),
             size = Size(
                 width = (widthFactor * (repeatStartTime - repeatEndTime)).toFloat(),
                 height = size.height

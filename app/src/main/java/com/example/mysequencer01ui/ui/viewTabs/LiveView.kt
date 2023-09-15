@@ -197,8 +197,7 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
                 channel0State.repeatStartTime,
                 channel0State.repeatEndTime,
                 widthFactor,
-                0.65f,
-                false
+                0.65f
             )
         }
 
@@ -218,6 +217,7 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
                     seqIsPlaying = seqUiState.seqIsPlaying,
                     isRepeating = seqUiState.isRepeating,
                     selectedChannel = seqUiState.selectedChannel,
+                    isQuantizing = seqUiState.isQuantizing,
                     quantizationTime = seqUiState.quantizationTime,
                     factorBpm = seqUiState.factorBpm,
                     playHeadsColor = seqUiState.playHeadsColor,
@@ -241,6 +241,7 @@ fun ChannelScreen(
     seqIsPlaying: Boolean,
     isRepeating: Boolean,
     selectedChannel: Int,
+    isQuantizing: Boolean,
     quantizationTime: Double,
     factorBpm: Double,
     playHeadsColor: Color,
@@ -265,18 +266,18 @@ fun ChannelScreen(
                     val noteStart = (widthFactor * notes[i].time).toFloat()
                     val (noteOffIndex, noteOffTime) = getNotePairedIndexAndTime(i, true)
                     val noteLength = widthFactor * (noteOffTime - notes[i].time).toFloat()
+                    val ultraShortNote = noteLength > 0 && noteLength < size.height
                     val deltaWidth = if (isRepeating) playheadRepeat - noteStart else playhead - noteStart
-                    val noteWidth =
-                        if (noteOffIndex != -1) {
-                            if(noteLength > 0 && noteLength < size.height) {
-                                size.height
-                            } else noteLength
-                        } else {
-                            deltaWidth  // live-writing note (grows in length)
-                        }
-
-                    val noteHeight = height.toPx() - 1
                     val fasterThanHalfOfQuantize = System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= quantizationTime / factorBpm / 2
+
+                    val noteWidth = when {
+                        noteOffIndex != -1 && ultraShortNote -> size.height
+                        noteOffIndex != -1 -> noteLength
+                        !seqIsPlaying -> widthFactor * quantizationTime.toFloat()
+                        fasterThanHalfOfQuantize && deltaWidth > widthFactor * quantizationTime.toFloat() -> 0.0001f // fix for glitch when recording near loop end
+                        else -> deltaWidth  // live-writing note (grows in length)
+                    }
+                    val noteHeight = height.toPx() - 1
                     val radius = CornerRadius(size.height, size.height)
                     val channelIsNotSilent = !(!isSoloed && (isMuted || soloIsOn))
                     val channelIsSelected = selectedChannel == channelStateNumber
@@ -287,7 +288,7 @@ fun ChannelScreen(
                         else -> repeatButtons
                     }
 
-                    if (noteWidth > 0  || (noteOffIndex == -1 && fasterThanHalfOfQuantize)) {   // normal note (not wrap-around) [...]
+                    if (noteWidth > 0  || (noteOffIndex == -1 && fasterThanHalfOfQuantize && isQuantizing)) {   // normal note (not wrap-around) [...]
                         drawRoundRect(
                             color = color,
                             topLeft = Offset(noteStart, 0f),

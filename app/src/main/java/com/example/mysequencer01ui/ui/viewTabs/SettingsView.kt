@@ -1,5 +1,6 @@
 package com.example.mysequencer01ui.ui.viewTabs
 
+import android.os.Build
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -112,14 +113,20 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
                 TextAndSwitch("Transmit clock", seqUiState.transmitClock) { seqViewModel.switchClockTransmitting() }
             }
 
-            TextAndSwitch("Use fullscreen", seqUiState.fullScreen) {
-                if (seqUiState.fullScreen) seqViewModel.goOutOfFullScreen(view) else seqViewModel.goFullScreen(view)
-                seqViewModel.switchFullScreenState()
+            Column (
+                verticalArrangement = Arrangement.spacedBy((-16).dp)
+            ) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    TextAndSwitch("Use fullscreen", seqUiState.fullScreen) {
+                        if (seqUiState.fullScreen) seqViewModel.goOutOfFullScreen(view) else seqViewModel.goFullScreen(view)
+                        seqViewModel.switchFullScreenState()
+                    }
+                }
+
+                TextAndSwitch("Show channel number on pads", seqUiState.showChannelNumberOnPads) { seqViewModel.switchShowChannelNumberOnPads() }
+
+                TextAndSwitch("Keep screen on when sequencer is stopped", seqUiState.keepScreenOn) { seqViewModel.switchKeepScreenOn() }
             }
-
-            TextAndSwitch("Show channel number on pads", seqUiState.showChannelNumberOnPads) { seqViewModel.switchShowChannelNumberOnPads() }
-
-            TextAndSwitch("Keep screen on when sequencer is stopped", seqUiState.keepScreenOn) { seqViewModel.switchKeepScreenOn() }
 
             TextAndSwitch("Allow to record notes shorter than quantization time", seqUiState.allowRecordShortNotes) { seqViewModel.switchRecordShortNotes() }
 
@@ -345,14 +352,14 @@ fun VisualDebuggerSettings(showVisualDebugger: Boolean, switchVisualDebugger: ()
         TextAndSwitch("Visual Debugger", showVisualDebugger) { switchVisualDebugger() }
         Spacer(modifier = Modifier.width(36.dp))
         if(showVisualDebugger) {
-            Text("index", color = notWhite)
+            Text("index", color = notWhite, fontSize = 14.nonScaledSp)
             RadioButton(
                 selected = debuggerViewSetting == 0,
                 onClick = { selectDebuggerSetting(0) },
                 modifier = Modifier.padding(end = 16.dp),
                 colors = RadioButtonDefaults.colors(selectedColor = violet)
             )
-            Text("noteId", color = notWhite)
+            Text("noteId", color = notWhite, fontSize = 14.nonScaledSp)
             RadioButton(
                 selected = debuggerViewSetting == 1,
                 onClick = { selectDebuggerSetting(1) },
@@ -394,22 +401,22 @@ fun MidiSelector(kmmk: KmmkComponentContext) {
             if (showErrorDetails) {
                 val closeDeviceErrorDialog = { showErrorDetails = false }
                 AlertDialog(onDismissRequest = closeDeviceErrorDialog,
-                    confirmButton = { Button(onClick = closeDeviceErrorDialog) { Text("OK") } },
-                    title = { Text("MIDI device error") },
+                    confirmButton = { Button(onClick = closeDeviceErrorDialog) { Text("OK", fontSize = 14.nonScaledSp) } },
+                    title = { Text("MIDI device error", fontSize = 14.nonScaledSp) },
                     text = {
                         Column {
                             Row {
-                                Text("MIDI output is disabled until new device is selected.")
+                                Text("MIDI output is disabled until new device is selected.", fontSize = 14.nonScaledSp)
                             }
                             Row {
-                                Text(midiOutputError?.message ?: "(error details lost...)")
+                                Text(midiOutputError?.message ?: "(error details lost...)", fontSize = 14.nonScaledSp)
                             }
                         }
                     }
                 )
             }
             Button(onClick = { showErrorDetails = true }) {
-                Text(text = "!!", color = warmRed)
+                Text(text = "!!", color = warmRed, fontSize = 14.nonScaledSp)
             }
         }
     }
@@ -431,10 +438,10 @@ fun MidiDeviceSelector(kmmk: KmmkComponentContext) {
         }
         if (kmmk.midiOutputPorts.any()) {
             for (d in kmmk.midiOutputPorts) {
-                DropdownMenuItem(onClick = { onClick(d.id) }) { Text(d.name ?: "(unnamed)") }
+                DropdownMenuItem(onClick = { onClick(d.id) }) { Text(d.name ?: "(unnamed)", fontSize = 14.nonScaledSp) }
             }
         } else {
-            DropdownMenuItem(onClick = { onClick("") }) { Text("(no MIDI output)") }
+            DropdownMenuItem(onClick = { onClick("") }) { Text("(no MIDI output)", fontSize = 14.nonScaledSp) }
         }
     }
     Card(
@@ -446,7 +453,7 @@ fun MidiDeviceSelector(kmmk: KmmkComponentContext) {
             .border(1.dp, violet)
             .padding(12.dp)
     ) {
-        Text(kmmk.midiDeviceManager.midiOutput?.details?.name ?: "-- Select MIDI output --")
+        Text(kmmk.midiDeviceManager.midiOutput?.details?.name ?: "-- Select MIDI output --", fontSize = 14.nonScaledSp)
     }
 }
 
@@ -465,22 +472,22 @@ fun MidiInputSelector(kmmk: KmmkComponentContext) {
             if (showErrorDetails) {
                 val closeDeviceErrorDialog = { showErrorDetails = false }
                 AlertDialog(onDismissRequest = closeDeviceErrorDialog,
-                    confirmButton = { Button(onClick = closeDeviceErrorDialog) { Text("OK") } },
-                    title = { Text("MIDI device error") },
+                    confirmButton = { Button(onClick = closeDeviceErrorDialog) { Text("OK", fontSize = 14.nonScaledSp) } },
+                    title = { Text("MIDI device error", fontSize = 14.nonScaledSp) },
                     text = {
                         Column {
                             Row {
-                                Text("MIDI input is disabled until new device is selected.")
+                                Text("MIDI input is disabled until new device is selected.", fontSize = 14.nonScaledSp)
                             }
                             Row {
-                                Text(midiInputError?.message ?: "(error details lost...)")
+                                Text(midiInputError?.message ?: "(error details lost...)", fontSize = 14.nonScaledSp)
                             }
                         }
                     }
                 )
             }
             Button(onClick = { showErrorDetails = true }) {
-                Text(text = "!!", color = warmRed)
+                Text(text = "!!", color = warmRed, fontSize = 14.nonScaledSp)
             }
         }
     }
@@ -502,12 +509,12 @@ fun MidiInputDeviceSelector(kmmk: KmmkComponentContext) {
         }
         if (kmmk.midiInputPorts.any()) {
             for (d in kmmk.midiInputPorts) {
-                DropdownMenuItem(onClick = { onClick(d.id) }) { Text(d.name ?: "(unnamed)") }
+                DropdownMenuItem(onClick = { onClick(d.id) }) { Text(d.name ?: "(unnamed)", fontSize = 14.nonScaledSp) }
 
             }
-//            DropdownMenuItem(onClick = { onClick("") }) { Text("(Cancel)") }
+//            DropdownMenuItem(onClick = { onClick("") }) { Text("(Cancel)", fontSize = 14.nonScaledSp) }
         } else {
-            DropdownMenuItem(onClick = { onClick("") }) { Text("(no MIDI input)") }
+            DropdownMenuItem(onClick = { onClick("") }) { Text("(no MIDI input)", fontSize = 14.nonScaledSp) }
         }
     }
     Card(
@@ -519,7 +526,7 @@ fun MidiInputDeviceSelector(kmmk: KmmkComponentContext) {
             .border(1.dp, violet)
             .padding(12.dp)
     ) {
-        Text(kmmk.midiDeviceManager.midiInput?.details?.name ?: "-- Select MIDI input --")
+        Text(kmmk.midiDeviceManager.midiInput?.details?.name ?: "-- Select MIDI input --", fontSize = 14.nonScaledSp)
     }
 }
 */

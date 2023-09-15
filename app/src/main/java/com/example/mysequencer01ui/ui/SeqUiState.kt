@@ -1,5 +1,6 @@
 package com.example.mysequencer01ui.ui
 
+import android.os.Build
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -37,7 +38,7 @@ data class SeqUiState (
     val keepScreenOn: Boolean = false,
     val showChannelNumberOnPads: Boolean = false,
     val allowRecordShortNotes: Boolean = false,
-    val fullScreen: Boolean = true,
+    val fullScreen: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
     val toggleTime: Int = 300,
     val uiRefreshRate: Int = 3,
     val dataRefreshRate: Int = 3,

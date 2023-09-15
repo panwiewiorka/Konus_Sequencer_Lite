@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -54,6 +55,7 @@ import com.example.mysequencer01ui.ui.ChannelState
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
 import com.example.mysequencer01ui.ui.TAG
+import com.example.mysequencer01ui.ui.nonScaledSp
 import com.example.mysequencer01ui.ui.playHeads
 import com.example.mysequencer01ui.ui.repeatBounds
 import com.example.mysequencer01ui.ui.theme.BackGray
@@ -121,13 +123,13 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, maxHeight: Dp) 
                 val keyboardWidth = 48.dp
                 val gridWidth = maxWidth - keyboardWidth
 
-                NotesGrid(seqViewModel, seqUiState, channelState, scrollState, gridWidth, keyboardWidth)
+                NotesGrid(seqViewModel, seqUiState, channelState, scrollState, gridWidth, keyboardWidth - 1.dp)
 
                 Canvas(
                     modifier = Modifier
                         .width(gridWidth)
                         .fillMaxHeight()
-                        .offset(x = keyboardWidth)
+                        .offset(x = keyboardWidth - 1.dp)
                 ) {
                     val widthFactor = size.width / channelState.totalTime
                     val playhead = widthFactor * channelState.deltaTime.toFloat()
@@ -146,8 +148,7 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, maxHeight: Dp) 
                         this@with.channelState.value.repeatStartTime,
                         this@with.channelState.value.repeatEndTime,
                         widthFactor,
-                        0.5f,
-                        true
+                        0.5f
                     )
                 }
             }
@@ -190,10 +191,9 @@ fun NotesGrid(
                     playingNotes = channelState.playingNotes,
                     pressedNotes = channelState.pressedNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
-                    keyWidth = keyboardWidth - 1.dp, // 1.dp for parent's padding
+                    keyWidth = keyboardWidth,
                     keyHeight = seqUiState.stepViewNoteHeight,
-                    pressPad = pressPad,
-                    halfOfQuantize = halfOfQuantize
+                    pressPad = pressPad
                 )
 
                 Box(
@@ -227,8 +227,8 @@ fun NotesGrid(
                                         if (noteExistsWhereWeTap) {
 
                                             erasing(seqUiState.isRepeating, noteOnIndex, true)
-                                            updateNotes()
                                             refreshIndices()
+                                            updateNotes()
 
                                         } else {
                                             time = seqViewModel.quantizeTime(time - seqUiState.quantizationTime / 2)
@@ -319,10 +319,8 @@ fun NotesGrid(
                                                 timeQuantized = seqViewModel.quantizeTime(time + noteDeltaTime)
                                             }
 
-                                            idsOfNotesToIgnore.removeIf { it == notes[noteOnIndex].id }
-
                                             // if dragging note that is playing -> fire noteOff on time
-                                            fireNoteOffOnTime(seqUiState.seqIsPlaying, seqUiState.isRepeating, seqUiState.factorBpm, noteOnIndex, noteOffIndex, pitch)
+                                            fireNoteOffInTime(seqUiState.seqIsPlaying, seqUiState.isRepeating, seqUiState.factorBpm, noteOnIndex, noteOffIndex, pitch)
                                         }
                                     },
                                     onDrag = { change, dragAmount ->
@@ -366,7 +364,7 @@ fun NotesGrid(
 
                                             refreshIndices()
 
-                                            if (!seqUiState.seqIsPlaying) updateStepView()
+                                            if (!seqUiState.seqIsPlaying) updateStepViewNoteGrid()
 
                                         } else {
                                             CoroutineScope(Dispatchers.Main).launch {
@@ -433,12 +431,16 @@ fun NotesGrid(
                                     val offsetX = widthFactor * notes[i].time.toInt()
                                     val (noteOffIndex, noteOffTime) = getNotePairedIndexAndTime(i, true)
                                     val noteWidth = widthFactor * (noteOffTime - notes[i].time).toInt()
-                                    var noteLength =
-                                        if (noteOffIndex != -1) noteWidth else {
-                                            if (seqUiState.isRepeating) playheadRepeat - offsetX else playhead - offsetX  // live-writing note (grows in length)
-                                        }
+                                    val deltaWidth = if (seqUiState.isRepeating) playheadRepeat - offsetX else playhead - offsetX
                                     val fasterThanHalfOfQuantize =
                                         (System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= halfOfQuantize) && noteOffIndex == -1
+
+                                    var noteLength = when {
+                                        noteOffIndex != -1 -> noteWidth
+                                        !seqUiState.seqIsPlaying -> widthFactor * seqUiState.quantizationTime.toFloat()
+                                        fasterThanHalfOfQuantize && deltaWidth > widthFactor * seqUiState.quantizationTime.toFloat() -> 0.0001.dp // fix for glitch when recording near loop end
+                                        else -> deltaWidth  // live-writing note (grows in length)
+                                    }
 
                                     if (noteLength <= 0.dp && !fasterThanHalfOfQuantize) noteLength += gridWidth
 
@@ -555,7 +557,6 @@ fun StepViewKeyboard(
     keyWidth: Dp,
     keyHeight: Dp,
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
-    halfOfQuantize: Double,
 ) {
     Column(modifier = modifier) {
         repeat(128) {
@@ -577,10 +578,16 @@ fun StepViewKeyboard(
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
                     notesPadding = 0.dp,
-                    whiteKey = !key.isBlack,
-                    halfOfQuantize = halfOfQuantize
+                    whiteKey = !key.isBlack
                 )
-                if (pitch % 12 == 0) Text("${(pitch / 12) - 1}")
+                if (pitch % 12 == 0) {
+                    Text(
+                        text = "${(pitch / 12) - 1}",
+                        fontSize = 14.nonScaledSp,
+                        color = BackGray,
+                        modifier = Modifier.clipToBounds()
+                    )
+                }
             }
         }
     }

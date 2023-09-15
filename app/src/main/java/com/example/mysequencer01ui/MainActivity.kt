@@ -48,13 +48,6 @@ class MainActivity : ComponentActivity() {
         hideSystemUI()
     }
 
-//    override fun onStop() {
-//        super.onStop()
-//        val kmmk = KmmkComponentContext()
-//        kmmk.midiDeviceManager.midiAccess = AndroidMidiAccess(applicationContext)
-//        SeqViewModel(kmmk, db.dao).saveSettingsToDatabase()
-//    }
-
     private fun hideSystemUI() {
         actionBar?.hide()
 
