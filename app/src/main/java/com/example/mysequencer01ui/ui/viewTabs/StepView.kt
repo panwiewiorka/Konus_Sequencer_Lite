@@ -73,7 +73,11 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, maxHeight: Dp) {
+fun StepView(
+    seqViewModel: SeqViewModel,
+    seqUiState: SeqUiState,
+    maxHeight: Dp,
+) {
 
     val channelState by seqViewModel.channelSequences[seqUiState.selectedChannel].channelState.collectAsState()
     val maxScroll = (seqUiState.stepViewNoteHeight * 128 - (maxHeight - seqUiState.stepViewNoteHeight - 2.dp)).value * LocalDensity.current.density
@@ -159,7 +163,12 @@ fun StepView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, maxHeight: Dp) 
 
 @Composable
 fun NotesGrid(
-    seqViewModel: SeqViewModel, seqUiState: SeqUiState, channelState: ChannelState, scrollState: ScrollState, gridWidth: Dp, keyboardWidth: Dp,
+    seqViewModel: SeqViewModel,
+    seqUiState: SeqUiState,
+    channelState: ChannelState,
+    scrollState: ScrollState,
+    gridWidth: Dp,
+    keyboardWidth: Dp,
 ) {
     with(seqViewModel.channelSequences[seqUiState.selectedChannel]){
 
@@ -193,7 +202,8 @@ fun NotesGrid(
                     seqIsRecording = seqUiState.seqIsRecording,
                     keyWidth = keyboardWidth,
                     keyHeight = seqUiState.stepViewNoteHeight,
-                    pressPad = pressPad
+                    pressPad = pressPad,
+                    halfOfQuantize = halfOfQuantize
                 )
 
                 Box(
@@ -381,6 +391,8 @@ fun NotesGrid(
 
                                             eraseOverlappingNotes(noteOnIndex, noteOffIndex, pitch, seqUiState.isRepeating)
 
+                                            refreshIndices()
+
                                             if(!seqUiState.seqIsPlaying) updateNotes()
                                         }
                                     }
@@ -442,9 +454,12 @@ fun NotesGrid(
                                         else -> deltaWidth  // live-writing note (grows in length)
                                     }
 
-                                    if (noteLength <= 0.dp && !fasterThanHalfOfQuantize) noteLength += gridWidth
+                                    val wrapIndices = if (noteOffIndex != -1) i > noteOffIndex else true // fixing rare bug: changeLength unQuantized wrapAround results in wrapAround view but non-wrapAround indices (Dp.toInt() != Dp)
 
-                                    val wrapAround = offsetX + noteLength > gridWidth
+                                    if (noteLength <= 0.dp && !fasterThanHalfOfQuantize && wrapIndices) noteLength += gridWidth
+
+                                    val wrapAround = if (noteOffIndex != -1) i > noteOffIndex else offsetX + noteLength >= gridWidth
+
                                     val changeLengthArea =
                                         (if (noteLength / 2.5f < gridWidth / 12) noteLength / 2.5f else gridWidth / 12)
 
@@ -557,6 +572,7 @@ fun StepViewKeyboard(
     keyWidth: Dp,
     keyHeight: Dp,
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
+    halfOfQuantize: Double,
 ) {
     Column(modifier = modifier) {
         repeat(128) {
@@ -578,7 +594,8 @@ fun StepViewKeyboard(
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
                     notesPadding = 0.dp,
-                    whiteKey = !key.isBlack
+                    whiteKey = !key.isBlack,
+                    halfOfQuantize = halfOfQuantize
                 )
                 if (pitch % 12 == 0) {
                     Text(

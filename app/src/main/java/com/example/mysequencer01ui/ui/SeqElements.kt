@@ -121,6 +121,7 @@ fun PadButton(
                     if (isPressed || padsMode != DEFAULT) {
                         pressPad(channel, pitch, 0, elapsedTime, false)
                     }
+                    Log.d(TAG, "PressInteraction.Cancel -> ")
                 }
             }
         }

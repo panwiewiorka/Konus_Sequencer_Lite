@@ -287,10 +287,10 @@ fun MomentarySettings(toggleTimeState: Int, changeToggleTime: (Int) -> Unit ) {
         ) {
             var toggleTime by remember { mutableStateOf(sqrt(toggleTimeState.toDouble()).toFloat())}
             Box(
-                modifier = Modifier.width(170.dp)
+                modifier = Modifier.width(180.dp)
             ) {
                 Text(
-                    text = "Momentary time: ${if(toggleTimeState != Int.MAX_VALUE) "${(toggleTime * toggleTime).toInt()} ms" else "OFF" }",
+                    text = "Momentary time: ${if(toggleTimeState != Int.MAX_VALUE) "> ${(toggleTime * toggleTime).toInt()} ms" else "OFF" }",
                     color = notWhite,
                     fontSize = 14.nonScaledSp,
                     modifier = Modifier.padding(end = 10.dp)
@@ -319,7 +319,7 @@ fun RefreshRateSettings(ui: Boolean, refreshRateState: Int, changeRefreshRate: (
     ) {
         var refreshRate by remember { mutableStateOf(sqrt(refreshRateState.toDouble()).toFloat())}
         Box(
-            modifier = Modifier.width(170.dp)
+            modifier = Modifier.width(180.dp)
         ) {
             Text(
                 text = "${if (ui) "UI" else "Data" } refresh rate: ${(refreshRate * refreshRate).toInt()} ms",
