@@ -249,9 +249,9 @@ fun PadsGrid(
                 Row {
                     for(x in 0..3) {
                         Box {
-                            val pitch = 60
                             val channel = x + (3 - y) * 4
                             val channelState by channelSequences[channel].channelState.collectAsState()
+                            val pitch = channelState.padPitch
                             PadButton(
                                 interactionSource = channelSequences[channel].interactionSources[pitch].interactionSource,
                                 channel = channel,

@@ -38,6 +38,7 @@ data class SeqUiState (
     val keepScreenOn: Boolean = false,
     val showChannelNumberOnPads: Boolean = false,
     val allowRecordShortNotes: Boolean = false,
+    val setPadPitchByPianoKey: Boolean = false,
     val fullScreen: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
     val toggleTime: Int = 300,
     val uiRefreshRate: Int = 3,

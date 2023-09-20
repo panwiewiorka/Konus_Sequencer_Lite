@@ -128,7 +128,13 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
                 TextAndSwitch("Keep screen on when sequencer is stopped", seqUiState.keepScreenOn) { seqViewModel.switchKeepScreenOn() }
             }
 
-            TextAndSwitch("Allow to record notes shorter than quantization time", seqUiState.allowRecordShortNotes) { seqViewModel.switchRecordShortNotes() }
+            Column (
+                verticalArrangement = Arrangement.spacedBy((-16).dp)
+            ) {
+                TextAndSwitch("Allow to record notes shorter than quantization time", seqUiState.allowRecordShortNotes) { seqViewModel.switchRecordShortNotes() }
+
+                TextAndSwitch("Set pad pitch to last played note on piano keys", seqUiState.setPadPitchByPianoKey) { seqViewModel.switchSetPadPitchByPianoKey() }
+            }
 
             MomentarySettings(seqUiState.toggleTime, seqViewModel::changeToggleTime)
 
@@ -277,7 +283,7 @@ fun MomentarySettings(toggleTimeState: Int, changeToggleTime: (Int) -> Unit ) {
     Column (
         verticalArrangement = Arrangement.spacedBy((-16).dp)
     ) {
-        TextAndSwitch("Enable momentary behaviour of Mode Buttons", toggleTimeState != Int.MAX_VALUE) {
+        TextAndSwitch("Enable momentary behaviour of mode buttons", toggleTimeState != Int.MAX_VALUE) {
             changeToggleTime(
                 if (toggleTimeState == Int.MAX_VALUE) 300 else Int.MAX_VALUE
             )
@@ -349,7 +355,7 @@ fun VisualDebuggerSettings(showVisualDebugger: Boolean, switchVisualDebugger: ()
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TextAndSwitch("Visual Debugger", showVisualDebugger) { switchVisualDebugger() }
+        TextAndSwitch("Visual debugger", showVisualDebugger) { switchVisualDebugger() }
         Spacer(modifier = Modifier.width(36.dp))
         if(showVisualDebugger) {
             Text("index", color = notWhite, fontSize = 14.nonScaledSp)

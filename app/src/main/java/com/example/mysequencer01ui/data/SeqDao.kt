@@ -4,9 +4,7 @@ import androidx.room.*
 
 @Dao
 interface SeqDao {
-//    @Insert(onConflict = OnConflictStrategy.IGNORE)
-//    suspend fun populateSettings(patterns: Patterns)
-
+    /** Patterns **/
     @Insert
     suspend fun saveNoteToPattern(patterns: Patterns)
 
@@ -19,11 +17,7 @@ interface SeqDao {
     @Query("SELECT MAX(noteIndex) FROM Patterns WHERE pattern = :pattern AND channel = :channel")
     suspend fun getLastIndex(pattern: Int, channel: Int): Int?
 
-//    @Query("SELECT COUNT(*) FROM Patterns WHERE pattern = :pattern AND channel = :channel")
-//    suspend fun countNotes(pattern: Int, channel: Int): Int
-
-    //======================
-
+    /** Settings **/
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun populateSettings(settings: Settings)
 
@@ -32,4 +26,14 @@ interface SeqDao {
 
     @Query("SELECT * from Settings WHERE id = 1")
     fun loadSettings(): Settings
+
+    /** PadPitch **/
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun populatePadPitch(padPitch: PadPitches)
+
+    @Upsert
+    suspend fun savePadPitch(padPitch: PadPitches)
+
+    @Query("SELECT pitch from PadPitches WHERE id = :channel")
+    fun loadPadPitch(channel: Int): Int
 }

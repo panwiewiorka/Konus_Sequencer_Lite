@@ -28,6 +28,7 @@ import com.example.mysequencer01ui.StopNotesMode
 import com.example.mysequencer01ui.StopNotesMode.END_OF_REPEAT
 import com.example.mysequencer01ui.StopNotesMode.STOP_NOTES
 import com.example.mysequencer01ui.StopNotesMode.STOP_SEQ
+import com.example.mysequencer01ui.data.PadPitches
 import com.example.mysequencer01ui.data.Patterns
 import com.example.mysequencer01ui.data.SeqDao
 import com.example.mysequencer01ui.data.Settings
@@ -44,7 +45,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlin.time.Duration.Companion.milliseconds
 
 const val TAG = "myTag"
@@ -78,6 +78,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     keepScreenOn = dao.loadSettings().keepScreenOn,
                     showChannelNumberOnPads = dao.loadSettings().showChannelNumberOnPads,
                     allowRecordShortNotes = dao.loadSettings().allowRecordShortNotes,
+                    setPadPitchByPianoKey = dao.loadSettings().setPadPitchByPianoKey,
                     fullScreen = dao.loadSettings().fullScreen,
                     toggleTime = dao.loadSettings().toggleTime,
                     uiRefreshRate = dao.loadSettings().uiRefreshRate,
@@ -88,6 +89,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             }
 
             for(p in 0..15) {
+                val defaultPadPitch = PadPitches(id = p)
+                dao.populatePadPitch(defaultPadPitch)
+                channelSequences[p].updatePadPitch(dao.loadPadPitch(p))
                 for (c in 0..15) {
                     val lastIndex = dao.getLastIndex(p, c) ?: -1
                     patterns[p][c] = Array(lastIndex + 1) { Note(0.0, 0, 0, 0) }
@@ -108,30 +112,27 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
     /** MAIN CYCLE **/
     fun startSeq() {
-        if(
-            uiState.value.seqIsPlaying
-            // && !reStartMode
-        ) {
+        if(uiState.value.seqIsPlaying) {
             stopSeq()
             return
         }
 
-        for(c in channelSequences.indices) {
-            channelSequences[c].resetChannelSequencerValues()
-        }
-
-        if (uiState.value.seqIsPlaying) return // needed for future implementing of reStart()
-
+        for(c in channelSequences.indices) channelSequences[c].resetChannelSequencerValues()
 
         _uiState.update { it.copy( seqIsPlaying = true ) }
-        var clockTicks = 0
+
         if (uiState.value.transmitClock) kmmk.startClock()
 
-        // ------====== MAIN CYCLE
+        mainCycle()
+    }
+
+    private fun mainCycle() {
+        var clockTicks = 0
         CoroutineScope(Dispatchers.Default).launch {
             while (uiState.value.seqIsPlaying) {
                 for (c in channelSequences.indices) {
                     channelSequences[c].advanceChannelSequence(
+                        seqIsPlaying = uiState.value.seqIsPlaying,
                         seqIsRecording = uiState.value.seqIsRecording,
                         factorBpm = uiState.value.factorBpm,
                         soloIsOn = uiState.value.soloIsOn,
@@ -146,7 +147,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                 }
 
                 with(channelSequences[0]) {
-                    // CLOCK
                     if (uiState.value.transmitClock) {
                         if (deltaTime >= totalTime) {
                             clockTicks = 0
@@ -156,7 +156,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         }
                     }
 
-                    // ENGAGE REPEAT()
                     if (uiState.value.divisorState != previousDivisorValue && quantizeTime(deltaTime) <= deltaTime) {
                         engageRepeat(uiState.value.divisorState)
                     }
@@ -203,7 +202,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             }
             _uiState.update { it.copy( repeatLength = repeatLength ) }
         }
-        for(c in channelSequences.indices) channelSequences[c].idsOfNotesToIgnore.clear()
+        for(c in channelSequences.indices) channelSequences[c].notesToIgnore.clear()
         _uiState.update { it.copy(
             isRepeating = divisor > 0,
         ) }
@@ -362,6 +361,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         _uiState.update { it.copy(
             isQuantizing = !uiState.value.isQuantizing
         ) }
+        saveSettingsToDatabase()
     }
 
     fun switchPadsToQuantizingMode(switchOn: Boolean) {
@@ -417,7 +417,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         CoroutineScope(Dispatchers.Default).launch {
             for(c in channelSequences.indices) {
                 with(channelSequences[c]) {
-                    idsOfNotesToIgnore.clear()
+                    notesToIgnore.clear()
                     notes = patterns[pattern][c]
                     if (!uiState.value.seqIsPlaying) updateNotes()
                     refreshIndices()
@@ -539,7 +539,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         for (c in 0..15) {
             with(channelSequences[c]) {
                 stopNotesOnChannel(c, mode)
-                idsOfNotesToIgnore.clear()
+                notesToIgnore.clear()
                 if(mode == STOP_SEQ) {
                     deltaTime = 0.0
                     deltaTimeRepeat = 0.0
@@ -671,7 +671,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         _uiState.update { a -> a.copy (
             bpm = bpmPointOne,
             factorBpm = bpmPointOne / 120.0,
-            timingClock = 500.0 / 24.0 //* bpmPointOne / 120.0,
+            timingClock = 500.0 / 24.0
         ) }
 
         Log.d("emptyTag", " ") // to hold in imports
@@ -735,6 +735,13 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         saveSettingsToDatabase()
     }
 
+    fun switchSetPadPitchByPianoKey() {
+        _uiState.update { it.copy(
+            setPadPitchByPianoKey = !uiState.value.setPadPitchByPianoKey
+        ) }
+        saveSettingsToDatabase()
+    }
+
     fun switchShowChannelNumberOnPads() {
         _uiState.update { it.copy(
             showChannelNumberOnPads = !uiState.value.showChannelNumberOnPads
@@ -774,7 +781,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
 
 
     fun saveSettingsToDatabase(){
-        runBlocking {
+        CoroutineScope(Dispatchers.IO).launch {
             dao.saveSettings(
                 Settings(
                     id = 1,
@@ -785,12 +792,24 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     keepScreenOn = uiState.value.keepScreenOn,
                     showChannelNumberOnPads = uiState.value.showChannelNumberOnPads,
                     allowRecordShortNotes = uiState.value.allowRecordShortNotes,
+                    setPadPitchByPianoKey = uiState.value.setPadPitchByPianoKey,
                     fullScreen = uiState.value.fullScreen,
                     toggleTime = uiState.value.toggleTime,
                     uiRefreshRate = uiState.value.uiRefreshRate,
                     dataRefreshRate = uiState.value.dataRefreshRate,
                     showVisualDebugger = uiState.value.showVisualDebugger,
                     debuggerViewSetting = uiState.value.debuggerViewSetting,
+                )
+            )
+        }
+    }
+
+    fun savePadPitchToDatabase(channel: Int, pitch: Int){
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.savePadPitch(
+                PadPitches(
+                    id = channel,
+                    pitch = pitch
                 )
             )
         }

@@ -1,5 +1,6 @@
 package com.example.mysequencer01ui.data
 
+import android.os.Build
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -14,7 +15,8 @@ data class Settings(
     val keepScreenOn: Boolean = false,
     val showChannelNumberOnPads: Boolean = false,
     val allowRecordShortNotes: Boolean = false,
-    val fullScreen: Boolean = true,
+    val setPadPitchByPianoKey: Boolean = false,
+    val fullScreen: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
     val toggleTime: Int = 300,
     val uiRefreshRate: Int = 3,
     val dataRefreshRate: Int = 3,

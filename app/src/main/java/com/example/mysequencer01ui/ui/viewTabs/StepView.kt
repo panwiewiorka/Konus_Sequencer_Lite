@@ -181,6 +181,8 @@ fun NotesGrid(
         ) {
             val rememberInteraction by remember { mutableStateOf(seqViewModel::rememberInteraction) }
             val pressPad by remember { mutableStateOf(seqViewModel::pressPad) }
+            val updatePadPitch by remember { mutableStateOf(::updatePadPitch) }
+            val savePadPitchToDatabase by remember { mutableStateOf(seqViewModel::savePadPitchToDatabase) }
 
             var xOffset by remember { mutableStateOf(0f) }
             var yOffset by remember { mutableStateOf(0f) }
@@ -203,6 +205,9 @@ fun NotesGrid(
                     keyWidth = keyboardWidth,
                     keyHeight = seqUiState.stepViewNoteHeight,
                     pressPad = pressPad,
+                    updatePadPitch = updatePadPitch,
+                    setPadPitchByPianoKey = seqUiState.setPadPitchByPianoKey,
+                    savePadPitchToDatabase = savePadPitchToDatabase,
                     halfOfQuantize = halfOfQuantize
                 )
 
@@ -329,15 +334,17 @@ fun NotesGrid(
                                                 timeQuantized = seqViewModel.quantizeTime(time + noteDeltaTime)
                                             }
 
-                                            // if dragging note that is playing -> fire noteOff on time
                                             fireNoteOffInTime(seqUiState.seqIsPlaying, seqUiState.isRepeating, seqUiState.factorBpm, noteOnIndex, noteOffIndex, pitch)
                                         }
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
 
-                                        // if note exists where we drag -> move it or change it's length,  else scroll the grid
-                                        if (noteDetected) {
+                                        if (!noteDetected) {
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                scrollState.scrollTo(scrollState.value + dragAmount.y.toInt())
+                                            }
+                                        } else {
                                             xOffset += dragAmount.x
                                             if (!changeLengthAreaDetected) {
                                                 yOffset += dragAmount.y
@@ -368,18 +375,13 @@ fun NotesGrid(
                                                 changeNotePitch(noteOffIndex, pitch)
                                             }
 
-                                            val getNoteIndices = swapNoteOffAndNoteOn(changeLengthAreaDetected, noteOnIndex, noteOffIndex, draggedNoteId)
+                                            val getNoteIndices = swapNoteOffAndNoteOnIfWrapAroundNote(changeLengthAreaDetected, noteOnIndex, noteOffIndex, draggedNoteId)
                                             noteOnIndex = getNoteIndices.first
                                             noteOffIndex = getNoteIndices.second
 
                                             refreshIndices()
 
                                             if (!seqUiState.seqIsPlaying) updateStepViewNoteGrid()
-
-                                        } else {
-                                            CoroutineScope(Dispatchers.Main).launch {
-                                                scrollState.scrollTo(scrollState.value + dragAmount.y.toInt())
-                                            }
                                         }
                                     },
                                     onDragEnd = {
@@ -390,8 +392,6 @@ fun NotesGrid(
                                             draggedNoteOffIndex = -1
 
                                             eraseOverlappingNotes(noteOnIndex, noteOffIndex, pitch, seqUiState.isRepeating)
-
-                                            refreshIndices()
 
                                             if(!seqUiState.seqIsPlaying) updateNotes()
                                         }
@@ -548,7 +548,7 @@ fun NoteBox(
                     .width(changeLengthArea)
                     .background(changeLengthAreaColor)
             )
-//        Text(text = "$indexNoteOn")
+//        Text(text = "$indexNoteOn") // here for debugging
         }
         if (wrapAround) {
             Canvas (modifier = Modifier.fillMaxSize()) {
@@ -572,6 +572,9 @@ fun StepViewKeyboard(
     keyWidth: Dp,
     keyHeight: Dp,
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
+    updatePadPitch: (Int) -> Unit,
+    setPadPitchByPianoKey: Boolean,
+    savePadPitchToDatabase: (Int, Int) -> Unit,
     halfOfQuantize: Double,
 ) {
     Column(modifier = modifier) {
@@ -589,6 +592,9 @@ fun StepViewKeyboard(
                     noteIsPlaying = playingNotes[pitch] > 0,
                     isPressed = pressedNotes[pitch].isPressed,
                     pressPad = pressPad,
+                    updatePadPitch = updatePadPitch,
+                    setPadPitchByPianoKey = setPadPitchByPianoKey,
+                    savePadPitchToDatabase = savePadPitchToDatabase,
                     selectedChannel = selectedChannel,
                     pitch = pitch,
                     keyWidth = keyWidth,
@@ -618,7 +624,6 @@ fun VerticalSlider(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
-    /*@IntRange(from = 0)*/
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },

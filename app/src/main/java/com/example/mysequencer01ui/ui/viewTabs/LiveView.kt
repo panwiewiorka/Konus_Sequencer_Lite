@@ -102,7 +102,6 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 // to avoid unnecessary recompositions:
                 val pressPad = remember {seqViewModel::pressPad}
                 val rememberInteraction = remember {seqViewModel::rememberInteraction}
-
                 PadsGrid(
                     channelSequences = seqViewModel.channelSequences,
                     pressPad = pressPad,
@@ -156,18 +155,10 @@ fun PatternsScreen(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSi
             .padding(buttonsPadding)
             .background(BackGray)
     ) {
-//        val playheadState = animateFloatAsState(
-//            targetValue = if(!seqUiState.seqIsPlaying) 0f else BARTIME.toFloat(),
-//            animationSpec = infiniteRepeatable(
-//                TweenSpec(BARTIME, easing = LinearEasing)
-//            ),
-//            label = "playhead"
-//        )
         val channel0State by seqViewModel.channelSequences[0].channelState.collectAsState()
 
         Canvas(modifier = Modifier.fillMaxSize()) {
 
-            // STEP LINES
             val horizontalStep = (maxWidth / 16).toPx()
             for (i in 1..15) {
                 drawLine(
@@ -257,7 +248,6 @@ fun ChannelScreen(
         with(channelState) {
             val widthFactor = size.width / totalTime
             val playhead = (widthFactor * deltaTime).toFloat()
-//    val playhead = (widthFactor * playheadState.value)
             val playheadRepeat = (widthFactor * deltaTimeRepeat).toFloat()
 
             // NOTES
@@ -337,6 +327,7 @@ fun ChannelScreen(
                 }
             }
 
+            // individual channel playheads (future feature)
 //            playHeads(
 //                seqIsPlaying = seqIsPlaying,
 //                isRepeating = isRepeating,
@@ -486,8 +477,6 @@ fun RepeatButton(
             modifier = Modifier
                 .height(width)
                 .width(width)
-                //.clip(if(triplet) rightToHexShape else leftToHexShape)
-                //.border(BorderStroke(0.3.dp, buttonsColor))
                 .padding(buttonsPadding),
         ) {
             Box(

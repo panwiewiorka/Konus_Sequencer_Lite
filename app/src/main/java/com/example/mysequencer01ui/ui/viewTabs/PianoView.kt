@@ -80,6 +80,8 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
         ) {
             val rememberInteraction by remember { mutableStateOf(seqViewModel::rememberInteraction) }
             val pressPad by remember { mutableStateOf(seqViewModel::pressPad) }
+            val updatePadPitch by remember { mutableStateOf(::updatePadPitch) }
+            val savePadPitchToDatabase by remember { mutableStateOf(seqViewModel::savePadPitchToDatabase) }
 
             val keyWidth = (maxWidth - notesPadding * 26) / 14
             val halfOfQuantize = seqUiState.quantizationTime / seqUiState.factorBpm / 2
@@ -99,6 +101,9 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     notesPadding = notesPadding,
                     pressedNotes = channelState.pressedNotes,
                     pressPad = pressPad,
+                    updatePadPitch = updatePadPitch,
+                    setPadPitchByPianoKey = seqUiState.setPadPitchByPianoKey,
+                    savePadPitchToDatabase = savePadPitchToDatabase,
                     halfOfQuantize = halfOfQuantize
                 )
                 Row(
@@ -161,6 +166,9 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     notesPadding = notesPadding,
                     pressedNotes = channelState.pressedNotes,
                     pressPad = pressPad,
+                    updatePadPitch = updatePadPitch,
+                    setPadPitchByPianoKey = seqUiState.setPadPitchByPianoKey,
+                    savePadPitchToDatabase = savePadPitchToDatabase,
                     halfOfQuantize = halfOfQuantize
                 )
             }
@@ -182,12 +190,14 @@ fun PianoKeyboard(
     notesPadding: Dp,
     pressedNotes: Array<PressedNote>,
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
+    updatePadPitch: (Int) -> Unit,
+    setPadPitchByPianoKey: Boolean,
+    savePadPitchToDatabase: (Int, Int) -> Unit,
     halfOfQuantize: Double
 ) {
     val startPitch = 0
     Column(
         verticalArrangement = Arrangement.spacedBy(-keyHeight / 2),
-//        modifier = Modifier.horizontalScroll(keyboardScrollState),
     ) {
         Row {
             repeat(24) {
@@ -205,6 +215,9 @@ fun PianoKeyboard(
                         noteIsPlaying = playingNotes[pitch] > 0,
                         isPressed = pressedNotes[pitch].isPressed,
                         pressPad = pressPad,
+                        updatePadPitch = updatePadPitch,
+                        setPadPitchByPianoKey = setPadPitchByPianoKey,
+                        savePadPitchToDatabase = savePadPitchToDatabase,
                         selectedChannel = selectedChannel,
                         pitch = pitch,
                         keyWidth = keyWidth,
@@ -239,6 +252,9 @@ fun PianoKeyboard(
                     noteIsPlaying = playingNotes[pitch] > 0,
                     isPressed = pressedNotes[pitch].isPressed,
                     pressPad = pressPad,
+                    updatePadPitch = updatePadPitch,
+                    setPadPitchByPianoKey = setPadPitchByPianoKey,
+                    savePadPitchToDatabase = savePadPitchToDatabase,
                     selectedChannel = selectedChannel,
                     pitch = pitch,
                     keyWidth = keyWidth,
@@ -268,6 +284,9 @@ fun PianoKey(
     noteIsPlaying: Boolean,
     isPressed: Boolean,
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
+    updatePadPitch: (Int) -> Unit,
+    setPadPitchByPianoKey: Boolean,
+    savePadPitchToDatabase: (Int, Int) -> Unit,
     selectedChannel: Int,
     pitch: Int,
     keyWidth: Dp,
@@ -277,12 +296,16 @@ fun PianoKey(
     halfOfQuantize: Double,
 ) {
     var elapsedTime = 0L
-    LaunchedEffect(interactionSource, selectedChannel, pitch, isPressed) {
+    LaunchedEffect(interactionSource, selectedChannel, pitch, isPressed, setPadPitchByPianoKey) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     pressPad(selectedChannel, pitch, 100, 0, false)
                     rememberInteraction(selectedChannel, pitch, interaction)
+                    if (setPadPitchByPianoKey) {
+                        updatePadPitch(pitch)
+                        savePadPitchToDatabase(selectedChannel, pitch)
+                    }
                     elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
