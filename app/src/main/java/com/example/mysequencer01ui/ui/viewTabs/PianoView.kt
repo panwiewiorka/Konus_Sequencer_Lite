@@ -28,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +50,7 @@ import com.example.mysequencer01ui.PressedNote
 import com.example.mysequencer01ui.RememberedPressInteraction
 import com.example.mysequencer01ui.ui.SeqUiState
 import com.example.mysequencer01ui.ui.SeqViewModel
+import com.example.mysequencer01ui.ui.TAG
 import com.example.mysequencer01ui.ui.nonScaledSp
 import com.example.mysequencer01ui.ui.theme.BackGray
 import com.example.mysequencer01ui.ui.theme.buttonsBg
@@ -78,10 +78,10 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                 .fillMaxSize()
                 .padding(bordersPadding),
         ) {
-            val rememberInteraction by remember { mutableStateOf(seqViewModel::rememberInteraction) }
-            val pressPad by remember { mutableStateOf(seqViewModel::pressPad) }
-            val updatePadPitch by remember { mutableStateOf(::updatePadPitch) }
-            val savePadPitchToDatabase by remember { mutableStateOf(seqViewModel::savePadPitchToDatabase) }
+            val rememberInteraction = remember { seqViewModel::rememberInteraction }
+            val pressPad = remember { seqViewModel::addToPressPadList }
+            val updatePadPitchOnChannel = remember { seqViewModel::updatePadPitchOnChannel }
+            val savePadPitchToDatabase = remember { seqViewModel::savePadPitchToDatabase }
 
             val keyWidth = (maxWidth - notesPadding * 26) / 14
             val halfOfQuantize = seqUiState.quantizationTime / seqUiState.factorBpm / 2
@@ -100,8 +100,9 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     octave = channelState.pianoViewOctaveHigh,
                     notesPadding = notesPadding,
                     pressedNotes = channelState.pressedNotes,
+                    cancelledNotes = channelState.cancelledNotes,
                     pressPad = pressPad,
-                    updatePadPitch = updatePadPitch,
+                    updatePadPitchOnChannel = updatePadPitchOnChannel,
                     setPadPitchByPianoKey = seqUiState.setPadPitchByPianoKey,
                     savePadPitchToDatabase = savePadPitchToDatabase,
                     halfOfQuantize = halfOfQuantize
@@ -165,8 +166,9 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     octave = channelState.pianoViewOctaveLow,
                     notesPadding = notesPadding,
                     pressedNotes = channelState.pressedNotes,
+                    cancelledNotes = channelState.cancelledNotes,
                     pressPad = pressPad,
-                    updatePadPitch = updatePadPitch,
+                    updatePadPitchOnChannel = updatePadPitchOnChannel,
                     setPadPitchByPianoKey = seqUiState.setPadPitchByPianoKey,
                     savePadPitchToDatabase = savePadPitchToDatabase,
                     halfOfQuantize = halfOfQuantize
@@ -189,8 +191,9 @@ fun PianoKeyboard(
     octave: Int,
     notesPadding: Dp,
     pressedNotes: Array<PressedNote>,
+    cancelledNotes: Array<Boolean>,
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
-    updatePadPitch: (Int) -> Unit,
+    updatePadPitchOnChannel: (Int, Int) -> Unit,
     setPadPitchByPianoKey: Boolean,
     savePadPitchToDatabase: (Int, Int) -> Unit,
     halfOfQuantize: Double
@@ -214,8 +217,9 @@ fun PianoKeyboard(
                         seqIsRecording = seqIsRecording,
                         noteIsPlaying = playingNotes[pitch] > 0,
                         isPressed = pressedNotes[pitch].isPressed,
+                        isCancelled = cancelledNotes[pitch],
                         pressPad = pressPad,
-                        updatePadPitch = updatePadPitch,
+                        updatePadPitchOnChannel = updatePadPitchOnChannel,
                         setPadPitchByPianoKey = setPadPitchByPianoKey,
                         savePadPitchToDatabase = savePadPitchToDatabase,
                         selectedChannel = selectedChannel,
@@ -251,8 +255,9 @@ fun PianoKeyboard(
                     seqIsRecording = seqIsRecording,
                     noteIsPlaying = playingNotes[pitch] > 0,
                     isPressed = pressedNotes[pitch].isPressed,
+                    isCancelled = cancelledNotes[pitch],
                     pressPad = pressPad,
-                    updatePadPitch = updatePadPitch,
+                    updatePadPitchOnChannel = updatePadPitchOnChannel,
                     setPadPitchByPianoKey = setPadPitchByPianoKey,
                     savePadPitchToDatabase = savePadPitchToDatabase,
                     selectedChannel = selectedChannel,
@@ -283,8 +288,9 @@ fun PianoKey(
     seqIsRecording: Boolean,
     noteIsPlaying: Boolean,
     isPressed: Boolean,
+    isCancelled: Boolean,
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
-    updatePadPitch: (Int) -> Unit,
+    updatePadPitchOnChannel: (Int, Int) -> Unit,
     setPadPitchByPianoKey: Boolean,
     savePadPitchToDatabase: (Int, Int) -> Unit,
     selectedChannel: Int,
@@ -296,28 +302,28 @@ fun PianoKey(
     halfOfQuantize: Double,
 ) {
     var elapsedTime = 0L
-    LaunchedEffect(interactionSource, selectedChannel, pitch, isPressed, setPadPitchByPianoKey) {
+    LaunchedEffect(interactionSource, selectedChannel, pitch, isCancelled, setPadPitchByPianoKey, updatePadPitchOnChannel) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     pressPad(selectedChannel, pitch, 100, 0, false)
                     rememberInteraction(selectedChannel, pitch, interaction)
                     if (setPadPitchByPianoKey) {
-                        updatePadPitch(pitch)
+                        updatePadPitchOnChannel(selectedChannel, pitch)
                         savePadPitchToDatabase(selectedChannel, pitch)
                     }
                     elapsedTime = System.currentTimeMillis()
                 }
                 is PressInteraction.Release -> {
                     // second condition needed for slow smartphones skipping noteOff due to 'isPressed' not updating in time
-                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) {
+//                    if (!isCancelled || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) {
                         pressPad(selectedChannel, pitch, 0, 0, false)
-                    }
+//                    }
                 }
                 is PressInteraction.Cancel -> {
-                    if (isPressed || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) {
+//                    if (!isCancelled || (System.currentTimeMillis() - elapsedTime) < halfOfQuantize) {
                         pressPad(selectedChannel, pitch, 0, 0, false)
-                    }
+//                    }
                 }
             }
         }

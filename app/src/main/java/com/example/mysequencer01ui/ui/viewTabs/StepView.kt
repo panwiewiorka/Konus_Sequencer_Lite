@@ -80,7 +80,7 @@ fun StepView(
 ) {
 
     val channelState by seqViewModel.channelSequences[seqUiState.selectedChannel].channelState.collectAsState()
-    val maxScroll = (seqUiState.stepViewNoteHeight * 128 - (maxHeight - seqUiState.stepViewNoteHeight - 2.dp)).value * LocalDensity.current.density
+    val maxScroll = (seqUiState.stepViewNoteHeight * 129 - (maxHeight - seqUiState.stepViewNoteHeight - 2.dp)).value * LocalDensity.current.density
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -127,7 +127,14 @@ fun StepView(
                 val keyboardWidth = 48.dp
                 val gridWidth = maxWidth - keyboardWidth
 
-                NotesGrid(seqViewModel, seqUiState, channelState, scrollState, gridWidth, keyboardWidth - 1.dp)
+                NotesGrid(
+                    seqViewModel = seqViewModel,
+                    seqUiState = seqUiState,
+                    channelState = channelState,
+                    scrollState = scrollState,
+                    gridWidth = gridWidth,
+                    keyboardWidth = keyboardWidth - 1.dp
+                )
 
                 Canvas(
                     modifier = Modifier
@@ -179,10 +186,10 @@ fun NotesGrid(
                 .padding(top = 1.dp, bottom = 1.dp, end = 1.dp)
                 .height(noteHeight * 128)
         ) {
-            val rememberInteraction by remember { mutableStateOf(seqViewModel::rememberInteraction) }
-            val pressPad by remember { mutableStateOf(seqViewModel::pressPad) }
-            val updatePadPitch by remember { mutableStateOf(::updatePadPitch) }
-            val savePadPitchToDatabase by remember { mutableStateOf(seqViewModel::savePadPitchToDatabase) }
+            val rememberInteraction = remember { seqViewModel::rememberInteraction }
+            val pressPad = remember { seqViewModel::addToPressPadList }
+            val updatePadPitchOnChannel = remember { seqViewModel::updatePadPitchOnChannel }
+            val savePadPitchToDatabase = remember { seqViewModel::savePadPitchToDatabase }
 
             var xOffset by remember { mutableStateOf(0f) }
             var yOffset by remember { mutableStateOf(0f) }
@@ -201,11 +208,12 @@ fun NotesGrid(
                     selectedChannel = seqUiState.selectedChannel,
                     playingNotes = channelState.playingNotes,
                     pressedNotes = channelState.pressedNotes,
+                    cancelledNotes = channelState.cancelledNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
                     keyWidth = keyboardWidth,
                     keyHeight = seqUiState.stepViewNoteHeight,
                     pressPad = pressPad,
-                    updatePadPitch = updatePadPitch,
+                    updatePadPitchOnChannel = updatePadPitchOnChannel,
                     setPadPitchByPianoKey = seqUiState.setPadPitchByPianoKey,
                     savePadPitchToDatabase = savePadPitchToDatabase,
                     halfOfQuantize = halfOfQuantize
@@ -370,7 +378,7 @@ fun NotesGrid(
 
                                             // vertical drag
                                             if (!changeLengthAreaDetected && (pitch != 127 - (yOffset / noteHeight.toPx()).toInt())) {
-                                                pitch = 127 - (yOffset / noteHeight.toPx()).toInt()
+                                                pitch = (127 - (yOffset / noteHeight.toPx()).toInt()).coerceIn(0..127)
                                                 changeNotePitch(noteOnIndex, pitch)
                                                 changeNotePitch(noteOffIndex, pitch)
                                             }
@@ -393,91 +401,95 @@ fun NotesGrid(
 
                                             eraseOverlappingNotes(noteOnIndex, noteOffIndex, pitch, seqUiState.isRepeating)
 
-                                            if(!seqUiState.seqIsPlaying) updateNotes()
+                                            if (draggedNoteOffJobPitch != pitch && draggedNoteOffJob.isActive) {
+                                                draggedNoteOffJob.cancel()
+                                                Log.d(TAG, "draggedNoteOffJob.cancel()")
+                                                kmmk.noteOn(channelNumber, draggedNoteOffJobPitch, 0)
+                                                changePlayingNotes(draggedNoteOffJobPitch, 0)
+                                            }
+
+                                            if (!seqUiState.seqIsPlaying) updateNotes()
                                         }
                                     }
                                 )
                             }
                         }
                 ) {
-                    Box{
-                        Column(
-                            modifier = Modifier.fillMaxSize()
-                        ){
-                            for (i in 0..127) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(noteHeight)
-                                        .padding(vertical = 0.3.dp)
-                                        .background(
-                                            if (getKeyColorAndNumber(0, 127 - i).isBlack) stepViewBlackRows else BackGray
-                                        )
-                                )
-                            }
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            modifier = Modifier
-                                .height(noteHeight * 128)
-                                .width(gridWidth)
-                        ){
-                            for (i in 1..15) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .width(0.6.dp)
-                                        .background(if ((i + 4) % 4 == 0) buttons else buttonsBg)
-                                )
-                            }
-                        }
-
-                        val widthFactor = gridWidth / BARTIME
-                        val playhead = widthFactor * channelState.deltaTime.toInt()
-                        val playheadRepeat = widthFactor * channelState.deltaTimeRepeat.toInt()
-
-                        with(channelState) {
-                            for(i in notes.indices) {
-                                if(notes[i].velocity > 0) {
-                                    val offsetX = widthFactor * notes[i].time.toInt()
-                                    val (noteOffIndex, noteOffTime) = getNotePairedIndexAndTime(i, true)
-                                    val noteWidth = widthFactor * (noteOffTime - notes[i].time).toInt()
-                                    val deltaWidth = if (seqUiState.isRepeating) playheadRepeat - offsetX else playhead - offsetX
-                                    val fasterThanHalfOfQuantize =
-                                        (System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= halfOfQuantize) && noteOffIndex == -1
-
-                                    var noteLength = when {
-                                        noteOffIndex != -1 -> noteWidth
-                                        !seqUiState.seqIsPlaying -> widthFactor * seqUiState.quantizationTime.toFloat()
-                                        fasterThanHalfOfQuantize && deltaWidth > widthFactor * seqUiState.quantizationTime.toFloat() -> 0.0001.dp // fix for glitch when recording near loop end
-                                        else -> deltaWidth  // live-writing note (grows in length)
-                                    }
-
-                                    val wrapIndices = if (noteOffIndex != -1) i > noteOffIndex else true // fixing rare bug: changeLength unQuantized wrapAround results in wrapAround view but non-wrapAround indices (Dp.toInt() != Dp)
-
-                                    if (noteLength <= 0.dp && !fasterThanHalfOfQuantize && wrapIndices) noteLength += gridWidth
-
-                                    val wrapAround = if (noteOffIndex != -1) i > noteOffIndex else offsetX + noteLength >= gridWidth
-
-                                    val changeLengthArea =
-                                        (if (noteLength / 2.5f < gridWidth / 12) noteLength / 2.5f else gridWidth / 12)
-
-                                    StepNote(
-                                        offsetX = offsetX - 0.3.dp,
-                                        offsetY = noteHeight * (127 - notes[i].pitch) - 0.3.dp,
-                                        noteLength = noteLength + 0.6.dp,
-                                        indexNoteOn = i,
-                                        noteHeight = noteHeight + 0.6.dp,
-                                        wrapAround = wrapAround,
-                                        changeLengthArea = changeLengthArea,
-                                        maxWidth = gridWidth
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ){
+                        for (i in 0..127) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(noteHeight)
+                                    .padding(vertical = 0.3.dp)
+                                    .background(
+                                        if (getKeyColorAndNumber(0, 127 - i).isBlack) stepViewBlackRows else BackGray
                                     )
+                            )
+                        }
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        modifier = Modifier
+                            .width(gridWidth)
+                    ){
+                        for (i in 1..15) {
+                            Box(
+                                modifier = Modifier
+                                    .height(noteHeight * 128)
+                                    .width(0.6.dp)
+                                    .background(if ((i + 4) % 4 == 0) buttons else buttonsBg)
+                            )
+                        }
+                    }
+
+                    val widthFactor = gridWidth / BARTIME
+                    val playhead = widthFactor * channelState.deltaTime.toInt()
+                    val playheadRepeat = widthFactor * channelState.deltaTimeRepeat.toInt()
+
+                    with(channelState) {
+                        for(i in notes.indices) {
+                            if(notes[i].velocity > 0) {
+                                val offsetX = widthFactor * notes[i].time.toInt()
+                                val (noteOffIndex, noteOffTime) = getNotePairedIndexAndTime(i, true)
+                                val noteWidth = widthFactor * (noteOffTime - notes[i].time).toInt()
+                                val deltaWidth = if (seqUiState.isRepeating) playheadRepeat - offsetX else playhead - offsetX
+                                val fasterThanHalfOfQuantize =
+                                    (System.currentTimeMillis() - pressedNotes[notes[i].pitch].noteOnTimestamp <= halfOfQuantize) && noteOffIndex == -1
+
+                                var noteLength = when {
+                                    noteOffIndex != -1 -> noteWidth
+                                    !seqUiState.seqIsPlaying -> widthFactor * seqUiState.quantizationTime.toFloat()
+                                    fasterThanHalfOfQuantize && deltaWidth > widthFactor * seqUiState.quantizationTime.toFloat() -> 0.0001.dp // fix for glitch when recording near loop end
+                                    else -> deltaWidth  // live-writing note (grows in length)
                                 }
+
+                                val wrapIndices = if (noteOffIndex != -1) i > noteOffIndex else true // fixing rare bug: changeLength unQuantized wrapAround results in wrapAround view but non-wrapAround indices (Dp.toInt() != Dp)
+
+                                if (noteLength <= 0.dp && !fasterThanHalfOfQuantize && wrapIndices) noteLength += gridWidth
+
+                                val wrapAround = if (noteOffIndex != -1) i > noteOffIndex else offsetX + noteLength >= gridWidth
+
+                                val changeLengthArea =
+                                    (if (noteLength / 2.5f < gridWidth / 12) noteLength / 2.5f else gridWidth / 12)
+
+                                StepNote(
+                                    offsetX = offsetX - 0.3.dp,
+                                    offsetY = noteHeight * (127 - notes[i].pitch) - 0.3.dp,
+                                    noteLength = noteLength + 0.6.dp,
+                                    indexNoteOn = i,
+                                    noteHeight = noteHeight + 0.6.dp,
+                                    wrapAround = wrapAround,
+                                    changeLengthArea = changeLengthArea,
+                                    maxWidth = gridWidth
+                                )
                             }
                         }
-                        if(channelState.stepViewRefresh) Box(modifier = Modifier.size(0.1.dp).background(Color(0x01000000)))
                     }
+                    if(channelState.stepViewRefresh) Box(modifier = Modifier.size(0.1.dp).background(Color(0x01000000)))
                 }
             }
         }
@@ -568,11 +580,12 @@ fun StepViewKeyboard(
     selectedChannel: Int,
     playingNotes: Array<Int>,
     pressedNotes: Array<PressedNote>,
+    cancelledNotes: Array<Boolean>,
     seqIsRecording: Boolean,
     keyWidth: Dp,
     keyHeight: Dp,
     pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
-    updatePadPitch: (Int) -> Unit,
+    updatePadPitchOnChannel: (Int, Int) -> Unit,
     setPadPitchByPianoKey: Boolean,
     savePadPitchToDatabase: (Int, Int) -> Unit,
     halfOfQuantize: Double,
@@ -591,8 +604,9 @@ fun StepViewKeyboard(
                     seqIsRecording = seqIsRecording,
                     noteIsPlaying = playingNotes[pitch] > 0,
                     isPressed = pressedNotes[pitch].isPressed,
+                    isCancelled = cancelledNotes[pitch],
                     pressPad = pressPad,
-                    updatePadPitch = updatePadPitch,
+                    updatePadPitchOnChannel = updatePadPitchOnChannel,
                     setPadPitchByPianoKey = setPadPitchByPianoKey,
                     savePadPitchToDatabase = savePadPitchToDatabase,
                     selectedChannel = selectedChannel,

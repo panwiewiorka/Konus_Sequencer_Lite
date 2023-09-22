@@ -46,6 +46,14 @@ data class RecordingPackage (
     val noteHeight: Float
 )
 
+data class PressPadPackage(
+    val channel: Int,
+    val pitch: Int,
+    val velocity: Int,
+    val elapsedTime: Long,
+    val allButton: Boolean,
+)
+
 //-------------------------------------
 
 enum class PadsMode{

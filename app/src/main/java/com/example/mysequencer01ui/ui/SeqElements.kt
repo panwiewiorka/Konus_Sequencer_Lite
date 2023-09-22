@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.sp
 import com.example.mysequencer01ui.ChannelSequence
 import com.example.mysequencer01ui.PadsMode
 import com.example.mysequencer01ui.PadsMode.CLEARING
-import com.example.mysequencer01ui.PadsMode.DEFAULT
 import com.example.mysequencer01ui.PadsMode.ERASING
 import com.example.mysequencer01ui.PadsMode.LOADING
 import com.example.mysequencer01ui.PadsMode.MUTING
@@ -99,12 +98,14 @@ fun PadButton(
     seqIsRecording: Boolean,
     channelIsPlayingNotes: Boolean,
     isPressed: Boolean,
+    isCancelled: Boolean,
+    updateCancelledNotes: (Int, Boolean) -> Unit,
     isMuted: Boolean,
     isSoloed: Boolean,
 ){
     var elapsedTime = remember { 0L }
     val buttonIsPressed by interactionSource.collectIsPressedAsState()
-    LaunchedEffect(interactionSource, pitch, isPressed, padsMode) {
+    LaunchedEffect(interactionSource, pitch, isCancelled, padsMode) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
@@ -113,19 +114,23 @@ fun PadButton(
                     rememberInteraction(channel, pitch, interaction)
                 }
                 is PressInteraction.Release -> {
-                    if (isPressed || padsMode != DEFAULT) {
+//                    Log.d(TAG, "PressInteraction.RELEASE, isCancelled = $isCancelled")
+//                    if (!isCancelled || padsMode != DEFAULT) {
                         pressPad(channel, pitch, 0, elapsedTime, false)
-                    }
+//                    }
+//                    if (isCancelled) updateCancelledNotes(pitch, false)
                 }
                 is PressInteraction.Cancel -> {
-                    if (isPressed || padsMode != DEFAULT) {
+//                    Log.d(TAG, "PressInteraction.CANCEL, isCancelled = $isCancelled")
+//                    if (!isCancelled || padsMode != DEFAULT) {
                         pressPad(channel, pitch, 0, elapsedTime, false)
-                    }
-                    Log.d(TAG, "PressInteraction.Cancel -> ")
+//                    }
+//                    if (isCancelled) updateCancelledNotes(pitch, false)
                 }
             }
         }
     }
+
     val notActiveColor = when {
         selectedChannel == channel -> selectedButton
         isMuted -> repeatButtons
@@ -264,6 +269,8 @@ fun PadsGrid(
                                 seqIsRecording = seqIsRecording,
                                 channelIsPlayingNotes = channelState.channelIsPlayingNotes > 0,
                                 isPressed = channelState.pressedNotes[pitch].isPressed,
+                                isCancelled = channelState.cancelledNotes[pitch],
+                                updateCancelledNotes = channelSequences[channel]::updateCancelledNotes,
                                 isMuted = channelState.isMuted,
                                 isSoloed = channelState.isSoloed
                             )

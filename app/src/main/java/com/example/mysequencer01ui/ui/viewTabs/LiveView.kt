@@ -100,7 +100,7 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // to avoid unnecessary recompositions:
-                val pressPad = remember {seqViewModel::pressPad}
+                val pressPad = remember {seqViewModel::addToPressPadList}
                 val rememberInteraction = remember {seqViewModel::rememberInteraction}
                 PadsGrid(
                     channelSequences = seqViewModel.channelSequences,
