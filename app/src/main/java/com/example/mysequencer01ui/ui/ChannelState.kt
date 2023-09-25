@@ -13,7 +13,6 @@ data class ChannelState(
     val channelIsPlayingNotes: Int = 0,
     var playingNotes: Array<Int> = Array(128) { 0 },
     val pressedNotes: Array<PressedNote> = Array(128) { PressedNote(false, Int.MAX_VALUE, 0) },
-    val cancelledNotes: Array<Boolean> = Array(128) { false },
     val onPressedMode: PadsMode = PadsMode.DEFAULT,
     val padPitch: Int = 60,
 

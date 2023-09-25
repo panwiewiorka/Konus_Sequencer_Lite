@@ -8,11 +8,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,8 +46,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.PressedNote
-import com.example.mysequencer01ui.RememberedPressInteraction
 import com.example.mysequencer01ui.ui.BARTIME
 import com.example.mysequencer01ui.ui.ChannelState
 import com.example.mysequencer01ui.ui.SeqUiState
@@ -195,38 +191,57 @@ fun NotesGrid(
             var yOffset by remember { mutableStateOf(0f) }
             val halfOfQuantize = seqUiState.quantizationTime / seqUiState.factorBpm / 2
 
-            Row{
-                StepViewKeyboard(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .verticalScroll(
-                            scrollState,
-                            reverseScrolling = true,
-                        ),
-                    interactionSources = interactionSources,
-                    rememberInteraction = rememberInteraction,
-                    selectedChannel = seqUiState.selectedChannel,
-                    playingNotes = channelState.playingNotes,
-                    pressedNotes = channelState.pressedNotes,
-                    cancelledNotes = channelState.cancelledNotes,
-                    seqIsRecording = seqUiState.seqIsRecording,
-                    keyWidth = keyboardWidth,
-                    keyHeight = seqUiState.stepViewNoteHeight,
-                    pressPad = pressPad,
-                    updatePadPitchOnChannel = updatePadPitchOnChannel,
-                    setPadPitchByPianoKey = seqUiState.setPadPitchByPianoKey,
-                    savePadPitchToDatabase = savePadPitchToDatabase,
-                    halfOfQuantize = halfOfQuantize
-                )
+            Row(
+                modifier = Modifier
+                    .verticalScroll(
+                        scrollState,
+                        reverseScrolling = true,
+                    )
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    repeat(128) {
+                        val key = getKeyColorAndNumber(0, 127 - it)
+                        val pitch = key.number
+                        Box(
+                            contentAlignment = Alignment.BottomCenter,
+                            modifier = Modifier.offset(x = 0.dp, y = noteHeight * it)
+                        ) {
+                            PianoKey(
+                                stepView = true,
+                                interactionSource = interactionSources[pitch].interactionSource,
+                                rememberInteraction = rememberInteraction,
+                                seqIsRecording = seqUiState.seqIsRecording,
+                                noteIsPlaying = playingNotes[pitch] > 0,
+                                isPressed = pressedNotes[pitch].isPressed,
+                                pressPad = pressPad,
+                                updatePadPitchOnChannel = updatePadPitchOnChannel,
+                                setPadPitchByPianoKey = seqUiState.setPadPitchByPianoKey,
+                                savePadPitchToDatabase = savePadPitchToDatabase,
+                                selectedChannel = seqUiState.selectedChannel,
+                                pitch = pitch,
+                                keyWidth = keyboardWidth,
+                                keyHeight = noteHeight,
+                                notesPadding = 0.dp,
+                                whiteKey = !key.isBlack
+                            )
+                            if (pitch % 12 == 0) {
+                                Text(
+                                    text = "${(pitch / 12) - 1}",
+                                    fontSize = 14.nonScaledSp,
+                                    color = BackGray,
+                                    modifier = Modifier.clipToBounds()
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(buttonsBg)
-                        .verticalScroll(
-                            scrollState,
-                            reverseScrolling = true,
-                        )
                         .pointerInput(
                             seqUiState.selectedChannel, seqUiState.seqIsPlaying, channelState.notes
                         ) {
@@ -415,14 +430,16 @@ fun NotesGrid(
                             }
                         }
                 ) {
-                    Column(
+                    Box(
                         modifier = Modifier.fillMaxSize()
+//                        modifier = Modifier.height(noteHeight * 128).fillMaxWidth(),
                     ){
                         for (i in 0..127) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(noteHeight)
+                                    .offset(x = 0.dp, y = noteHeight * i)
                                     .padding(vertical = 0.3.dp)
                                     .background(
                                         if (getKeyColorAndNumber(0, 127 - i).isBlack) stepViewBlackRows else BackGray
@@ -433,8 +450,7 @@ fun NotesGrid(
 
                     Row(
                         horizontalArrangement = Arrangement.SpaceEvenly,
-                        modifier = Modifier
-                            .width(gridWidth)
+                        modifier = Modifier.width(gridWidth)
                     ){
                         for (i in 1..15) {
                             Box(
@@ -566,65 +582,6 @@ fun NoteBox(
             Canvas (modifier = Modifier.fillMaxSize()) {
                 val x = if (offsetX != 0.dp) size.width else 1.dp.toPx()
                 drawLine( buttonsBg, Offset(x, 0.6.dp.toPx()), Offset(x, size.height - 0.6.dp.toPx()), 2.dp.toPx())
-            }
-        }
-    }
-}
-
-
-@Composable
-fun StepViewKeyboard(
-    modifier: Modifier,
-    interactionSources: Array<RememberedPressInteraction>,
-    rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
-    selectedChannel: Int,
-    playingNotes: Array<Int>,
-    pressedNotes: Array<PressedNote>,
-    cancelledNotes: Array<Boolean>,
-    seqIsRecording: Boolean,
-    keyWidth: Dp,
-    keyHeight: Dp,
-    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
-    updatePadPitchOnChannel: (Int, Int) -> Unit,
-    setPadPitchByPianoKey: Boolean,
-    savePadPitchToDatabase: (Int, Int) -> Unit,
-    halfOfQuantize: Double,
-) {
-    Column(modifier = modifier) {
-        repeat(128) {
-            val key = getKeyColorAndNumber(0, 127 - it)
-            val pitch = key.number
-            Box(
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                PianoKey(
-                    stepView = true,
-                    interactionSource = interactionSources[pitch].interactionSource,
-                    rememberInteraction = rememberInteraction,
-                    seqIsRecording = seqIsRecording,
-                    noteIsPlaying = playingNotes[pitch] > 0,
-                    isPressed = pressedNotes[pitch].isPressed,
-                    isCancelled = cancelledNotes[pitch],
-                    pressPad = pressPad,
-                    updatePadPitchOnChannel = updatePadPitchOnChannel,
-                    setPadPitchByPianoKey = setPadPitchByPianoKey,
-                    savePadPitchToDatabase = savePadPitchToDatabase,
-                    selectedChannel = selectedChannel,
-                    pitch = pitch,
-                    keyWidth = keyWidth,
-                    keyHeight = keyHeight,
-                    notesPadding = 0.dp,
-                    whiteKey = !key.isBlack,
-                    halfOfQuantize = halfOfQuantize
-                )
-                if (pitch % 12 == 0) {
-                    Text(
-                        text = "${(pitch / 12) - 1}",
-                        fontSize = 14.nonScaledSp,
-                        color = BackGray,
-                        modifier = Modifier.clipToBounds()
-                    )
-                }
             }
         }
     }

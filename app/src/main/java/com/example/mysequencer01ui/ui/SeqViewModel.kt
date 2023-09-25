@@ -132,6 +132,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         var clockTicks = 0
         CoroutineScope(Dispatchers.Default).launch {
             while (uiState.value.seqIsPlaying) {
+
+                usePressPadList()
+
                 for (c in channelSequences.indices) {
                     channelSequences[c].advanceChannelSequence(
                         seqIsPlaying = uiState.value.seqIsPlaying,
@@ -147,8 +150,6 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                         allowRecordShortNotes = uiState.value.allowRecordShortNotes,
                     )
                 }
-
-                usePressPadList()
 
                 with(channelSequences[0]) {
                     if (uiState.value.transmitClock) {
@@ -263,8 +264,9 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
                     if (velocity > 0 || pressedNotes[pitch].isPressed) {
                         val retrigger = playingNotes[pitch] > 0 && velocity > 0
                         val isNotMuted = (uiState.value.soloIsOn && channelState.value.isSoloed) || (!uiState.value.soloIsOn && !channelState.value.isMuted)
+
                         if (retrigger && isNotMuted) {
-                            kmmk.noteOn(channel, pitch, 0)    // allows to retrigger already playing notes
+                            kmmk.noteOn(channel, pitch, 0)
                         }
 
                         if (isNotMuted) kmmk.noteOn(channel, pitch, velocity)
@@ -323,7 +325,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
             }
         }
 
-        if (uiState.value.seqIsPlaying) {
+        if (uiState.value.seqIsPlaying && uiState.value.padsMode != DEFAULT) {
             pressPadList.add(
                 PressPadPackage(
                     channel = channel,

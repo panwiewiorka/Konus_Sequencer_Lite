@@ -90,42 +90,31 @@ fun PadButton(
     interactionSource: MutableInteractionSource,
     channel: Int,
     pitch: Int,
-    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
+    addToPressPadList: (Int, Int, Int, Long, Boolean) -> Unit,
     rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
     padsMode: PadsMode,
     padsSize: Dp,
     selectedChannel: Int,
     seqIsRecording: Boolean,
     channelIsPlayingNotes: Boolean,
-    isPressed: Boolean,
-    isCancelled: Boolean,
-    updateCancelledNotes: (Int, Boolean) -> Unit,
     isMuted: Boolean,
     isSoloed: Boolean,
 ){
     var elapsedTime = remember { 0L }
     val buttonIsPressed by interactionSource.collectIsPressedAsState()
-    LaunchedEffect(interactionSource, pitch, isCancelled, padsMode) {
+    LaunchedEffect(interactionSource, pitch, padsMode) {
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
-                    pressPad(channel, pitch, 100, 0, false)
+                    addToPressPadList(channel, pitch, 100, 0, false)
                     elapsedTime = System.currentTimeMillis()
                     rememberInteraction(channel, pitch, interaction)
                 }
                 is PressInteraction.Release -> {
-//                    Log.d(TAG, "PressInteraction.RELEASE, isCancelled = $isCancelled")
-//                    if (!isCancelled || padsMode != DEFAULT) {
-                        pressPad(channel, pitch, 0, elapsedTime, false)
-//                    }
-//                    if (isCancelled) updateCancelledNotes(pitch, false)
+                    addToPressPadList(channel, pitch, 0, elapsedTime, false)
                 }
                 is PressInteraction.Cancel -> {
-//                    Log.d(TAG, "PressInteraction.CANCEL, isCancelled = $isCancelled")
-//                    if (!isCancelled || padsMode != DEFAULT) {
-                        pressPad(channel, pitch, 0, elapsedTime, false)
-//                    }
-//                    if (isCancelled) updateCancelledNotes(pitch, false)
+                    addToPressPadList(channel, pitch, 0, elapsedTime, false)
                 }
             }
         }
@@ -237,7 +226,7 @@ fun PadButton(
 @Composable
 fun PadsGrid(
     channelSequences: MutableList<ChannelSequence>,
-    pressPad: (Int, Int, Int, Long, Boolean) -> Unit,
+    addToPressPadList: (Int, Int, Int, Long, Boolean) -> Unit,
     rememberInteraction: (Int, Int, PressInteraction.Press) -> Unit,
     padsMode: PadsMode,
     selectedChannel: Int,
@@ -261,16 +250,13 @@ fun PadsGrid(
                                 interactionSource = channelSequences[channel].interactionSources[pitch].interactionSource,
                                 channel = channel,
                                 pitch = pitch,
-                                pressPad = pressPad,
+                                addToPressPadList = addToPressPadList,
                                 rememberInteraction = rememberInteraction,
                                 padsMode = padsMode,
                                 padsSize = padsSize,
                                 selectedChannel = selectedChannel,
                                 seqIsRecording = seqIsRecording,
                                 channelIsPlayingNotes = channelState.channelIsPlayingNotes > 0,
-                                isPressed = channelState.pressedNotes[pitch].isPressed,
-                                isCancelled = channelState.cancelledNotes[pitch],
-                                updateCancelledNotes = channelSequences[channel]::updateCancelledNotes,
                                 isMuted = channelState.isMuted,
                                 isSoloed = channelState.isSoloed
                             )

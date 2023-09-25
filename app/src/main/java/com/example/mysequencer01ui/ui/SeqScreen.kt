@@ -72,7 +72,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             modifier = Modifier.fillMaxSize()
         ) {
             // to avoid unnecessary recompositions:
-            val pressPad = remember {seqViewModel::addToPressPadList}
+            val addToPressPadList = remember {seqViewModel::addToPressPadList}
             val editCurrentPadsMode = remember {seqViewModel::editCurrentPadsMode}
             val switchPadsToQuantizingMode = remember {seqViewModel::switchPadsToQuantizingMode}
             val switchQuantization = remember {seqViewModel::switchQuantization}
@@ -88,7 +88,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
             ) {
                 if(seqUiState.padsMode != DEFAULT && seqUiState.padsMode != SELECTING && seqUiState.padsMode != LOADING)
                     AllButton(
-                        pressPad,
+                        addToPressPadList,
                         buttonsSize,
                         (seqUiState.padsMode == SOLOING && seqUiState.soloIsOn) || (seqUiState.padsMode == MUTING && seqUiState.muteIsOn)
                     )
@@ -130,7 +130,7 @@ fun SeqScreen(kmmk: KmmkComponentContext, seqViewModel: SeqViewModel = viewModel
                         Spacer(modifier = Modifier.width(10.dp))
                         PadsGrid(
                             channelSequences = seqViewModel.channelSequences,
-                            pressPad = pressPad,
+                            addToPressPadList = addToPressPadList,
                             rememberInteraction = seqViewModel::rememberInteraction,
                             padsMode = seqUiState.padsMode,
                             selectedChannel = seqUiState.selectedChannel,
