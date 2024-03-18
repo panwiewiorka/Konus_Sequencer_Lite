@@ -18,10 +18,10 @@ If MIDI-port doesn't show/work, please restart the app.
 Tablet layout yet to be implemented.
 
 [View on Google Play](https://play.google.com/store/apps/details?id=app.konusseqlite)\
-[Watch YouTube demo](https://www.youtube.com/watch?v=LHbeq-h0lvY)\
+[Watch YouTube demo](https://youtu.be/-fe8CZb3P6M)\
 [Read user manual](https://drive.google.com/file/d/1xrKIPEei9Y9hVXfqrK_AgDqTTeFqTDTl/view?usp=sharing)
 
-<!--
+
 ![Screenshot1](https://github.com/panwiewiorka/Konus_Sequencer_Lite/assets/107356404/5b3f0efa-86d0-4a7f-9e0d-2d36fd00ddf9)
 
 ![Screenshot2](https://github.com/panwiewiorka/Konus_Sequencer_Lite/assets/107356404/575bcbb0-9522-4145-9286-0aa8aff23fcc)
@@ -29,4 +29,3 @@ Tablet layout yet to be implemented.
 ![Screenshot3](https://github.com/panwiewiorka/Konus_Sequencer_Lite/assets/107356404/2da094ba-623e-4172-bfbd-9859629463e4)
 
 ![Screenshot4](https://github.com/panwiewiorka/Konus_Sequencer_Lite/assets/107356404/71e7960e-db69-4eed-bf18-a39aed6da73c)
--->
