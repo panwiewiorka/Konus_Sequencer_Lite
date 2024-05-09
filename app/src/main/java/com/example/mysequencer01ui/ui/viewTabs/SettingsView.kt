@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.center
@@ -147,7 +148,9 @@ fun SettingsView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize
 
             VisualDebuggerSettings(seqUiState.showVisualDebugger, seqViewModel::switchVisualDebugger, seqUiState.debuggerViewSetting, seqViewModel::selectDebuggerSetting)
 
-            Spacer(modifier = Modifier.height(6.dp))
+            PolicyText()
+
+            Spacer(modifier = Modifier.height(10.dp))
         }
         GradientBox(modifier = Modifier
             .align(Alignment.TopCenter)
@@ -373,6 +376,19 @@ fun VisualDebuggerSettings(showVisualDebugger: Boolean, switchVisualDebugger: ()
             )
         }
     }
+}
+
+
+@Composable
+fun PolicyText() {
+    val uriHandler = LocalUriHandler.current
+    Text(
+        text = "v 0.1  /  Privacy policy",
+        fontSize = 14.nonScaledSp,
+        color = selectedButton,
+        modifier = Modifier
+            .clickable { uriHandler.openUri("https://docs.google.com/document/d/1eD8w5ZL09c3-SZZRabl88t0kqI_KcVIyeZjnC4Kdt3Y/edit?usp=sharing") }
+    )
 }
 
 

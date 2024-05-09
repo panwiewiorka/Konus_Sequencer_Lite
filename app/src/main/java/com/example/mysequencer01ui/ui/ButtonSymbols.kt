@@ -3,9 +3,20 @@ package com.example.mysequencer01ui.ui
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.*
-import com.example.mysequencer01ui.ui.theme.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
+import com.example.mysequencer01ui.ui.theme.buttons
+import com.example.mysequencer01ui.ui.theme.dusk
+import com.example.mysequencer01ui.ui.theme.night
+import com.example.mysequencer01ui.ui.theme.notWhite
+import com.example.mysequencer01ui.ui.theme.selectedButton
+import com.example.mysequencer01ui.ui.theme.violet
+import com.example.mysequencer01ui.ui.theme.warmRed
 
 
 const val thickness = 4f
@@ -302,25 +313,33 @@ fun DrawScope.stopSymbol() {
 fun DrawScope.tabLiveSymbol(color: Color) {
     val m = size.height / 8f
     val s = m/1.5f
-    drawLine(color, Offset(center.x, center.y - s), Offset(center.x, center.y + s), thickness)
-    drawLine(color, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness)
+    drawLine(color, Offset(center.x, center.y - s), Offset(center.x, center.y + s), thickness, cap = StrokeCap.Round)
+    drawLine(color, Offset(center.x - m, center.y), Offset(center.x + m, center.y), thickness, cap = StrokeCap.Round)
 }
 
 fun DrawScope.tabPianoSymbol(color: Color) {
     val m = size.height / 8f
     val s = m/2
-    drawLine(color, Offset(center.x - m, center.y + s), Offset(center.x, center.y + s), thickness)
-    drawLine(color, Offset(center.x - s, center.y), Offset(center.x + s, center.y), thickness)
-    drawLine(color, Offset(center.x, center.y - s), Offset(center.x + m, center.y - s), thickness)
+    drawLine(color, Offset(center.x - m, center.y + s), Offset(center.x, center.y + s), thickness, cap = StrokeCap.Round)
+    drawLine(color, Offset(center.x - s, center.y), Offset(center.x + s, center.y), thickness, cap = StrokeCap.Round)
+    drawLine(color, Offset(center.x, center.y - s), Offset(center.x + m, center.y - s), thickness, cap = StrokeCap.Round)
 }
 
 fun DrawScope.tabStepSymbol(color: Color) {
     val m = size.height / 8f
     val s = m/2
-    drawLine(color, Offset(center.x - m, center.y - s), Offset(center.x - m, center.y + s), thickness)
-    drawLine(color, Offset(center.x - m, center.y - s), Offset(center.x + m, center.y - s), thickness)
-    drawLine(color, Offset(center.x - m, center.y + s), Offset(center.x + m, center.y + s), thickness)
-    drawLine(color, Offset(center.x + m, center.y + s), Offset(center.x + m, center.y - s), thickness)
+    val path = Path()
+    path.moveTo(center.x - m, center.y - s)
+    path.lineTo(center.x - m, center.y + s)
+    path.lineTo(center.x + m, center.y + s)
+    path.lineTo(center.x + m, center.y - s)
+    path.lineTo(center.x - m, center.y - s)
+
+    drawPath(
+        path = path,
+        color = color,
+        style = style
+    )
 }
 
 fun DrawScope.tabAutomationSymbol(color: Color) {

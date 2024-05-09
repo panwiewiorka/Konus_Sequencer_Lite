@@ -129,7 +129,7 @@ fun LiveView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: Dp
                     )
                 }
             }
-            Column(){
+            Column {
                 Spacer(modifier = Modifier.height(buttonsSize / 2))
                 repeat(4) {
                     RepeatButton(
@@ -359,7 +359,7 @@ fun VisualDebugger(seqViewModel: SeqViewModel, seqUiState: SeqUiState, height: D
             .background(Color.Transparent),
         contentAlignment = Alignment.TopStart
     ) {
-        Column() {
+        Column {
             with(seqViewModel.channelSequences[seqUiState.selectedChannel]) {
                 Text(
                     "Channel ${seqUiState.selectedChannel}:   noteId = ${noteId - Int.MIN_VALUE},    " +

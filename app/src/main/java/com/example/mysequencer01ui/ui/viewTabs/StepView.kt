@@ -202,8 +202,7 @@ fun NotesGrid(
                     modifier = Modifier.fillMaxHeight()
                 ) {
                     repeat(128) {
-                        val key = getKeyColorAndNumber(0, 127 - it)
-                        val pitch = key.number
+                        val pitch = 127-it
                         Box(
                             contentAlignment = Alignment.BottomCenter,
                             modifier = Modifier.offset(x = 0.dp, y = noteHeight * it)
@@ -224,7 +223,7 @@ fun NotesGrid(
                                 keyWidth = keyboardWidth,
                                 keyHeight = noteHeight,
                                 notesPadding = 0.dp,
-                                whiteKey = !key.isBlack
+                                whiteKey = seqViewModel.keysPattern[127-it]
                             )
                             if (pitch % 12 == 0) {
                                 Text(
@@ -442,7 +441,7 @@ fun NotesGrid(
                                     .offset(x = 0.dp, y = noteHeight * i)
                                     .padding(vertical = 0.3.dp)
                                     .background(
-                                        if (getKeyColorAndNumber(0, 127 - i).isBlack) stepViewBlackRows else BackGray
+                                        if (seqViewModel.keysPattern[127-i]) BackGray else stepViewBlackRows
                                     )
                             )
                         }

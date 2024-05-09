@@ -23,6 +23,8 @@ import com.example.mysequencer01ui.PadsMode.QUANTIZING
 import com.example.mysequencer01ui.PadsMode.SAVING
 import com.example.mysequencer01ui.PadsMode.SELECTING
 import com.example.mysequencer01ui.PadsMode.SOLOING
+import com.example.mysequencer01ui.PianoKeysType.BLACK
+import com.example.mysequencer01ui.PianoKeysType.WHITE
 import com.example.mysequencer01ui.PressPadPackage
 import com.example.mysequencer01ui.SeqView
 import com.example.mysequencer01ui.StopNotesMode
@@ -63,6 +65,7 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
     private var listOfSoloedChannels = emptyList<Int>()
     private var previousDivisorValue = 0
     private var pressPadList = mutableListOf<PressPadPackage>()
+    val keysPattern = Array(128) { getKeyColor(it) }
 
     private var patterns: Array<Array<Array<Note>>> = Array(16){ Array(16) { emptyArray() } }
     private var jobQuantizeSwitch = CoroutineScope(Dispatchers.Main).launch { }
@@ -682,6 +685,10 @@ class SeqViewModel(private val kmmk: KmmkComponentContext, private val dao: SeqD
         _uiState.update { a -> a.copy( stepViewNoteHeight = noteHeight ) }
     }
 
+    private fun getKeyColor(keyIndex: Int): Boolean {
+        val blackAndWhiteKeysPattern = listOf(WHITE, BLACK, WHITE, BLACK, WHITE, WHITE, BLACK, WHITE, BLACK, WHITE, BLACK, WHITE)
+        return (blackAndWhiteKeysPattern[keyIndex % 12] == WHITE)
+    }
 
     fun rememberInteraction(channel: Int, pitch: Int, interaction: PressInteraction.Press) {
         channelSequences[channel].interactionSources[pitch].pressInteraction = interaction

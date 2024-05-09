@@ -43,9 +43,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.mysequencer01ui.KeyColorAndNumber
-import com.example.mysequencer01ui.PianoKeysType.BLACK
-import com.example.mysequencer01ui.PianoKeysType.WHITE
 import com.example.mysequencer01ui.PressedNote
 import com.example.mysequencer01ui.RememberedPressInteraction
 import com.example.mysequencer01ui.ui.SeqUiState
@@ -93,6 +90,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     selectedChannel = seqUiState.selectedChannel,
                     playingNotes = channelState.playingNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
+                    keyIsWhite = seqViewModel.keysPattern,
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
                     octave = channelState.pianoViewOctaveHigh,
@@ -157,6 +155,7 @@ fun PianoView(seqViewModel: SeqViewModel, seqUiState: SeqUiState, buttonsSize: D
                     selectedChannel = seqUiState.selectedChannel,
                     playingNotes = channelState.playingNotes,
                     seqIsRecording = seqUiState.seqIsRecording,
+                    keyIsWhite = seqViewModel.keysPattern,
                     keyWidth = keyWidth,
                     keyHeight = keyHeight,
                     octave = channelState.pianoViewOctaveLow,
@@ -180,6 +179,7 @@ fun PianoKeyboard(
     selectedChannel: Int,
     playingNotes: Array<Int>,
     seqIsRecording: Boolean,
+    keyIsWhite: Array<Boolean>,
     keyWidth: Dp,
     keyHeight: Dp,
     octave: Int,
@@ -196,13 +196,11 @@ fun PianoKeyboard(
     ) {
         Row {
             repeat(24) {
-                val key = getKeyColorAndNumber(startPitch, it)
-                val keyIsWhite = !key.isBlack
-                val pitch = key.number + (octave + 1) * 12
+                val pitch = startPitch + it + (octave + 1) * 12
                 Box(
                     contentAlignment = Alignment.BottomCenter
                 ) {
-                    if(keyIsWhite) PianoKey(
+                    if(keyIsWhite[pitch]) PianoKey(
                         stepView = false,
                         interactionSource = interactionSources[pitch].interactionSource,
                         rememberInteraction = rememberInteraction,
@@ -234,11 +232,9 @@ fun PianoKeyboard(
             modifier = Modifier.offset(-keyWidth / 2 - notesPadding, -keyHeight / 2)
         ) {
             repeat(24) {
-                val key = getKeyColorAndNumber(startPitch, it)
-                val keyIsBlack = key.isBlack
-                val pitch = key.number + (octave + 1) * 12
+                val pitch = startPitch + it + (octave + 1) * 12
 
-                if(keyIsBlack) PianoKey(
+                if(!keyIsWhite[pitch]) PianoKey(
                     stepView = false,
                     interactionSource = interactionSources[pitch].interactionSource,
                     rememberInteraction = rememberInteraction,
@@ -256,15 +252,10 @@ fun PianoKeyboard(
                     notesPadding = notesPadding,
                     whiteKey = false
                 )
-                if(key.number % 12 == 5 || key.number % 12 == 0) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
+                if(pitch % 12 == 5 || pitch % 12 == 0) Spacer(modifier = Modifier.width(keyWidth + notesPadding * 2))
             }
         }
     }
-}
-
-fun getKeyColorAndNumber(startPitch: Int, keyIndex: Int): KeyColorAndNumber {
-    val blackAndWhiteKeysPattern = listOf(WHITE, BLACK, WHITE, BLACK, WHITE, WHITE, BLACK, WHITE, BLACK, WHITE, BLACK, WHITE)
-    return KeyColorAndNumber(blackAndWhiteKeysPattern[(startPitch + keyIndex) % 12] == BLACK, startPitch + keyIndex)
 }
 
 
